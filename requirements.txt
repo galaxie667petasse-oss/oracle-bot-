@@ -1,48 +1,5 @@
-# Oracle Football Bot V4.2
-
-Bot Telegram cloud avec scan large, prefiltre des marches, analyse IA Groq, auto-settle des resultats et apprentissage leger.
-
-## Nouveautes V4.2
-
-- `/settle` verifie automatiquement les resultats des picks en attente.
-- `/learn` recalcule le profil d apprentissage depuis l historique WIN/LOSS.
-- `/stats` affiche winrate, ROI, stats par marche, cote et ligue.
-- `/chart` envoie un graphique de profit cumule en unites.
-- Le scan quotidien lance d abord un auto-settle puis ajuste le scoring.
-
-## Variables Railway recommandees
-
-```env
-ORACLE_MODE=aggressive
-MAX_MATCHES=80
-MAX_ANALYZED=30
-TOP_PICKS=5
-MIN_CONFIDENCE=56
-MIN_VALUE_SCORE=-14
-MAX_H2H_TOP=1
-SETTLE_HOUR=8
-SCAN_HOUR=9
-```
-
-## Commandes Telegram
-
-```text
-/start
-/scan
-/scan force
-/settle
-/stats
-/learn
-/chart
-/resultats
-```
-
-## Railway
-
-Le Dockerfile lance :
-
-```bash
-python oracle_bot_v42.py
-```
-
-Important : un seul replica Railway, sinon Telegram peut renvoyer un conflit getUpdates.
+python-telegram-bot[job-queue]==21.5
+aiohttp==3.9.5
+pytz==2024.1
+python-dotenv==1.0.1
+matplotlib==3.9.2
