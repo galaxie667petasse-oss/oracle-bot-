@@ -1,4 +1,9 @@
-from oracle_bot_v42 import main
+from pathlib import Path
+import runpy
 
-if __name__ == "__main__":
-    main()
+SOURCE = Path(__file__).with_name("Procfile")
+
+if not SOURCE.exists():
+    raise SystemExit("Procfile source missing")
+
+runpy.run_path(str(SOURCE), run_name="__main__")
