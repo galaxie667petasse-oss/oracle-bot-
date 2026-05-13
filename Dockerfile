@@ -1,4 +1,13 @@
-from oracle_bot_v42 import main
+FROM python:3.12-slim
 
-if __name__ == "__main__":
-    main()
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+
+COPY requirements.txt ./requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+COPY . .
+
+CMD ["python", "oracle_bot_v42.py"]
