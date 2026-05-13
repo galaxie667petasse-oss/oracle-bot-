@@ -1,0 +1,108 @@
+# Oracle Football Bot V4.1
+
+Bot Telegram cloud pour scanner largement les matchs avec cotes réelles, préfiltrer les meilleurs marchés, puis utiliser Groq pour sortir un Top picks plus exploitable.
+
+## Ce que V4.1 corrige
+
+- Scan élargi par défaut : `MAX_MATCHES=60`
+- Préfiltre automatique des marchés avant IA
+- Analyse des marchés, pas seulement des matchs
+- Score moins punitif que V4
+- Modes `safe`, `balanced`, `aggressive`
+- Limite les victoires simples dans le Top : `MAX_H2H_TOP=2`
+- Refuse toujours les cotes inventées
+- Sort au moins quelques picks corrects en mode balanced/aggressive si le vivier existe
+
+## Fichiers importants
+
+```text
+oracle_bot_v41.py
+requirements.txt
+railway.json
+Procfile
+.env.example
+docs/STRATEGIE_V41.md
+```
+
+## Variables Railway recommandées
+
+```env
+TELEGRAM_TOKEN=...
+CHAT_ID=...
+GROQ_KEYS=...
+
+ODDSPAPI_KEY=...
+FOOTBALL_KEY=...
+FOOTBALL_DATA_KEY=...
+
+BANKROLL=100
+SCAN_HOUR=9
+
+ORACLE_MODE=balanced
+MAX_MATCHES=60
+MAX_ANALYZED=20
+TOP_PICKS=5
+MIN_CONFIDENCE=58
+MIN_VALUE_SCORE=-8
+MAX_H2H_TOP=2
+```
+
+## Modes
+
+### balanced recommandé
+
+```env
+ORACLE_MODE=balanced
+MAX_MATCHES=60
+MAX_ANALYZED=20
+MIN_CONFIDENCE=58
+MIN_VALUE_SCORE=-8
+```
+
+### safe
+
+Moins de picks, plus strict.
+
+```env
+ORACLE_MODE=safe
+MIN_CONFIDENCE=64
+MIN_VALUE_SCORE=-2
+```
+
+### aggressive
+
+Plus de picks, plus risqué.
+
+```env
+ORACLE_MODE=aggressive
+MIN_CONFIDENCE=56
+MIN_VALUE_SCORE=-14
+```
+
+## Railway
+
+Le bot doit être lancé avec :
+
+```bash
+python oracle_bot_v41.py
+```
+
+Vérifie dans Railway :
+- Start Command = `python oracle_bot_v41.py`
+- Scale = 1 replica
+
+## Telegram
+
+Commandes :
+
+```text
+/start
+/scan
+/scan force
+/resultats
+/stats
+```
+
+## Important
+
+Un bot de paris ne garantit jamais un gain. La V4.1 cherche de meilleurs signaux, mais le suivi WIN/LOSS et la calibration restent indispensables.
