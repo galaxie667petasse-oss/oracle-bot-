@@ -1,22 +1,13 @@
-TELEGRAM_TOKEN=
-CHAT_ID=
-GROQ_KEYS=
+# Oracle Bot V4.1 entrypoint
+# Temporary compatibility loader: the full V4.1 Python source was accidentally pasted into Procfile.
+# Railway starts this file, which safely executes that source until the repo is fully normalized.
 
-ODDSPAPI_KEY=
-FOOTBALL_KEY=
-FOOTBALL_DATA_KEY=
+from pathlib import Path
+import runpy
 
-BANKROLL=100
-SCAN_HOUR=9
+SOURCE = Path(__file__).with_name("Procfile")
 
-ORACLE_MODE=balanced
-MAX_MATCHES=60
-MAX_ANALYZED=20
-TOP_PICKS=5
-MIN_CONFIDENCE=58
-MIN_VALUE_SCORE=-8
-MAX_H2H_TOP=2
+if not SOURCE.exists():
+    raise SystemExit("Procfile source is missing")
 
-GROQ_MODEL=llama-3.3-70b-versatile
-ODDS_REGIONS=eu
-ODDS_MARKETS=h2h,totals,btts
+runpy.run_path(str(SOURCE), run_name="__main__")
