@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from config import settings
 from providers import result_fixtures
-from store import load_db, save_db, build_learning
+from store import load_db, save_db, build_learning, scan_records
 from utils import same_team
 
 
@@ -31,17 +31,22 @@ def eval_pick(pick, hg: int, ag: int) -> Optional[str]:
     return None
 
 
+def _has_pending_records(scan) -> bool:
+    return any(p.get("result") is None for p in scan_records(scan))
+
+
 async def auto_settle(context=None, force=False):
     db = load_db()
     today = datetime.now(settings.tz).strftime("%Y-%m-%d")
     dates = [
         d for d, scan in db.get("scans", {}).items()
-        if (force or d <= today) and any(p.get("result") is None for p in scan.get("picks", []))
+        if (force or d <= today) and _has_pending_records(scan)
     ]
-    wins = losses = pending = settled = 0
+    wins = losses = pending = settled = shadow_settled = 0
     for d in sorted(set(dates)):
         fixtures = await result_fixtures(d)
-        for pick in db.get("scans", {}).get(d, {}).get("picks", []):
+        scan = db.get("scans", {}).get(d, {})
+        for pick in scan_records(scan):
             if pick.get("result") is not None:
                 continue
             fx = next((f for f in fixtures if same_team(pick.get("home", ""), f.get("home", "")) and same_team(pick.get("away", ""), f.get("away", ""))), None)
@@ -57,8 +62,10 @@ async def auto_settle(context=None, force=False):
             pick["settlement_source"] = fx["src"]
             pick["settled_at"] = datetime.now(settings.tz).isoformat()
             settled += 1
+            if pick.get("shadow"):
+                shadow_settled += 1
             wins += result == "win"
             losses += result == "loss"
     db["learning"] = build_learning(db)
     save_db(db)
-    return {"settled": settled, "wins": wins, "losses": losses, "pending": pending}
+    return {"settled": settled, "shadow_settled": shadow_settled, "wins": wins, "losses": losses, "pending": pending}
