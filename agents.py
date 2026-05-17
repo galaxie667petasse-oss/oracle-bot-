@@ -149,6 +149,21 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     return {"decision": decision, "council_score": weighted, "agent_votes": votes, "agent_accepts": accepts, "agent_rejects": rejects, "agent_weights": weights, "stake_pct": stake, "quality": grade, "fair_odds": fair, "outlier_flags": flags, "resume": summary}
 
 
+def _keep_observation(p: Dict[str, Any]) -> bool:
+    score = _num(p.get("council_score"))
+    ev = _num(p.get("ev_pct"))
+    rejects = int(p.get("agent_rejects", 0) or 0)
+    odds = _num(p.get("odds"), 2.0)
+    flags = p.get("outlier_flags") or []
+    if score >= 0 and rejects <= 2:
+        return True
+    if ev >= 15 and rejects <= 3 and odds <= 4.2 and score >= -6:
+        return True
+    if flags and score < -6:
+        return False
+    return False
+
+
 def select_picks(rows: List[Dict[str, Any]], top_limit: int, watch_limit: int) -> Tuple[List[Dict], List[Dict], List[Dict]]:
     rows = sorted(rows, key=lambda p: (p.get("decision") == "ACCEPTE", p.get("council_score", 0), p.get("ev_pct", -99), p.get("value_score", -99) - 0.2 * p.get("danger", 50)), reverse=True)
     top, watch, reject, seen = [], [], [], set()
@@ -158,7 +173,12 @@ def select_picks(rows: List[Dict[str, Any]], top_limit: int, watch_limit: int) -
             continue
         if p["decision"] == "ACCEPTE":
             if p["market_type"] == "h2h" and h2h >= 1:
-                watch.append(p); seen.add(p["match_id"]); continue
+                if _keep_observation(p):
+                    watch.append(p)
+                else:
+                    reject.append(p)
+                seen.add(p["match_id"])
+                continue
             top.append(p); seen.add(p["match_id"])
             h2h += p["market_type"] == "h2h"
             if len(top) >= top_limit:
@@ -166,7 +186,7 @@ def select_picks(rows: List[Dict[str, Any]], top_limit: int, watch_limit: int) -
     for p in rows:
         if p["match_id"] in seen:
             continue
-        if p["decision"] == "SURVEILLANCE":
+        if p["decision"] == "SURVEILLANCE" and _keep_observation(p):
             watch.append(p); seen.add(p["match_id"])
         else:
             reject.append(p)
