@@ -10,4 +10,4 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-CMD ["python", "oracle_bot_v44.py"]
+CMD ["python", "main.py"]
