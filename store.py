@@ -22,13 +22,38 @@ def save_db(db: Dict[str, Any]) -> None:
     settings.db_file.write_text(json.dumps(db, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def scan_records(scan: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """All records used for learning.
+
+    picks = visible Telegram records.
+    candidates = hidden shadow records used to train/refuse without spamming Telegram.
+    """
+    rows = []
+    rows.extend(scan.get("picks", []) or [])
+    rows.extend(scan.get("candidates", []) or [])
+    seen = set()
+    unique = []
+    for p in rows:
+        key = (p.get("match_id"), p.get("pari"), p.get("market_type"), p.get("date_key"))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(p)
+    return unique
+
+
+def settled_records(db: Dict[str, Any], include_shadow: bool = True) -> List[Dict[str, Any]]:
+    rows = []
+    for scan in db.get("scans", {}).values():
+        source = scan_records(scan) if include_shadow else (scan.get("picks", []) or [])
+        for p in source:
+            if p.get("result") in ("win", "loss"):
+                rows.append(p)
+    return rows
+
+
 def settled_picks(db: Dict[str, Any]) -> List[Dict[str, Any]]:
-    return [
-        pick
-        for scan in db.get("scans", {}).values()
-        for pick in scan.get("picks", [])
-        if pick.get("result") in ("win", "loss")
-    ]
+    return settled_records(db, include_shadow=False)
 
 
 def unit_profit(pick: Dict[str, Any]) -> float:
@@ -70,9 +95,12 @@ def _group(rows: List[Dict[str, Any]], fn):
 
 
 def build_learning(db: Dict[str, Any]) -> Dict[str, Any]:
-    rows = settled_picks(db)
+    rows = settled_records(db, include_shadow=True)
+    visible = settled_picks(db)
     return {
         "samples": len(rows),
+        "visible_samples": len(visible),
+        "shadow_samples": max(0, len(rows) - len(visible)),
         "by_market": _group(rows, lambda p: p.get("market_type", "?")),
         "by_odds": _group(rows, lambda p: odds_bucket(float(p.get("odds", 2.0) or 2.0))),
         "by_league": _group(rows, lambda p: league_bucket(p.get("competition", ""))),
