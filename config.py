@@ -5,7 +5,7 @@ import pytz
 
 @dataclass(frozen=True)
 class Settings:
-    version: str = "V5.0-MODULAR"
+    version: str = "V5.1-CALIBRATION"
     timezone: str = "Europe/Paris"
     telegram_token: str = os.getenv("TELEGRAM_TOKEN", "").strip()
     chat_id: int = int(os.getenv("CHAT_ID", "0") or 0)
