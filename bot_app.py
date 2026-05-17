@@ -15,7 +15,7 @@ from settlement import auto_settle
 from telegram_ui import pick_card, stats_text
 from utils import target_day, esc
 
-log = logging.getLogger("oracle_modular")
+log = logging.getLogger("oracle_v51")
 
 
 def build_rows(matches, db):
@@ -42,17 +42,17 @@ async def run_scan(ctx, force=False):
     day = target_day()
 
     if not force and db["scans"].get(day["key"], {}).get("picks"):
-        await ctx.bot.send_message(settings.chat_id, "Scan déjà fait. /scan force pour refaire.")
+        await ctx.bot.send_message(settings.chat_id, "Scan déjà fait. Utilise /scan force pour refaire l'analyse.")
         return
 
     msg = await ctx.bot.send_message(
         settings.chat_id,
-        f"🔎 <b>Oracle V5 Modular</b>\n📅 {day['label']} · Mode {settings.mode}\n🧠 ML samples: {db['learning'].get('samples',0)}\n🤖 Agents adaptatifs actifs\nRecherche...",
+        f"🔎 <b>Oracle V5.1 — Calibration</b>\n📅 {day['label']} · Mode {settings.mode}\n🧠 Résultats appris: {db['learning'].get('samples',0)}\n🤖 Conseil d'agents adaptatif actif\nRecherche des marchés...",
         parse_mode=ParseMode.HTML,
     )
     matches = await odds_matches(day["key"])
     if not matches:
-        await msg.edit_text("Aucun match avec cotes trouvé.")
+        await msg.edit_text("Aucun match avec cotes trouvé aujourd'hui.")
         return
 
     rows = build_rows(matches, db)
@@ -64,35 +64,42 @@ async def run_scan(ctx, force=False):
     }
     save_db(db)
 
+    if top:
+        verdict = "Des opportunités passent les filtres du conseil."
+    elif watch:
+        verdict = "Aucun pari fort conseillé : uniquement des signaux en observation."
+    else:
+        verdict = "Journée sans pari conseillé : le conseil refuse de forcer un ticket."
+
     await msg.edit_text(
-        f"🧬 <b>Oracle V5 Modular</b>\n📅 {esc(day['label'])}\n🏆 TOP PICKS: <b>{len(top)}</b>\n👀 WATCHLIST: <b>{len(watch)}</b>\n🚫 Rejetés: <b>{len(rejected)}</b>\n✅ Affichés = enregistrés pour auto-check à {settings.settle_hour}h.",
+        f"🧬 <b>Oracle V5.1 — Calibration</b>\n📅 {esc(day['label'])}\n🏆 Paris conseillés: <b>{len(top)}</b>\n👀 Observations: <b>{len(watch)}</b>\n🚫 Marchés refusés: <b>{len(rejected)}</b>\n\n🧾 <b>Résumé</b>\n{esc(verdict)}\n\n✅ Les éléments affichés sont enregistrés pour vérification automatique à {settings.settle_hour}h.",
         parse_mode=ParseMode.HTML,
     )
 
     if top:
-        await ctx.bot.send_message(settings.chat_id, "🏆 <b>TOP PICKS — acceptés par le Council</b>", parse_mode=ParseMode.HTML)
+        await ctx.bot.send_message(settings.chat_id, "🏆 <b>PARIS CONSEILLÉS — validés par le conseil</b>", parse_mode=ParseMode.HTML)
         for i, p in enumerate(top, 1):
             idx = displayed.index(p)
-            kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ WIN", callback_data=f"res:{day['key']}:{idx}:win"), InlineKeyboardButton("❌ LOSS", callback_data=f"res:{day['key']}:{idx}:loss"), InlineKeyboardButton("🚫 Annuler", callback_data=f"res:{day['key']}:{idx}:cancel")]])
-            await ctx.bot.send_message(settings.chat_id, pick_card(i, p, "TOP PICK"), parse_mode=ParseMode.HTML, reply_markup=kb)
+            kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ GAGNÉ", callback_data=f"res:{day['key']}:{idx}:win"), InlineKeyboardButton("❌ PERDU", callback_data=f"res:{day['key']}:{idx}:loss"), InlineKeyboardButton("🚫 Annuler", callback_data=f"res:{day['key']}:{idx}:cancel")]])
+            await ctx.bot.send_message(settings.chat_id, pick_card(i, p, "PARI CONSEILLÉ"), parse_mode=ParseMode.HTML, reply_markup=kb)
     else:
-        await ctx.bot.send_message(settings.chat_id, "🏆 <b>TOP PICKS</b>\nAucun pick élite : le Council refuse de forcer une value faible.", parse_mode=ParseMode.HTML)
+        await ctx.bot.send_message(settings.chat_id, "🏆 <b>PARIS CONSEILLÉS</b>\nAucun pari conseillé aujourd'hui. Le système préfère ne rien jouer plutôt que forcer une sélection faible.", parse_mode=ParseMode.HTML)
 
     if watch:
-        await ctx.bot.send_message(settings.chat_id, "👀 <b>WATCHLIST — observation / suivi statistique</b>", parse_mode=ParseMode.HTML)
+        await ctx.bot.send_message(settings.chat_id, "👀 <b>OBSERVATIONS — suivi statistique, pas de mise conseillée</b>", parse_mode=ParseMode.HTML)
         for i, p in enumerate(watch, 1):
             idx = displayed.index(p)
-            kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ WIN", callback_data=f"res:{day['key']}:{idx}:win"), InlineKeyboardButton("❌ LOSS", callback_data=f"res:{day['key']}:{idx}:loss"), InlineKeyboardButton("🚫 Annuler", callback_data=f"res:{day['key']}:{idx}:cancel")]])
-            await ctx.bot.send_message(settings.chat_id, pick_card(i, p, "WATCHLIST"), parse_mode=ParseMode.HTML, reply_markup=kb)
+            kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ GAGNÉ", callback_data=f"res:{day['key']}:{idx}:win"), InlineKeyboardButton("❌ PERDU", callback_data=f"res:{day['key']}:{idx}:loss"), InlineKeyboardButton("🚫 Annuler", callback_data=f"res:{day['key']}:{idx}:cancel")]])
+            await ctx.bot.send_message(settings.chat_id, pick_card(i, p, "OBSERVATION"), parse_mode=ParseMode.HTML, reply_markup=kb)
 
-    await ctx.bot.send_message(settings.chat_id, "✅ Scan terminé. Les résultats recalibrent les agents.")
+    await ctx.bot.send_message(settings.chat_id, "✅ Analyse terminée. Les résultats futurs recalibreront les agents.")
 
 
 async def start_cmd(update, context):
     if update.effective_chat.id != settings.chat_id:
         return
     await update.message.reply_text(
-        "⚽ <b>ORACLE FOOTBALL V5 MODULAR</b>\n━━━━━━━━━━━━━━\n🤖 Multi-Agent Council adaptatif\n🧠 Poids agents après WIN/LOSS\n✅ TOP / WATCHLIST / REJECT\n✅ Start Railway fixe: <code>python main.py</code>\n\n/scan force\n/settle\n/stats\n/chart\n/resultats",
+        "⚽ <b>ORACLE FOOTBALL V5.1</b>\n━━━━━━━━━━━━━━\n🤖 Conseil d'agents adaptatif\n🧠 Poids des agents après GAGNÉ/PERDU\n✅ Paris conseillés / Observations / Refus\n🚫 Pas de pari forcé si la value est faible\n🇫🇷 Interface en français\n✅ Start Railway fixe: <code>python main.py</code>\n\n/scan force\n/settle\n/stats\n/chart\n/resultats",
         parse_mode=ParseMode.HTML,
     )
 
@@ -110,7 +117,7 @@ async def settle_cmd(update, context):
     db["learning"] = build_learning(db)
     agent_weights(db)
     save_db(db)
-    await update.message.reply_text(f"🧾 Settle: {r['settled']} réglés · ✅ {r['wins']} · ❌ {r['losses']} · ⏳ {r['pending']}\n\n" + stats_text(db), parse_mode=ParseMode.HTML)
+    await update.message.reply_text(f"🧾 Vérification: {r['settled']} réglés · ✅ {r['wins']} gagnés · ❌ {r['losses']} perdus · ⏳ {r['pending']} en attente\n\n" + stats_text(db), parse_mode=ParseMode.HTML)
 
 
 async def stats_cmd(update, context):
@@ -128,11 +135,11 @@ async def resultats_cmd(update, context):
         return
     pending = list(pending_picks(load_db()))
     if not pending:
-        await update.message.reply_text("✅ Aucun pick en attente.")
+        await update.message.reply_text("✅ Aucun élément en attente.")
         return
-    await update.message.reply_text(f"⏳ {len(pending)} picks en attente. /settle pour vérifier.")
+    await update.message.reply_text(f"⏳ {len(pending)} éléments en attente. /settle pour vérifier automatiquement.")
     for date_key, _, p in pending[:10]:
-        await update.message.reply_text(f"{date_key}\n{p['home']} vs {p['away']}\n{p['pari']} · {p.get('decision','?')} · conf {p['confidence']}%")
+        await update.message.reply_text(f"{date_key}\n{p['home']} vs {p['away']}\n{p['pari']} · {p.get('decision','?')} · confiance {p['confidence']}%")
 
 
 async def chart_cmd(update, context):
@@ -140,7 +147,7 @@ async def chart_cmd(update, context):
         return
     rows = settled_picks(load_db())
     if not rows:
-        await update.message.reply_text("Pas encore assez de résultats.")
+        await update.message.reply_text("Pas encore assez de résultats pour générer le graphique.")
         return
     try:
         import matplotlib.pyplot as plt
@@ -152,7 +159,7 @@ async def chart_cmd(update, context):
         ax.plot(x, y, marker="o")
         ax.axhline(0, linewidth=1)
         ax.grid(True, alpha=.3)
-        ax.set_title("Oracle Modular - Profit cumulé")
+        ax.set_title("Oracle V5.1 - Profit cumulé")
         bio = io.BytesIO()
         fig.tight_layout()
         fig.savefig(bio, format="png", dpi=150)
@@ -173,14 +180,14 @@ async def callback(update, context):
     scan = db["scans"].get(date_key)
     idx = int(idx_s)
     if not scan or idx >= len(scan.get("picks", [])):
-        await q.edit_message_text("Pick introuvable.")
+        await q.edit_message_text("Élément introuvable.")
         return
     scan["picks"][idx]["result"] = "cancelled" if result == "cancel" else result
     scan["picks"][idx]["manual_result"] = True
     db["learning"] = build_learning(db)
     agent_weights(db)
     save_db(db)
-    await q.edit_message_text((q.message.text_html or q.message.text) + f"\n\n{'✅ WIN' if result=='win' else '❌ LOSS' if result=='loss' else '🚫 Annulé'} enregistré.", parse_mode=ParseMode.HTML)
+    await q.edit_message_text((q.message.text_html or q.message.text) + f"\n\n{'✅ GAGNÉ' if result=='win' else '❌ PERDU' if result=='loss' else '🚫 Annulé'} enregistré.", parse_mode=ParseMode.HTML)
 
 
 async def job_settle(context):
@@ -214,5 +221,5 @@ def create_app():
 def main():
     logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
     app = create_app()
-    log.info("Oracle V5 Modular started")
+    log.info("Oracle V5.1 Calibration started")
     app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
