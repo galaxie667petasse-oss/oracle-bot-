@@ -1,6 +1,6 @@
 from config import settings
 from utils import esc
-from store import settled_picks, unit_profit
+from store import settled_picks, unit_profit, settled_records
 
 
 def agent_lines(p):
@@ -25,9 +25,10 @@ def pick_card(rank, p, section):
     flags = p.get("outlier_flags") or []
     alert = "\n🚨 <b>Alerte</b> : " + esc(", ".join(flags)) if flags else ""
     resume = p.get("resume") or "Signal analysé par le conseil."
+    version = p.get("version") or "V5.2"
     return f"""{medal} <b>{esc(p['home'])} vs {esc(p['away'])}</b>
 🏆 {esc(p['competition'])} · ⏰ {esc(p['heure'])} · Qualité {esc(p.get('quality','B-'))}
-🧬 Oracle V5.1 · <b>{section}</b> · Décision <b>{esc(p.get('decision','SURVEILLANCE'))}</b>
+🧬 Oracle {esc(version)} · <b>{section}</b> · Décision <b>{esc(p.get('decision','SURVEILLANCE'))}</b>
 
 🎯 <b>{esc(p['pari'])}</b>
 🧩 Marché : {esc(market_fr(p['market_type']))} · ⚡ cote {p['odds']}
@@ -46,12 +47,24 @@ def pick_card(rank, p, section):
 
 
 def stats_text(db):
-    rows = settled_picks(db)
-    wins = sum(p["result"] == "win" for p in rows)
-    profit = sum(unit_profit(p) for p in rows)
-    wr = round(wins / len(rows) * 100, 1) if rows else 0
-    roi = round(profit / len(rows) * 100, 1) if rows else 0
-    lines = ["📊 <b>STATS ORACLE V5.1</b>", f"🧠 Résultats appris: <b>{len(rows)}</b>", f"✅ Taux de réussite: <b>{wr}%</b> ({wins}/{len(rows)})", f"💰 ROI unité: <b>{roi}%</b> · profit {round(profit,2)}u", ""]
+    visible_rows = settled_picks(db)
+    all_rows = settled_records(db, include_shadow=True)
+    visible_wins = sum(p["result"] == "win" for p in visible_rows)
+    visible_profit = sum(unit_profit(p) for p in visible_rows)
+    wr = round(visible_wins / len(visible_rows) * 100, 1) if visible_rows else 0
+    roi = round(visible_profit / len(visible_rows) * 100, 1) if visible_rows else 0
+    shadow_rows = max(0, len(all_rows) - len(visible_rows))
+    backend = db.get("learning", {}).get("memory_backend", "mémoire locale ou non vérifiée")
+    lines = [
+        "📊 <b>STATS ORACLE V5.2</b>",
+        f"🧠 Résultats visibles appris: <b>{len(visible_rows)}</b>",
+        f"🧪 Résultats fantômes appris: <b>{shadow_rows}</b>",
+        f"📚 Total appris: <b>{len(all_rows)}</b>",
+        f"✅ Taux de réussite visible: <b>{wr}%</b> ({visible_wins}/{len(visible_rows)})",
+        f"💰 ROI visible: <b>{roi}%</b> · profit {round(visible_profit,2)}u",
+        f"💾 Mémoire: {esc(backend)}",
+        "",
+    ]
     for title, key in [("Marchés", "by_market"), ("Tranches de cotes", "by_odds"), ("Familles de ligues", "by_league")]:
         lines.append(f"<b>{title}</b>")
         data = db.get("learning", {}).get(key, {})
