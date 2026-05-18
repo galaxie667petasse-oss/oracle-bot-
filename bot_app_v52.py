@@ -3,6 +3,7 @@ from config import settings
 from store import load_db, save_db, settled_picks, settled_records
 from utils import target_day, esc
 from shadow_training import build_shadow_candidates
+from persistent_memory import status as persistent_status
 
 _last_rows = []
 _last_displayed = []
@@ -28,17 +29,45 @@ def latest_scan(db):
     return key, scans[key]
 
 
+def _pending_shadow_count(db):
+    n = 0
+    for scan in db.get("scans", {}).values():
+        for p in scan.get("candidates", []) or []:
+            if p.get("result") is None:
+                n += 1
+    return n
+
+
+def _pending_visible_count(db):
+    n = 0
+    for scan in db.get("scans", {}).values():
+        for p in scan.get("picks", []) or []:
+            if p.get("result") is None:
+                n += 1
+    return n
+
+
 def memory_text(db):
     learning = db.get("learning", {})
     weights = db.get("agent_weights", {})
     visible = len(settled_picks(db))
     total = len(settled_records(db, include_shadow=True))
-    shadow = max(0, total - visible)
+    shadow_done = max(0, total - visible)
+    pending_visible = _pending_visible_count(db)
+    pending_shadow = _pending_shadow_count(db)
+    mem_status = persistent_status().get("message", "mémoire non vérifiée")
     lines = [
         "🧠 <b>MÉMOIRE ORACLE V5.2</b>",
-        f"Résultats visibles: <b>{visible}</b>",
-        f"Résultats fantômes: <b>{shadow}</b>",
-        f"Total appris: <b>{learning.get('samples', total)}</b>",
+        f"💾 Stockage: {esc(mem_status)}",
+        "",
+        "<b>Déjà appris</b>",
+        f"• Résultats visibles: <b>{visible}</b>",
+        f"• Résultats fantômes: <b>{shadow_done}</b>",
+        f"• Total appris: <b>{learning.get('samples', total)}</b>",
+        "",
+        "<b>En attente de résultats</b>",
+        f"• Éléments visibles: <b>{pending_visible}</b>",
+        f"• Candidats fantômes: <b>{pending_shadow}</b>",
         "",
         "<b>Poids des agents</b>",
     ]
@@ -48,7 +77,10 @@ def memory_text(db):
         for k, v in weights.items():
             lines.append(f"• {esc(k)}: {v}")
     lines.append("")
-    lines.append("Mémoire encore jeune : il faut laisser les résultats s'accumuler avant de juger le niveau réel.")
+    if total == 0 and (pending_visible or pending_shadow):
+        lines.append("Les marchés sont bien enregistrés, mais ils ne deviennent de l'apprentissage qu'après les scores finaux.")
+    else:
+        lines.append("Mémoire active : les agents se recalibrent après les résultats réglés.")
     return "\n".join(lines)
 
 
