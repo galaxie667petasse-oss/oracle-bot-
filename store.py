@@ -2,9 +2,25 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List
 from config import settings
+from persistent_memory import load_remote, save_remote, status as memory_status
+
+
+def _normalize(db: Dict[str, Any]) -> Dict[str, Any]:
+    db.setdefault("scans", {})
+    db.setdefault("learning", {})
+    db.setdefault("agent_weights", {})
+    return db
 
 
 def load_db() -> Dict[str, Any]:
+    remote = None
+    try:
+        remote = load_remote()
+    except Exception:
+        remote = None
+    if isinstance(remote, dict):
+        return _normalize(remote)
+
     if settings.db_file.exists():
         try:
             db = json.loads(settings.db_file.read_text(encoding="utf-8"))
@@ -12,22 +28,19 @@ def load_db() -> Dict[str, Any]:
             db = {}
     else:
         db = {}
-    db.setdefault("scans", {})
-    db.setdefault("learning", {})
-    db.setdefault("agent_weights", {})
-    return db
+    return _normalize(db)
 
 
 def save_db(db: Dict[str, Any]) -> None:
+    db = _normalize(db)
     settings.db_file.write_text(json.dumps(db, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        save_remote(db)
+    except Exception:
+        pass
 
 
 def scan_records(scan: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """All records used for learning.
-
-    picks = visible Telegram records.
-    candidates = hidden shadow records used to train/refuse without spamming Telegram.
-    """
     rows = []
     rows.extend(scan.get("picks", []) or [])
     rows.extend(scan.get("candidates", []) or [])
@@ -104,6 +117,7 @@ def build_learning(db: Dict[str, Any]) -> Dict[str, Any]:
         "by_market": _group(rows, lambda p: p.get("market_type", "?")),
         "by_odds": _group(rows, lambda p: odds_bucket(float(p.get("odds", 2.0) or 2.0))),
         "by_league": _group(rows, lambda p: league_bucket(p.get("competition", ""))),
+        "memory_backend": memory_status().get("message"),
         "updated_at": datetime.utcnow().isoformat(),
     }
 
