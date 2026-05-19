@@ -1,7 +1,8 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 from config import settings
+from calibration import build_calibration
 from persistent_memory import load_remote, save_remote, status as memory_status
 
 
@@ -9,6 +10,7 @@ def _normalize(db: Dict[str, Any]) -> Dict[str, Any]:
     db.setdefault("scans", {})
     db.setdefault("learning", {})
     db.setdefault("agent_weights", {})
+    db.setdefault("calibration", {})
     return db
 
 
@@ -47,7 +49,11 @@ def scan_records(scan: Dict[str, Any]) -> List[Dict[str, Any]]:
     seen = set()
     unique = []
     for p in rows:
-        key = (p.get("match_id"), p.get("pari"), p.get("market_type"), p.get("date_key"))
+        try:
+            odds = round(float(p.get("odds", 0) or 0), 4)
+        except Exception:
+            odds = 0
+        key = (p.get("match_id"), p.get("home"), p.get("away"), p.get("pari"), p.get("market_type"), p.get("date_key"), odds)
         if key in seen:
             continue
         seen.add(key)
@@ -110,7 +116,7 @@ def _group(rows: List[Dict[str, Any]], fn):
 def build_learning(db: Dict[str, Any]) -> Dict[str, Any]:
     rows = settled_records(db, include_shadow=True)
     visible = settled_picks(db)
-    return {
+    learning = {
         "samples": len(rows),
         "visible_samples": len(visible),
         "shadow_samples": max(0, len(rows) - len(visible)),
@@ -118,8 +124,10 @@ def build_learning(db: Dict[str, Any]) -> Dict[str, Any]:
         "by_odds": _group(rows, lambda p: odds_bucket(float(p.get("odds", 2.0) or 2.0))),
         "by_league": _group(rows, lambda p: league_bucket(p.get("competition", ""))),
         "memory_backend": memory_status().get("message"),
-        "updated_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+    db["calibration"] = build_calibration(db, learning)
+    return learning
 
 
 def pending_picks(db: Dict[str, Any]):

@@ -1,6 +1,7 @@
 from config import settings
 from utils import esc
-from store import settled_picks, unit_profit, settled_records
+from store import league_bucket, odds_bucket, settled_picks, unit_profit, settled_records
+from agents import AGENTS, AGENT_LABELS, agent_outcome_counts
 
 
 def agent_lines(p):
@@ -15,6 +16,128 @@ def agent_lines(p):
 
 def market_fr(market):
     return {"h2h": "Victoire simple", "draw": "Match nul", "total": "Buts", "btts": "Les deux marquent"}.get(market, market)
+
+
+def _settled_candidates(db):
+    rows = []
+    for scan in db.get("scans", {}).values():
+        for p in scan.get("candidates", []) or []:
+            if p.get("result") in ("win", "loss"):
+                rows.append(p)
+    return rows
+
+
+def _summary(rows):
+    wins = sum(p.get("result") == "win" for p in rows)
+    profit = sum(unit_profit(p) for p in rows)
+    n = len(rows)
+    wr = round(wins / n * 100, 1) if n else 0
+    roi = round(profit / n * 100, 1) if n else 0
+    return n, wins, wr, roi, round(profit, 2)
+
+
+def _summary_line(label, rows):
+    n, wins, wr, roi, profit = _summary(rows)
+    return f"• {label}: <b>{n}</b> · {wins}/{n} · réussite observée {wr}% · ROI {roi}% · {profit}u"
+
+
+def _group_rows(rows, key_fn):
+    grouped = {}
+    for p in rows:
+        grouped.setdefault(key_fn(p), []).append(p)
+    return grouped
+
+
+def _group_lines(rows, key_fn, order=None, empty="pas encore assez de données"):
+    grouped = _group_rows(rows, key_fn)
+    keys = order or sorted(grouped.keys())
+    lines = []
+    for key in keys:
+        group = grouped.get(key, [])
+        if group:
+            lines.append(_summary_line(str(key), group))
+    return lines or [f"• {empty}"]
+
+
+def _decision_lines(rows):
+    key_fn = lambda p: p.get("decision") or ("REFUSE" if p.get("shadow") else "INCONNU")
+    grouped = _group_rows(rows, key_fn)
+    lines = [_summary_line(decision, grouped.get(decision, [])) for decision in ("ACCEPTE", "SURVEILLANCE", "REFUSE")]
+    if grouped.get("INCONNU"):
+        lines.append(_summary_line("INCONNU", grouped["INCONNU"]))
+    return lines
+
+
+def _maturity_message(total):
+    if total < 30:
+        return "Mémoire trop jeune : lecture prudente, les tendances peuvent bouger vite."
+    if total < 100:
+        return "Calibration en cours : les tendances deviennent utiles mais restent à confirmer."
+    return "Statistiques plus exploitables : assez d'historique pour mieux pondérer les signaux."
+
+
+def _fmt_list(values):
+    if not values:
+        return "aucun"
+    if isinstance(values, dict):
+        return ", ".join(str(k) for k in values.keys()) or "aucun"
+    return ", ".join(str(v) for v in values) or "aucun"
+
+
+def _negative_history_alert(db):
+    calibration = db.get("calibration", {}) or {}
+    by_market = calibration.get("by_market", {}) or db.get("learning", {}).get("by_market", {}) or {}
+    by_odds = calibration.get("by_odds", {}) or db.get("learning", {}).get("by_odds", {}) or {}
+    risky = []
+    for key in ("h2h", "draw"):
+        stat = by_market.get(key, {}) or {}
+        if stat and float(stat.get("roi", 0) or 0) < 0:
+            risky.append(key)
+    for key in ("high", "very_high"):
+        stat = by_odds.get(key, {}) or {}
+        if stat and float(stat.get("roi", 0) or 0) < 0:
+            risky.append(key)
+    if risky:
+        return "⚠️ Historique défavorable : le bot doit rester très strict sur ces catégories."
+    return ""
+
+
+def _top_agents(counts, field, limit=2):
+    ranked = sorted(
+        ((agent, stat[field]) for agent, stat in counts.items() if stat[field] > 0),
+        key=lambda item: item[1],
+        reverse=True,
+    )
+    if not ranked:
+        return "pas assez de votes tranchés"
+    return ", ".join(f"{AGENT_LABELS.get(agent, agent)} ({value})" for agent, value in ranked[:limit])
+
+
+def _weight_changes(before, after):
+    changes = []
+    for agent in AGENTS:
+        old = float(before.get(agent, 1.0) or 1.0)
+        new = float(after.get(agent, 1.0) or 1.0)
+        delta = round(new - old, 2)
+        if abs(delta) >= 0.01:
+            sign = "+" if delta > 0 else ""
+            changes.append(f"{AGENT_LABELS.get(agent, agent)} {sign}{delta}")
+    return ", ".join(changes[:4]) if changes else "poids stables"
+
+
+def settlement_summary(result, before_weights, after_weights):
+    rows = result.get("settled_rows", []) or []
+    counts = agent_outcome_counts(rows)
+    return "\n".join([
+        "🧾 <b>Règlement terminé</b>",
+        f"• Visibles réglés: <b>{result.get('visible_settled', 0)}</b>",
+        f"• Fantômes réglés: <b>{result.get('shadow_settled', 0)}</b>",
+        f"• Bilan: ✅ {result.get('wins', 0)} gagnés · ❌ {result.get('losses', 0)} perdus · ⏳ {result.get('pending', 0)} en attente",
+        f"• Agents souvent justes: {esc(_top_agents(counts, 'right'))}",
+        f"• Agents à surveiller: {esc(_top_agents(counts, 'wrong'))}",
+        f"• Poids: {esc(_weight_changes(before_weights, after_weights))}",
+        "Lecture prudente : ces réglages servent à calibrer, pas à promettre un résultat.",
+    ])
 
 
 def pick_card(rank, p, section):
@@ -48,34 +171,54 @@ def pick_card(rank, p, section):
 
 def stats_text(db):
     visible_rows = settled_picks(db)
+    shadow_rows = _settled_candidates(db)
     all_rows = settled_records(db, include_shadow=True)
-    visible_wins = sum(p["result"] == "win" for p in visible_rows)
-    visible_profit = sum(unit_profit(p) for p in visible_rows)
-    wr = round(visible_wins / len(visible_rows) * 100, 1) if visible_rows else 0
-    roi = round(visible_profit / len(visible_rows) * 100, 1) if visible_rows else 0
-    shadow_rows = max(0, len(all_rows) - len(visible_rows))
+    learning = db.get("learning", {}) or {}
+    calibration = db.get("calibration", {}) or {}
+    agent_samples = int(db.get("agent_weight_samples", 0) or 0)
     backend = db.get("learning", {}).get("memory_backend", "mémoire locale ou non vérifiée")
     lines = [
         "📊 <b>STATS ORACLE V5.2</b>",
         f"🧠 Résultats visibles appris: <b>{len(visible_rows)}</b>",
-        f"🧪 Résultats fantômes appris: <b>{shadow_rows}</b>",
+        f"🧪 Résultats fantômes appris: <b>{len(shadow_rows)}</b>",
         f"📚 Total appris: <b>{len(all_rows)}</b>",
-        f"✅ Taux de réussite visible: <b>{wr}%</b> ({visible_wins}/{len(visible_rows)})",
-        f"💰 ROI visible: <b>{roi}%</b> · profit {round(visible_profit,2)}u",
+        f"🧭 Maturité: <b>{esc(calibration.get('maturity_level') or _maturity_message(len(all_rows)))}</b>",
         f"💾 Mémoire: {esc(backend)}",
         "",
+        "<b>Calibration active</b>",
+        f"• EV minimum top: <b>{calibration.get('min_ev_for_top', '?')}</b>",
+        f"• Score conseil minimum top: <b>{calibration.get('min_council_score_for_top', '?')}</b>",
+        f"• Danger max top: <b>{calibration.get('max_danger_for_top', '?')}</b>",
+        f"• Max cote H2H top: <b>{calibration.get('max_h2h_odds_for_top', '?')}</b>",
+        f"• Marchés pénalisés: {esc(_fmt_list(calibration.get('banned_or_penalized_markets', {})))}",
+        f"• Tranches pénalisées: {esc(_fmt_list(calibration.get('banned_or_penalized_odds_buckets', {})))}",
+        "",
+        "<b>Synthèse observée</b>",
+        _summary_line("Visibles seulement", visible_rows),
+        _summary_line("Fantômes seulement", shadow_rows),
+        _summary_line("Global visibles + fantômes", all_rows),
+        "",
+        "<b>Par décision</b>",
+        *_decision_lines(all_rows),
+        "",
     ]
-    for title, key in [("Marchés", "by_market"), ("Tranches de cotes", "by_odds"), ("Familles de ligues", "by_league")]:
+    for title, key_fn in [
+        ("Marchés", lambda p: market_fr(p.get("market_type", "?"))),
+        ("Tranches de cotes", lambda p: odds_bucket(float(p.get("odds", 2.0) or 2.0))),
+        ("Familles de ligues", lambda p: league_bucket(p.get("competition", ""))),
+    ]:
         lines.append(f"<b>{title}</b>")
-        data = db.get("learning", {}).get(key, {})
-        if not data:
-            lines.append("• pas encore assez de données")
-        for k, v in data.items():
-            lines.append(f"• {esc(k)}: {int(v['w'])}/{int(v['n'])} · réussite {v['wr']}% · ROI {v['roi']}%")
+        lines.extend(_group_lines(all_rows, key_fn))
         lines.append("")
     lines.append("<b>Poids des agents</b>")
-    lines.append(f"Échantillons agents: <b>{db.get('agent_weight_samples',0)}</b>")
-    names = {"marche": "Marché", "valeur": "Valeur", "risque": "Risque", "rythme": "Rythme", "memoire": "Mémoire", "contradiction": "Contradiction"}
+    lines.append(f"Échantillons agents: <b>{agent_samples}</b>")
     for k, v in db.get("agent_weights", {}).items():
-        lines.append(f"• {esc(names.get(k,k))}: {v}")
+        lines.append(f"• {esc(AGENT_LABELS.get(k,k))}: {v}")
+    if learning.get("samples", 0) and agent_samples == 0:
+        lines.append("")
+        lines.append("⚠️ Résultats appris présents, mais aucun vote agent exploitable. Recalcule /stats ou réimporte avec votes historiques.")
+    alert = _negative_history_alert(db)
+    if alert:
+        lines.append("")
+        lines.append(alert)
     return "\n".join(lines)
