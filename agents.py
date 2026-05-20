@@ -1,7 +1,15 @@
 from typing import Any, Dict, List, Tuple
-from store import odds_bucket, league_bucket
+from calibration import league_bucket, odds_bucket
 
 AGENTS = ("marche", "valeur", "risque", "rythme", "memoire", "contradiction")
+AGENT_LABELS = {
+    "marche": "Marché",
+    "valeur": "Valeur",
+    "risque": "Risque",
+    "rythme": "Rythme",
+    "memoire": "Mémoire",
+    "contradiction": "Contradiction",
+}
 OLD_AGENT_MAP = {"market": "marche", "value": "valeur", "risk": "risque", "tempo": "rythme", "memory": "memoire", "contradiction": "contradiction"}
 
 
@@ -12,23 +20,126 @@ def _num(x: Any, default: float = 0.0) -> float:
         return default
 
 
+def normalize_vote(vote: Any) -> str:
+    vote = str(vote or "SURVEILLANCE").upper()
+    return {"ACCEPT": "ACCEPTE", "WATCHLIST": "SURVEILLANCE", "REJECT": "REFUSE"}.get(vote, vote)
+
+
+def _record_key(p: Dict[str, Any]) -> tuple:
+    try:
+        odds = round(float(p.get("odds", 0) or 0), 4)
+    except Exception:
+        odds = 0
+    return (p.get("match_id"), p.get("home"), p.get("away"), p.get("pari"), p.get("market_type"), p.get("date_key"), odds)
+
+
+def _scan_records(scan: Dict[str, Any]) -> List[Dict[str, Any]]:
+    rows = []
+    rows.extend(scan.get("picks", []) or [])
+    rows.extend(scan.get("candidates", []) or [])
+    seen = set()
+    unique = []
+    for p in rows:
+        key = _record_key(p)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(p)
+    return unique
+
+
+def heuristic_agent_votes(p: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    odds = _num(p.get("odds"), 2.0)
+    typ = p.get("market_type", "")
+    bucket = odds_bucket(odds)
+    league = league_bucket(p.get("competition", ""))
+    result = p.get("result")
+    elo_diff = _num(p.get("elo_diff"), 0.0)
+
+    market_score = 1 if bucket in ("low", "mid") else -1 if bucket == "very_high" else 0
+    if typ == "draw":
+        market_score -= 1
+    if typ == "h2h" and odds > 3.2:
+        market_score -= 1
+
+    value_score = 0
+    if result == "win" and odds >= 1.65:
+        value_score += 1
+    if result == "loss" and odds >= 2.3:
+        value_score -= 1
+    if typ == "h2h" and abs(elo_diff) >= 80 and odds <= 2.6:
+        value_score += 1
+
+    risk_score = 1 if bucket == "low" else 0 if bucket == "mid" else -1 if bucket == "high" else -2
+    if typ == "draw":
+        risk_score -= 1
+    if league == "volatile":
+        risk_score -= 1
+
+    rhythm_score = 1 if typ in ("total", "btts") else -1 if typ == "draw" else 0
+    memory_score = 1 if result == "win" and bucket == "low" else -1 if result == "loss" and bucket in ("high", "very_high") else 0
+    contradiction_score = -2 if odds >= 3.5 else -1 if typ == "draw" else 0
+
+    def vote(score: int) -> str:
+        return "ACCEPTE" if score > 0 else "REFUSE" if score < 0 else "SURVEILLANCE"
+
+    return {
+        "marche": {"vote": vote(market_score), "score": market_score, "note": "vote historique généré par marché et cote"},
+        "valeur": {"vote": vote(value_score), "score": value_score, "note": "vote historique généré par résultat, cote et Elo"},
+        "risque": {"vote": vote(risk_score), "score": risk_score, "note": "vote historique généré par tranche de cote et ligue"},
+        "rythme": {"vote": vote(rhythm_score), "score": rhythm_score, "note": "vote historique généré par type de marché"},
+        "memoire": {"vote": vote(memory_score), "score": memory_score, "note": "vote historique généré par résultat observé"},
+        "contradiction": {"vote": vote(contradiction_score), "score": contradiction_score, "note": "vote historique généré par prudence"},
+    }
+
+
+def ensure_agent_votes(p: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    votes = p.get("agent_votes")
+    if not isinstance(votes, dict) or not votes:
+        votes = heuristic_agent_votes(p)
+        p["agent_votes"] = votes
+        p["agent_votes_generated"] = True
+    p.setdefault("agent_accepts", sum(1 for v in votes.values() if normalize_vote((v or {}).get("vote")) == "ACCEPTE"))
+    p.setdefault("agent_rejects", sum(1 for v in votes.values() if normalize_vote((v or {}).get("vote")) == "REFUSE"))
+    p.setdefault("council_score", round(sum(_num((v or {}).get("score")) for v in votes.values()), 2))
+    return votes
+
+
+def agent_outcome_counts(rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
+    counts = {a: {"right": 0, "wrong": 0} for a in AGENTS}
+    for p in rows:
+        result = p.get("result")
+        if result not in ("win", "loss"):
+            continue
+        votes = ensure_agent_votes(p)
+        for old, new in OLD_AGENT_MAP.items():
+            if old in votes and new not in votes:
+                votes[new] = votes[old]
+        for agent in AGENTS:
+            vote = normalize_vote((votes.get(agent, {}) or {}).get("vote"))
+            if vote not in ("ACCEPTE", "REFUSE"):
+                continue
+            right = (vote == "ACCEPTE" and result == "win") or (vote == "REFUSE" and result == "loss")
+            counts[agent]["right" if right else "wrong"] += 1
+    return counts
+
+
 def agent_weights(db: Dict[str, Any]) -> Dict[str, float]:
     rows = [
         p
         for scan in db.get("scans", {}).values()
-        for p in scan.get("picks", [])
-        if p.get("result") in ("win", "loss") and isinstance(p.get("agent_votes"), dict)
+        for p in _scan_records(scan)
+        if p.get("result") in ("win", "loss")
     ]
     raw = {a: {"score": 0.0, "n": 0} for a in AGENTS}
     for p in rows:
         won = p.get("result") == "win"
-        votes = p.get("agent_votes", {}) or {}
+        votes = ensure_agent_votes(p)
         for old, new in OLD_AGENT_MAP.items():
             if old in votes and new not in votes:
                 votes[new] = votes[old]
         for a in AGENTS:
-            vote = (votes.get(a, {}) or {}).get("vote", "SURVEILLANCE")
-            vote = {"ACCEPT": "ACCEPTE", "WATCHLIST": "SURVEILLANCE", "REJECT": "REFUSE"}.get(vote, vote)
+            vote = normalize_vote((votes.get(a, {}) or {}).get("vote"))
             if vote == "ACCEPTE":
                 delta = 1.0 if won else -1.0
             elif vote == "REFUSE":
@@ -70,10 +181,46 @@ def outlier_flags(p: Dict[str, Any]) -> List[str]:
     return flags
 
 
+def _memory_score(prof: Dict[str, Any], typ: str, odds: float, league: str) -> Tuple[int, List[str]]:
+    score = 0
+    notes = []
+    if prof.get("samples", 0) < 20:
+        notes.append(f"mémoire faible: {prof.get('samples',0)} résultats")
+    checks = [
+        ("by_market", typ, "marché", 2),
+        ("by_odds", odds_bucket(odds), "cote", 1),
+        ("by_league", league, "ligue", 1),
+    ]
+    for section, key, label, weight in checks:
+        st = prof.get(section, {}).get(key)
+        if not st:
+            continue
+        n = int(st.get("n", 0) or 0)
+        roi = _num(st.get("roi"))
+        if n >= 8 and roi < -8:
+            score -= weight
+            notes.append(f"{label} {key}: ROI {roi}% sur {n}")
+        elif n >= 20 and roi > 8:
+            score += weight
+            notes.append(f"{label} {key}: ROI {roi}% sur {n}")
+    return score, notes
+
+
 def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     ev, value, conf, danger, edge, odds = (_num(p.get(k)) for k in ("ev_pct", "value_score", "confidence", "danger", "edge_pct", "odds"))
     typ = p.get("market_type", "")
     lg = league_bucket(p.get("competition", ""))
+    bucket = odds_bucket(odds)
+    calibration = db.get("calibration", {}) or {}
+    market_risk = (calibration.get("banned_or_penalized_markets", {}) or {}).get(typ, {}) or {}
+    bucket_risk = (calibration.get("banned_or_penalized_odds_buckets", {}) or {}).get(bucket, {}) or {}
+    confidence_cap = (calibration.get("confidence_cap_by_bucket", {}) or {}).get(bucket)
+    if confidence_cap:
+        conf = min(conf, _num(confidence_cap, conf))
+    if market_risk:
+        danger += 6 if market_risk.get("block_top") else 3
+    if bucket_risk:
+        danger += 7 if bucket_risk.get("block_top") else 4
     flags = outlier_flags(p)
     fair = fair_odds(_num(p.get("p_fused"), 0))
     votes = {}
@@ -81,32 +228,44 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     m_score = (2 if edge >= 2.5 else 1 if edge >= 1.0 else -1) + (1 if 1.55 <= odds <= 2.35 else 0) - (2 if odds >= 3.2 else 0)
     if flags:
         m_score -= 1
-    votes["marche"] = {"vote": "ACCEPTE" if m_score >= 2 else "SURVEILLANCE" if m_score >= 0 else "REFUSE", "score": m_score, "note": f"écart {edge}% · cote juste estimée {fair}"}
+    if market_risk:
+        m_score -= 2 if market_risk.get("block_top") else 1
+    if bucket_risk:
+        m_score -= 2 if bucket_risk.get("block_top") else 1
+    market_note = f"écart {edge}% · cote juste estimée {fair}"
+    if market_risk or bucket_risk:
+        market_note += " · historique défavorable"
+    votes["marche"] = {"vote": "ACCEPTE" if m_score >= 2 else "SURVEILLANCE" if m_score >= 0 else "REFUSE", "score": m_score, "note": market_note}
 
     v_score = (3 if ev >= 2 else 2 if ev >= 0.8 else 1 if ev >= 0 else -3) + (1 if value >= 4 else -1 if value < 0 else 0)
     if ev >= 25 and odds >= 3.2:
         v_score -= 2
+    if market_risk.get("block_top") or bucket_risk.get("block_top"):
+        v_score -= 2
+    elif market_risk or bucket_risk:
+        v_score -= 1
     votes["valeur"] = {"vote": "ACCEPTE" if v_score >= 3 else "SURVEILLANCE" if v_score >= 0 else "REFUSE", "score": v_score, "note": f"EV {ev}% · valeur {value}"}
 
     r_score = (2 if danger <= 38 else 1 if danger <= 55 else -2) - (2 if typ == "draw" else 1 if typ == "h2h" else 0) - (2 if lg == "volatile" else 0) - (2 if odds >= 3.5 else 1 if odds >= 2.8 else 0)
     if flags:
         r_score -= 1
+    if market_risk:
+        r_score -= 2 if market_risk.get("block_top") else 1
+    if bucket_risk:
+        r_score -= 2 if bucket_risk.get("block_top") else 1
     votes["risque"] = {"vote": "ACCEPTE" if r_score >= 2 else "SURVEILLANCE" if r_score >= 0 else "REFUSE", "score": r_score, "note": f"danger {danger}% · famille ligue {lg}"}
 
     t_score = (2 if typ in ("btts", "total") else -1 if typ == "h2h" else 0) + (1 if conf >= 66 else 0)
     votes["rythme"] = {"vote": "ACCEPTE" if t_score >= 2 else "SURVEILLANCE" if t_score >= 0 else "REFUSE", "score": t_score, "note": "marché buts préféré" if typ in ("btts", "total") else "victoire simple moins prioritaire"}
 
     prof = db.get("learning", {})
-    mem_score = 0
-    notes = []
-    if prof.get("samples", 0) < 20:
-        notes.append(f"mémoire faible: {prof.get('samples',0)} résultats")
-    for section, key in [("by_market", typ), ("by_odds", odds_bucket(odds)), ("by_league", lg)]:
-        st = prof.get(section, {}).get(key)
-        if st and st.get("n", 0) >= 8:
-            roi = _num(st.get("roi"))
-            mem_score += 1 if roi > 8 else -1 if roi < -8 else 0
-            notes.append(f"{key}: ROI {roi}%")
+    mem_score, notes = _memory_score(prof, typ, odds, lg)
+    if market_risk:
+        mem_score -= 2 if market_risk.get("block_top") else 1
+        notes.append(f"{typ}: ROI historique {market_risk.get('roi')}%")
+    if bucket_risk:
+        mem_score -= 2 if bucket_risk.get("block_top") else 1
+        notes.append(f"{bucket}: ROI historique {bucket_risk.get('roi')}%")
     votes["memoire"] = {"vote": "ACCEPTE" if mem_score >= 2 else "SURVEILLANCE" if mem_score >= -1 else "REFUSE", "score": mem_score, "note": "; ".join(notes) or "mémoire neutre"}
 
     c_score = 1
@@ -130,8 +289,17 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     accepts = sum(1 for v in votes.values() if v["vote"] == "ACCEPTE")
     rejects = sum(1 for v in votes.values() if v["vote"] == "REFUSE")
 
+    high_h2h = typ == "h2h" and odds > 3.50
+    min_ev_top = _num(calibration.get("min_ev_for_top"), 1.0)
+    min_score_top = _num(calibration.get("min_council_score_for_top"), 6.5)
+    max_danger_top = _num(calibration.get("max_danger_for_top"), 58)
+    max_h2h_top = _num(calibration.get("max_h2h_odds_for_top"), 3.2)
+    max_draw_top = _num(calibration.get("max_draw_odds_for_top"), 3.2)
+    max_obs_negative = _num(calibration.get("max_observation_negative_score"), -6.0)
     if ev < 0:
         decision, stake = ("SURVEILLANCE", 0) if conf >= 64 and danger <= 42 and weighted >= 1.5 and rejects <= 1 else ("REFUSE", 0)
+    elif high_h2h:
+        decision, stake = ("SURVEILLANCE", 0) if weighted >= 4.0 and rejects <= 1 and mem_score >= 1 else ("REFUSE", 0)
     elif flags and odds >= 3.5:
         decision, stake = ("SURVEILLANCE", 0)
     elif ev < 0.8:
@@ -142,11 +310,27 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
         decision, stake = "SURVEILLANCE", 0
     else:
         decision, stake = "REFUSE", 0
+    draw_stats = (calibration.get("by_market", {}) or {}).get("draw", {}) or {}
+    draw_memory_positive = int(draw_stats.get("n", 0) or 0) >= 100 and _num(draw_stats.get("roi")) > 3
+    block_top = bool(market_risk.get("block_top") or bucket_risk.get("block_top"))
+    if decision == "ACCEPTE":
+        top_blocked = (
+            ev < min_ev_top
+            or weighted < min_score_top
+            or danger > max_danger_top
+            or block_top
+            or (typ == "h2h" and odds > max_h2h_top)
+            or (typ == "draw" and (not draw_memory_positive or max_draw_top <= 0 or odds > max_draw_top))
+        )
+        if top_blocked:
+            decision, stake = ("SURVEILLANCE", 0) if weighted >= max_obs_negative and rejects <= 2 else ("REFUSE", 0)
+    if decision == "SURVEILLANCE" and weighted < max_obs_negative:
+        decision, stake = "REFUSE", 0
     grade = "A" if decision == "ACCEPTE" and conf >= 68 and danger <= 45 and ev >= 1.5 else "B+" if decision == "ACCEPTE" else "B-" if decision == "SURVEILLANCE" else "C"
-    summary = "Signal intéressant mais pas assez confirmé." if decision == "SURVEILLANCE" else "Pick accepté par le conseil." if decision == "ACCEPTE" else "Marché refusé par prudence."
+    summary = "Signal intéressant, conservé en observation." if decision == "SURVEILLANCE" else "Signal accepté par le conseil, à suivre avec prudence." if decision == "ACCEPTE" else "Marché refusé par prudence."
     if flags:
         summary += " Alerte: " + ", ".join(flags) + "."
-    return {"decision": decision, "council_score": weighted, "agent_votes": votes, "agent_accepts": accepts, "agent_rejects": rejects, "agent_weights": weights, "stake_pct": stake, "quality": grade, "fair_odds": fair, "outlier_flags": flags, "resume": summary}
+    return {"decision": decision, "confidence": int(conf), "danger": int(danger), "council_score": weighted, "agent_votes": votes, "agent_accepts": accepts, "agent_rejects": rejects, "agent_weights": weights, "stake_pct": stake, "quality": grade, "fair_odds": fair, "outlier_flags": flags, "resume": summary, "calibration_max_observation_negative_score": max_obs_negative}
 
 
 def _keep_observation(p: Dict[str, Any]) -> bool:
@@ -155,11 +339,14 @@ def _keep_observation(p: Dict[str, Any]) -> bool:
     rejects = int(p.get("agent_rejects", 0) or 0)
     odds = _num(p.get("odds"), 2.0)
     flags = p.get("outlier_flags") or []
+    max_negative = _num(p.get("calibration_max_observation_negative_score"), -6.0)
+    if score < max_negative:
+        return False
     if score >= 0 and rejects <= 2:
         return True
-    if ev >= 15 and rejects <= 3 and odds <= 4.2 and score >= -6:
+    if ev >= 15 and rejects <= 3 and odds <= 4.2 and score >= max_negative:
         return True
-    if flags and score < -6:
+    if flags and score < max_negative:
         return False
     return False
 

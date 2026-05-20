@@ -43,6 +43,7 @@ async def auto_settle(context=None, force=False):
         if (force or d <= today) and _has_pending_records(scan)
     ]
     wins = losses = pending = settled = shadow_settled = 0
+    settled_rows = []
     for d in sorted(set(dates)):
         fixtures = await result_fixtures(d)
         scan = db.get("scans", {}).get(d, {})
@@ -66,6 +67,15 @@ async def auto_settle(context=None, force=False):
                 shadow_settled += 1
             wins += result == "win"
             losses += result == "loss"
+            settled_rows.append(pick)
     db["learning"] = build_learning(db)
     save_db(db)
-    return {"settled": settled, "shadow_settled": shadow_settled, "wins": wins, "losses": losses, "pending": pending}
+    return {
+        "settled": settled,
+        "visible_settled": max(0, settled - shadow_settled),
+        "shadow_settled": shadow_settled,
+        "wins": wins,
+        "losses": losses,
+        "pending": pending,
+        "settled_rows": settled_rows,
+    }

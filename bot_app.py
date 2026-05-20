@@ -12,7 +12,7 @@ from providers import odds_matches
 from scoring import market_pool, score_pick
 from agents import council, select_picks, agent_weights
 from settlement import auto_settle
-from telegram_ui import pick_card, stats_text
+from telegram_ui import pick_card, settlement_summary, stats_text
 from utils import target_day, esc
 
 log = logging.getLogger("oracle_v51")
@@ -112,12 +112,15 @@ async def scan_cmd(update, context):
 async def settle_cmd(update, context):
     if update.effective_chat.id != settings.chat_id:
         return
+    before_db = load_db()
+    before_weights = dict(before_db.get("agent_weights", {}))
     r = await auto_settle(context, True)
     db = load_db()
     db["learning"] = build_learning(db)
     agent_weights(db)
+    after_weights = dict(db.get("agent_weights", {}))
     save_db(db)
-    await update.message.reply_text(f"🧾 Vérification: {r['settled']} réglés · ✅ {r['wins']} gagnés · ❌ {r['losses']} perdus · ⏳ {r['pending']} en attente\n\n" + stats_text(db), parse_mode=ParseMode.HTML)
+    await update.message.reply_text(settlement_summary(r, before_weights, after_weights), parse_mode=ParseMode.HTML)
 
 
 async def stats_cmd(update, context):

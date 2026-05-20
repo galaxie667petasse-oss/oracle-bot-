@@ -51,6 +51,8 @@ def load_remote() -> Optional[Dict[str, Any]]:
 def save_remote(data: Dict[str, Any]) -> None:
     if not enabled():
         return
+    from psycopg.types.json import Jsonb
+
     ensure_table()
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -61,7 +63,7 @@ def save_remote(data: Dict[str, Any]) -> None:
                 ON CONFLICT (key)
                 DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
                 """,
-                (DB_KEY, json.dumps(data, ensure_ascii=False)),
+                (DB_KEY, Jsonb(data)),
             )
         conn.commit()
 
