@@ -1,8 +1,15 @@
+from contextlib import redirect_stdout
+from io import StringIO
+
 from backtest_evaluator import (
     _period_conclusion,
+    build_favorite_report,
+    build_stability_report,
     build_train_context,
     evaluate_backtest,
     max_drawdown,
+    print_favorite_report,
+    print_stability_report,
     select_strategy_records,
     split_train_test,
     summarize_records,
@@ -10,8 +17,8 @@ from backtest_evaluator import (
 )
 
 
-def record(idx, date_key, market_type, odds, result, council_score=8.0, rejects=0):
-    return {
+def record(idx, date_key, market_type, odds, result, council_score=8.0, rejects=0, **extra):
+    item = {
         "match_id": f"bt{idx}",
         "date_key": date_key,
         "home": f"Home {idx}",
@@ -26,6 +33,8 @@ def record(idx, date_key, market_type, odds, result, council_score=8.0, rejects=
         "council_score": council_score,
         "agent_rejects": rejects,
     }
+    item.update(extra)
+    return item
 
 
 def db_from(records):
@@ -123,6 +132,71 @@ def main():
     empty_strategy = summarize_records([], include_groups=True)
     assert empty_strategy["picks"] == 0
     assert empty_strategy["roi"] == 0.0
+
+    fav_train = [
+        record(f"fav-tr-{i}", "2022-01-01", "h2h", 1.70, "win", import_family="home", home_elo=1700, away_elo=1600, form3_home=6, form3_away=3, form5_home=10, form5_away=7)
+        for i in range(320)
+    ]
+    fav_validation = [
+        record(f"fav-va-{i}", "2023-01-01", "h2h", 1.70, "win", import_family="home", home_elo=1700, away_elo=1600, form3_home=6, form3_away=3, form5_home=10, form5_away=7)
+        for i in range(20)
+    ]
+    fav_test_bad = [
+        record(f"fav-te-{i}", "2024-01-01", "h2h", 1.70, "loss", import_family="home", home_elo=1700, away_elo=1600, form3_home=6, form3_away=3, form5_home=10, form5_away=7)
+        for i in range(320)
+    ]
+    fav_test_weak = [
+        record(f"fav-weak-{i}", "2024-02-01", "h2h", 1.35, "win", import_family="away", home_elo=1500, away_elo=1580, form3_home=2, form3_away=5, form5_home=4, form5_away=8)
+        for i in range(2)
+    ]
+    favorite = build_favorite_report(db_from(fav_train + fav_validation + fav_test_bad + fav_test_weak))
+    buffer = StringIO()
+    with redirect_stdout(buffer):
+        print_favorite_report(favorite)
+    assert "Rapport favoris H2H" in buffer.getvalue()
+    assert favorite["overall"]["train"]["picks"] == 320
+    assert favorite["overall"]["validation"]["picks"] == 20
+    assert favorite["overall"]["test"]["picks"] == 322
+    odds_group = next(group for group in favorite["groups"] if group["label"] == "Tranches de cotes")
+    by_label = {entry["label"]: entry for entry in odds_group["segments"]}
+    assert by_label["1.60 <= cote < 1.80"]["status"] == "non confirme sur test"
+    assert by_label["cote < 1.40"]["status"] == "echantillon faible"
+
+    stable_train = [
+        record(f"stab-tr-{i}", "2022-01-01", "h2h", 1.70, "win", import_family="home")
+        for i in range(320)
+    ]
+    stable_validation = [
+        record(f"stab-va-{i}", "2023-01-01", "h2h", 1.70, "win", import_family="home")
+        for i in range(320)
+    ]
+    stable_2024 = [
+        record(f"stab-24-{i}", "2024-01-01", "h2h", 1.70, "win", import_family="home")
+        for i in range(320)
+    ]
+    stable_2025_bad = [
+        record(f"stab-25-{i}", "2025-01-01", "h2h", 1.70, "loss", import_family="home")
+        for i in range(320)
+    ]
+    weak_2024 = [
+        record(f"weak-24-{i}", "2024-01-01", "draw", 3.0, "win")
+        for i in range(20)
+    ]
+    stability = build_stability_report(db_from(stable_train + stable_validation + stable_2024 + stable_2025_bad + weak_2024))
+    buffer = StringIO()
+    with redirect_stdout(buffer):
+        print_stability_report(stability)
+    assert "Rapport de stabilite annuelle" in buffer.getvalue()
+    by_key = {entry["key"]: entry for entry in stability["strategies"]}
+    h2h_all = by_key["h2h_favorites_all"]
+    assert h2h_all["annual"]["2024"]["roi"] > 0
+    assert h2h_all["annual"]["2025"]["roi"] < 0
+    assert h2h_all["score"]["positive_years"] >= 3
+    assert h2h_all["score"]["negative_years"] >= 1
+    assert h2h_all["stability_note"] == "degradation recente"
+    assert not h2h_all["candidate_allowed"]
+    draw_high = by_key["draw_high_watchlist"]
+    assert draw_high["stability_note"] == "echantillon faible"
 
     print("test_backtest_evaluator ok")
 

@@ -575,6 +575,354 @@ def targeted_reports(test_records: List[Dict[str, Any]], train_db: Dict[str, Any
     }
 
 
+def _favorite_records(records: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [record for record in records if _is_h2h_favorite(record)]
+
+
+def _odds_favorite_bucket(record: Dict[str, Any]) -> str:
+    odds = _num(record.get("odds"), 99.0)
+    if odds < 1.40:
+        return "cote < 1.40"
+    if odds < 1.60:
+        return "1.40 <= cote < 1.60"
+    if odds < 1.80:
+        return "1.60 <= cote < 1.80"
+    return "1.80 <= cote < 2.00"
+
+
+def _favorite_side(record: Dict[str, Any]) -> str:
+    side = h2h_side(record)
+    if side == "home":
+        return "domicile favori"
+    if side == "away":
+        return "exterieur favori"
+    return "favori non determine"
+
+
+def _relative_edge(record: Dict[str, Any], home_key: str, away_key: str) -> Any:
+    home_value = record.get(home_key)
+    away_value = record.get(away_key)
+    if home_value in (None, "") or away_value in (None, ""):
+        return None
+    side = h2h_side(record)
+    diff = _num(home_value) - _num(away_value)
+    if side == "home":
+        return diff
+    if side == "away":
+        return -diff
+    return None
+
+
+def _elo_favorite_bucket(record: Dict[str, Any]) -> str:
+    edge = _relative_edge(record, "home_elo", "away_elo")
+    if edge is None and record.get("elo_diff") not in (None, ""):
+        side = h2h_side(record)
+        diff = _num(record.get("elo_diff"))
+        if side == "home":
+            edge = diff
+        elif side == "away":
+            edge = -diff
+    if edge is None:
+        return "elo_diff faible ou contradictoire"
+    if edge >= 75:
+        return "elo_diff fort positif"
+    if edge >= 25:
+        return "elo_diff modere positif"
+    return "elo_diff faible ou contradictoire"
+
+
+def _form_favorite_bucket(record: Dict[str, Any], window: str) -> str:
+    edge = _relative_edge(record, f"{window}_home", f"{window}_away")
+    if edge is None:
+        return f"{window} indisponible"
+    if edge > 0:
+        return f"{window} favorable"
+    if edge < 0:
+        return f"{window} defavorable"
+    return f"{window} neutre"
+
+
+def _competition_key(record: Dict[str, Any]) -> str:
+    return str(record.get("competition") or record.get("Division") or "competition inconnue")
+
+
+def _favorite_status(train: Dict[str, Any], validation: Dict[str, Any], test: Dict[str, Any]) -> str:
+    test_n = int(test.get("picks", 0) or 0)
+    train_roi = _num(train.get("roi"), 0.0)
+    validation_roi = _num(validation.get("roi"), 0.0)
+    test_roi = _num(test.get("roi"), 0.0)
+    if test_n < 300:
+        return "echantillon faible"
+    if train_roi > 0 and test_roi <= 0:
+        return "non confirme sur test"
+    if test_roi > 0 and train_roi < 0:
+        return "fragile"
+    if test_roi <= 0:
+        return "negatif a eviter"
+    if 0 < test_roi < 1:
+        return "observation seulement"
+    if train_roi > 0 and validation_roi >= -1 and test_roi >= 1:
+        return "robuste positif"
+    return "fragile"
+
+
+def _favorite_segment_entry(label: str, train_records: List[Dict[str, Any]], validation_records: List[Dict[str, Any]], test_records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    train = summarize_records(train_records, include_groups=False)
+    validation = summarize_records(validation_records, include_groups=False)
+    test = summarize_records(test_records, include_groups=False)
+    return {
+        "label": label,
+        "train": train,
+        "validation": validation,
+        "test": test,
+        "status": _favorite_status(train, validation, test),
+    }
+
+
+def _favorite_group(records: List[Dict[str, Any]], key_fn) -> Dict[str, List[Dict[str, Any]]]:
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for record in records:
+        groups.setdefault(str(key_fn(record)), []).append(record)
+    return groups
+
+
+def _build_favorite_group(label: str, train: List[Dict[str, Any]], validation: List[Dict[str, Any]], test: List[Dict[str, Any]], key_fn, limit: int = 0) -> Dict[str, Any]:
+    train_groups = _favorite_group(train, key_fn)
+    validation_groups = _favorite_group(validation, key_fn)
+    test_groups = _favorite_group(test, key_fn)
+    keys = sorted(set(train_groups) | set(validation_groups) | set(test_groups))
+    entries = [
+        _favorite_segment_entry(
+            key,
+            train_groups.get(key, []),
+            validation_groups.get(key, []),
+            test_groups.get(key, []),
+        )
+        for key in keys
+    ]
+    if limit:
+        entries = sorted(entries, key=lambda entry: entry["test"]["picks"], reverse=True)[:limit]
+    return {"label": label, "segments": entries}
+
+
+def _build_favorite_static_group(label: str, train: List[Dict[str, Any]], validation: List[Dict[str, Any]], test: List[Dict[str, Any]], specs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    entries = [
+        _favorite_segment_entry(
+            segment_label,
+            [record for record in train if predicate(record)],
+            [record for record in validation if predicate(record)],
+            [record for record in test if predicate(record)],
+        )
+        for segment_label, predicate in specs
+    ]
+    return {"label": label, "segments": entries}
+
+
+def build_favorite_report(db: Dict[str, Any]) -> Dict[str, Any]:
+    records = all_settled_records(db)
+    params = dict(PRESETS["modern"])
+    train_records, validation_records, test_records = split_by_ranges(records, params)
+    train = _favorite_records(train_records)
+    validation = _favorite_records(validation_records)
+    test = _favorite_records(test_records)
+    groups = [
+        _build_favorite_group("Tranches de cotes", train, validation, test, _odds_favorite_bucket),
+        _build_favorite_group("Domicile / exterieur", train, validation, test, _favorite_side),
+        _build_favorite_group("Elo relatif au favori", train, validation, test, _elo_favorite_bucket),
+        _build_favorite_group("Forme 3 matchs", train, validation, test, lambda r: _form_favorite_bucket(r, "form3")),
+        _build_favorite_group("Forme 5 matchs", train, validation, test, lambda r: _form_favorite_bucket(r, "form5")),
+        _build_favorite_static_group("Annees test", train, validation, test, [
+            ("annee 2024", lambda r: _year_from_record(r) == "2024"),
+            ("annee 2025", lambda r: _year_from_record(r) == "2025"),
+        ]),
+        _build_favorite_group("Competition", train, validation, test, _competition_key, limit=20),
+    ]
+    all_entry = _favorite_segment_entry("Tous favoris H2H", train, validation, test)
+    report = {
+        "params": params,
+        "scope": "market_type=h2h et odds<2.0",
+        "overall": all_entry,
+        "groups": groups,
+    }
+    report["conclusion"] = favorite_report_conclusion(report)
+    return report
+
+
+def _favorite_entries(report: Dict[str, Any]) -> List[Dict[str, Any]]:
+    entries: List[Dict[str, Any]] = []
+    for group in report.get("groups", []):
+        for entry in group.get("segments", []):
+            item = dict(entry)
+            item["group"] = group.get("label", "")
+            entries.append(item)
+    return entries
+
+
+def favorite_report_conclusion(report: Dict[str, Any]) -> Dict[str, Any]:
+    entries = _favorite_entries(report)
+    best = sorted(
+        [e for e in entries if e["test"]["picks"] >= 300 and e["test"]["roi"] > 0],
+        key=lambda e: (e["test"]["roi"], e["test"]["picks"]),
+        reverse=True,
+    )[:8]
+    invalidated = sorted(
+        [e for e in entries if e["train"]["roi"] > 0 and e["test"]["picks"] >= 300 and e["test"]["roi"] <= 0],
+        key=lambda e: (e["train"]["roi"], -e["test"]["roi"]),
+        reverse=True,
+    )[:8]
+    avoid = sorted(
+        [e for e in entries if e["test"]["picks"] >= 300 and e["test"]["roi"] <= 0],
+        key=lambda e: (e["test"]["roi"], -e["test"]["picks"]),
+    )[:8]
+    recommendation = "Aucun segment favori H2H ne doit devenir top pick automatiquement."
+    if best:
+        recommendation += " Les meilleurs signaux restent seulement des observations a confirmer hors echantillon."
+    else:
+        recommendation += " Le rapport confirme une posture de refus/prudence."
+    return {
+        "best_segments": best,
+        "invalidated_segments": invalidated,
+        "avoid_segments": avoid,
+        "recommendation": recommendation,
+    }
+
+
+def _stability_strategies() -> List[Tuple[str, str, Any]]:
+    return [
+        ("baseline_all", "Baseline marche brut", lambda r: True),
+        ("favorites_only", "Favoris seulement", lambda r: _num(r.get("odds"), 99.0) < 2.0),
+        ("h2h_favorites_all", "Favoris H2H tous", _is_h2h_favorite),
+        (
+            "h2h_favorites_odds_1_60_1_80",
+            "Favoris H2H cote 1.60-1.80",
+            lambda r: _is_h2h_favorite(r) and 1.60 <= _num(r.get("odds"), 99.0) < 1.80,
+        ),
+        ("h2h_home_favorite", "H2H domicile favori", lambda r: _is_h2h_favorite(r) and h2h_side(r) == "home"),
+        ("h2h_away_favorite", "H2H exterieur favori", lambda r: _is_h2h_favorite(r) and h2h_side(r) == "away"),
+        ("h2h_favorite_strong_elo", "H2H favori Elo fort positif", lambda r: _is_h2h_favorite(r) and _elo_favorite_bucket(r) == "elo_diff fort positif"),
+        ("totals_only", "Totals seulement", lambda r: r.get("market_type") == "total"),
+        ("totals_low", "Totals low", lambda r: r.get("market_type") == "total" and odds_bucket(_num(r.get("odds"), 2.0)) == "low"),
+        ("totals_low_mid", "Totals low/mid", lambda r: r.get("market_type") == "total" and odds_bucket(_num(r.get("odds"), 2.0)) in ("low", "mid")),
+        ("draw_high_watchlist", "Watchlist draw high", lambda r: r.get("market_type") == "draw" and odds_bucket(_num(r.get("odds"), 2.0)) == "high"),
+    ]
+
+
+def _annual_stats(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    return _group_stats(records, _year_from_record)
+
+
+def _stability_score(annual: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    qualified = {year: stat for year, stat in annual.items() if stat.get("picks", 0) >= 300}
+    positive = {year: stat for year, stat in qualified.items() if stat.get("roi", 0) > 0}
+    negative = {year: stat for year, stat in qualified.items() if stat.get("roi", 0) <= 0}
+    if qualified:
+        avg_roi = round(sum(_num(stat.get("roi")) for stat in qualified.values()) / len(qualified), 2)
+        worst_year, worst_stat = min(qualified.items(), key=lambda item: item[1].get("roi", 0))
+        best_year, best_stat = max(qualified.items(), key=lambda item: item[1].get("roi", 0))
+        max_dd = max(_num(stat.get("max_drawdown")) for stat in qualified.values())
+    else:
+        avg_roi = 0.0
+        worst_year, worst_stat = "", {}
+        best_year, best_stat = "", {}
+        max_dd = 0.0
+    return {
+        "positive_years": len(positive),
+        "negative_years": len(negative),
+        "qualified_years": len(qualified),
+        "average_annual_roi": avg_roi,
+        "worst_year": {"year": worst_year, "roi": worst_stat.get("roi", 0), "n": worst_stat.get("picks", 0)},
+        "best_year": {"year": best_year, "roi": best_stat.get("roi", 0), "n": best_stat.get("picks", 0)},
+        "max_drawdown_observed": round(max_dd, 2),
+    }
+
+
+def _stability_note(annual: Dict[str, Dict[str, Any]], train: Dict[str, Any], validation: Dict[str, Any], test: Dict[str, Any]) -> str:
+    score = _stability_score(annual)
+    qualified_years = score["qualified_years"]
+    if qualified_years < 2:
+        return "echantillon faible"
+    positive_years = score["positive_years"]
+    negative_years = score["negative_years"]
+    positive_ratio = positive_years / qualified_years if qualified_years else 0.0
+    recent_stats = [annual.get("2024", {}), annual.get("2025", {})]
+    recent_qualified = [stat for stat in recent_stats if stat.get("picks", 0) >= 300]
+    recent_negative = any(stat.get("roi", 0) <= 0 for stat in recent_qualified)
+    pre_2024 = [stat for year, stat in annual.items() if year < "2024" and stat.get("picks", 0) >= 300]
+    pre_2024_positive = bool(pre_2024) and sum(_num(stat.get("profit")) for stat in pre_2024) > 0
+    if pre_2024_positive and recent_negative:
+        return "degradation recente"
+    if positive_ratio >= 0.70 and test.get("roi", 0) > 0 and not recent_negative:
+        return "stable positif"
+    if negative_years > positive_years:
+        return "negatif robuste"
+    if positive_years and negative_years:
+        return "instable"
+    if test.get("picks", 0) < 300:
+        return "echantillon faible"
+    return "instable"
+
+
+def build_stability_report(db: Dict[str, Any]) -> Dict[str, Any]:
+    records = all_settled_records(db)
+    params = dict(PRESETS["modern"])
+    train_records, validation_records, test_records = split_by_ranges(records, params)
+    all_modern_records = train_records + validation_records + test_records
+    strategies = []
+    for key, label, predicate in _stability_strategies():
+        selected_all = [record for record in all_modern_records if predicate(record)]
+        selected_train = [record for record in train_records if predicate(record)]
+        selected_validation = [record for record in validation_records if predicate(record)]
+        selected_test = [record for record in test_records if predicate(record)]
+        annual = _annual_stats(selected_all)
+        train = summarize_records(selected_train, include_groups=False)
+        validation = summarize_records(selected_validation, include_groups=False)
+        test = summarize_records(selected_test, include_groups=False)
+        score = _stability_score(annual)
+        note = _stability_note(annual, train, validation, test)
+        strategies.append({
+            "key": key,
+            "label": label,
+            "annual": annual,
+            "train": train,
+            "validation": validation,
+            "test": test,
+            "score": score,
+            "stability_note": note,
+            "candidate_allowed": (
+                note == "stable positif"
+                and train.get("roi", 0) > 0
+                and validation.get("roi", 0) > 0
+                and test.get("roi", 0) >= 1.0
+                and annual.get("2025", {}).get("roi", 0) > 0
+            ),
+        })
+    report = {
+        "params": params,
+        "scope": "stabilite annuelle sur donnees modernes 2015-2025",
+        "strategies": strategies,
+    }
+    report["conclusion"] = stability_report_conclusion(report)
+    return report
+
+
+def stability_report_conclusion(report: Dict[str, Any]) -> Dict[str, Any]:
+    strategies = report.get("strategies", [])
+    stable = [s for s in strategies if s.get("candidate_allowed")]
+    observations = [
+        s for s in strategies
+        if s.get("stability_note") in ("stable positif", "instable") and s.get("test", {}).get("roi", 0) > 0 and not s.get("candidate_allowed")
+    ]
+    degraded = [s for s in strategies if s.get("stability_note") == "degradation recente"]
+    negative = [s for s in strategies if s.get("stability_note") == "negatif robuste"]
+    return {
+        "candidate_segments": stable,
+        "observation_segments": observations,
+        "degraded_segments": degraded,
+        "negative_segments": negative,
+        "recommendation": "Aucun segment ne doit devenir pick conseille si 2025 est negatif ou si le ROI test reste inferieur a 1%. Un segment positif mais instable reste une observation.",
+    }
+
+
 def _rule_effective_max(rule: Dict[str, Any]) -> float:
     max_odds = float(rule["odds_max"])
     if rule.get("exclude_outsiders"):
@@ -847,6 +1195,103 @@ def print_threshold_sweep(report: Dict[str, Any]) -> None:
             print(f"  - {entry['label']} | train {_short_stat(entry['train'])} | test {_short_stat(entry['test'])}")
 
 
+def _print_favorite_entry(entry: Dict[str, Any], prefix: str = "  - ") -> None:
+    print(f"{prefix}{entry['label']} [{entry['status']}]")
+    print(f"{prefix}  train {_short_stat(entry['train'])}")
+    print(f"{prefix}  validation {_short_stat(entry['validation'])}")
+    print(f"{prefix}  test {_short_stat(entry['test'])}, wins={entry['test'].get('wins', 0)}, WR={_fmt_pct(entry['test'].get('winrate', 0))}, cote moy={entry['test'].get('average_odds', 0)}, DD={entry['test'].get('max_drawdown', 0)}")
+
+
+def print_favorite_report(report: Dict[str, Any]) -> None:
+    params = report["params"]
+    print("Rapport favoris H2H Oracle Bot")
+    print(f"- Scope: {report['scope']}")
+    print(f"- Train: {params['train_from']} -> {params['train_to']}")
+    print(f"- Validation: {params['validation_from']} -> {params['validation_to']}")
+    print(f"- Test: {params['test_from']} -> fin")
+    print("\nVue globale")
+    _print_favorite_entry(report["overall"])
+    for group in report.get("groups", []):
+        print(f"\n{group['label']}")
+        for entry in group.get("segments", []):
+            _print_favorite_entry(entry)
+    conclusion = report.get("conclusion", {})
+    print("\nConclusion favoris H2H")
+    best = conclusion.get("best_segments", [])
+    invalidated = conclusion.get("invalidated_segments", [])
+    avoid = conclusion.get("avoid_segments", [])
+    if best:
+        print("- Meilleurs segments observes:")
+        for entry in best[:5]:
+            print(f"  - {entry.get('group')}: {entry['label']} | test {_short_stat(entry['test'])} | statut={entry['status']}")
+    else:
+        print("- Aucun segment positif robuste detecte sur le test.")
+    if invalidated:
+        print("- Segments invalides train positif / test negatif:")
+        for entry in invalidated[:5]:
+            print(f"  - {entry.get('group')}: {entry['label']} | train {_short_stat(entry['train'])} | test {_short_stat(entry['test'])}")
+    if avoid:
+        print("- Segments a eviter:")
+        for entry in avoid[:5]:
+            print(f"  - {entry.get('group')}: {entry['label']} | test {_short_stat(entry['test'])} | statut={entry['status']}")
+    print(f"- Recommandation prudente: {conclusion.get('recommendation', '')}")
+
+
+def print_stability_report(report: Dict[str, Any]) -> None:
+    params = report["params"]
+    print("Rapport de stabilite annuelle Oracle Bot")
+    print(f"- Scope: {report['scope']}")
+    print(f"- Train: {params['train_from']} -> {params['train_to']}")
+    print(f"- Validation: {params['validation_from']} -> {params['validation_to']}")
+    print(f"- Test: {params['test_from']} -> fin")
+    for strategy in report.get("strategies", []):
+        score = strategy.get("score", {})
+        print(f"\n{strategy['label']} [{strategy['stability_note']}]")
+        print(f"- Train: {_short_stat(strategy['train'])}")
+        print(f"- Validation: {_short_stat(strategy['validation'])}")
+        print(f"- Test: {_short_stat(strategy['test'])}")
+        print(
+            "- Score stabilite: "
+            f"annees positives={score.get('positive_years', 0)}, "
+            f"annees negatives={score.get('negative_years', 0)}, "
+            f"ROI annuel moyen={_fmt_pct(score.get('average_annual_roi', 0))}, "
+            f"pire={score.get('worst_year', {}).get('year', '')} ({_fmt_pct(score.get('worst_year', {}).get('roi', 0))}), "
+            f"meilleure={score.get('best_year', {}).get('year', '')} ({_fmt_pct(score.get('best_year', {}).get('roi', 0))}), "
+            f"DD max={score.get('max_drawdown_observed', 0)}"
+        )
+        print("- Par annee:")
+        for year, stat in sorted(strategy.get("annual", {}).items()):
+            print(
+                f"  - {year}: n={stat['picks']}, wins={stat['wins']}, WR={_fmt_pct(stat['winrate'])}, "
+                f"ROI={_fmt_pct(stat['roi'])}, profit={stat['profit']}, cote moy={stat['average_odds']}, DD={stat['max_drawdown']}"
+            )
+    conclusion = report.get("conclusion", {})
+    print("\nConclusion stabilite")
+    candidates = conclusion.get("candidate_segments", [])
+    observations = conclusion.get("observation_segments", [])
+    degraded = conclusion.get("degraded_segments", [])
+    negative = conclusion.get("negative_segments", [])
+    if candidates:
+        print("- Segments candidats coherents:")
+        for strategy in candidates:
+            print(f"  - {strategy['label']}: test {_short_stat(strategy['test'])}, note={strategy['stability_note']}")
+    else:
+        print("- Aucun segment candidat coherent train/validation/test/stabilite annuelle.")
+    if observations:
+        print("- Segments seulement en observation:")
+        for strategy in observations[:5]:
+            print(f"  - {strategy['label']}: test {_short_stat(strategy['test'])}, note={strategy['stability_note']}")
+    if degraded:
+        print("- Degradations recentes:")
+        for strategy in degraded[:5]:
+            print(f"  - {strategy['label']}: 2024 ROI={_fmt_pct(strategy.get('annual', {}).get('2024', {}).get('roi', 0))}, 2025 ROI={_fmt_pct(strategy.get('annual', {}).get('2025', {}).get('roi', 0))}")
+    if negative:
+        print("- Negatifs robustes:")
+        for strategy in negative[:5]:
+            print(f"  - {strategy['label']}: test {_short_stat(strategy['test'])}")
+    print(f"- Recommandation prudente: {conclusion.get('recommendation', '')}")
+
+
 def print_debug_strategies(report: Dict[str, Any]) -> None:
     debug = report.get("debug_strategies", {})
     if not debug:
@@ -980,6 +1425,8 @@ def parse_args(argv=None):
     parser.add_argument("--test-from", default="2024-01-01", help="Date minimale du test, format YYYY-MM-DD")
     parser.add_argument("--preset", choices=sorted(PRESETS.keys()), default="", help="Preset de découpage temporel")
     parser.add_argument("--period-report", action="store_true", help="Affiche un rapport ROI par période sans backtest")
+    parser.add_argument("--favorite-report", action="store_true", help="Analyse locale detaillee des favoris H2H")
+    parser.add_argument("--stability-report", action="store_true", help="Analyse la stabilite annuelle des strategies locales")
     parser.add_argument("--debug-strategies", action="store_true", help="Affiche les raisons de rejet et les segments appliques")
     parser.add_argument("--json", dest="json_path", default=None, help="Chemin de sortie JSON optionnel")
     return parser.parse_args(argv)
@@ -993,6 +1440,18 @@ def main(argv=None) -> None:
     if args.period_report:
         report = period_report(db)
         print_period_report(report)
+        if args.json_path:
+            write_json(report, args.json_path)
+        return
+    if args.favorite_report:
+        report = build_favorite_report(db)
+        print_favorite_report(report)
+        if args.json_path:
+            write_json(report, args.json_path)
+        return
+    if args.stability_report:
+        report = build_stability_report(db)
+        print_stability_report(report)
         if args.json_path:
             write_json(report, args.json_path)
         return
