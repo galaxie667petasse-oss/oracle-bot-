@@ -1,5 +1,6 @@
 import argparse
 import csv
+import math
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -27,6 +28,8 @@ class ImportStats:
     deja_presents_ignores: int = 0
     h2h_crees: int = 0
     draw_crees: int = 0
+    over_crees: int = 0
+    under_crees: int = 0
     over_under_crees: int = 0
     btts_crees: int = 0
     doublons_ignores: int = 0
@@ -48,13 +51,13 @@ def _value(row: Dict[str, Any], *names: str) -> str:
 
 def parse_float(value: Any) -> Optional[float]:
     text = str(value or "").strip().replace(",", ".")
-    if not text:
+    if not text or text.lower() in {"nan", "na", "n/a", "null", "none"}:
         return None
     try:
         number = float(text)
     except ValueError:
         return None
-    if number <= 1.0:
+    if not math.isfinite(number) or number <= 1.01:
         return None
     return number
 
@@ -115,8 +118,8 @@ def best_odds(row: Dict[str, Any]) -> Dict[str, Tuple[Optional[float], str]]:
         "h2h_home": odds_from_columns(row, "MaxHome", "OddHome"),
         "draw": odds_from_columns(row, "MaxDraw", "OddDraw"),
         "h2h_away": odds_from_columns(row, "MaxAway", "OddAway"),
-        "over25": odds_from_columns(row, *OVER25_COLUMNS),
-        "under25": odds_from_columns(row, *UNDER25_COLUMNS),
+        "over25": odds_from_columns(row, "MaxOver25", "Over25", *[c for c in OVER25_COLUMNS if c not in ("MaxOver25", "Over25")]),
+        "under25": odds_from_columns(row, "MaxUnder25", "Under25", *[c for c in UNDER25_COLUMNS if c not in ("MaxUnder25", "Under25")]),
         "btts_yes": odds_from_columns(row, *BTTS_YES_COLUMNS),
         "btts_no": odds_from_columns(row, *BTTS_NO_COLUMNS),
     }
@@ -293,6 +296,10 @@ def load_candidates(csv_path: str, limit: Optional[int] = None, date_from: Optio
                     stats.draw_crees += 1
                 elif family == "over_under":
                     stats.over_under_crees += 1
+                    if candidate.get("pari") == "Plus de 2.5 buts":
+                        stats.over_crees += 1
+                    elif candidate.get("pari") == "Moins de 2.5 buts":
+                        stats.under_crees += 1
                 elif family == "btts":
                     stats.btts_crees += 1
             if added_for_match == 0:
@@ -304,6 +311,8 @@ def import_candidates(candidates: List[Dict[str, Any]], dry_run: bool = False) -
     stats = ImportStats(candidats_crees=len(candidates), candidats_csv=len(candidates))
     stats.h2h_crees = sum(1 for c in candidates if c.get("import_family") in ("home", "away"))
     stats.draw_crees = sum(1 for c in candidates if c.get("import_family") == "draw")
+    stats.over_crees = sum(1 for c in candidates if c.get("import_family") == "over_under" and c.get("pari") == "Plus de 2.5 buts")
+    stats.under_crees = sum(1 for c in candidates if c.get("import_family") == "over_under" and c.get("pari") == "Moins de 2.5 buts")
     stats.over_under_crees = sum(1 for c in candidates if c.get("import_family") == "over_under")
     stats.btts_crees = sum(1 for c in candidates if c.get("import_family") == "btts")
     if dry_run:
@@ -369,6 +378,8 @@ def print_summary(stats: ImportStats, dry_run: bool) -> None:
     print(f"- Nouveaux candidats importés: {stats.nouveaux_importes}")
     print(f"- H2H créés: {stats.h2h_crees}")
     print(f"- Draw créés: {stats.draw_crees}")
+    print(f"- Over créés: {stats.over_crees}")
+    print(f"- Under créés: {stats.under_crees}")
     print(f"- Over/Under créés: {stats.over_under_crees}")
     print(f"- BTTS créés: {stats.btts_crees}")
     print(f"- Doublons ignorés: {stats.doublons_ignores}")
@@ -392,11 +403,35 @@ def parse_args(argv=None):
     parser.add_argument("--to", dest="date_to", default=None, help="Date maximale YYYY-MM-DD")
     parser.add_argument("--competitions", default=None, help="Divisions séparées par virgules, ex: E0,SP1,I1,D1,F1")
     parser.add_argument("--dry-run", action="store_true", help="Analyse le CSV sans sauvegarder")
+    parser.add_argument("--inspect-columns", action="store_true", help="Inspecte les colonnes Over/Under sur les 1000 premières lignes sans importer")
     return parser.parse_args(argv)
+
+
+def inspect_columns(csv_path: str, limit: int = 1000) -> None:
+    watched = ("Over25", "Under25", "MaxOver25", "MaxUnder25")
+    counts = {column: 0 for column in watched}
+    rows = 0
+    with Path(csv_path).open(newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        print("Diagnostic colonnes xgabora")
+        print("- Colonnes détectées: " + ", ".join(reader.fieldnames or []))
+        for row in reader:
+            if rows >= limit:
+                break
+            rows += 1
+            for column in watched:
+                if parse_float(row.get(column)) is not None:
+                    counts[column] += 1
+    print(f"- Lignes inspectées: {rows}")
+    for column in watched:
+        print(f"- Valeurs numériques {column}: {counts[column]}")
 
 
 def main(argv=None):
     args = parse_args(argv)
+    if args.inspect_columns:
+        inspect_columns(args.csv_path)
+        return
     competitions = args.competitions.split(",") if args.competitions else None
     candidates, load_stats = load_candidates(args.csv_path, args.limit, args.date_from, args.date_to, competitions)
     import_stats = import_candidates(candidates, args.dry_run)
