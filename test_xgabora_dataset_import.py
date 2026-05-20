@@ -28,6 +28,12 @@ HEADER = [
     "Under25",
     "MaxOver25",
     "MaxUnder25",
+    "OddOver25",
+    "OddUnder25",
+    "B365>2.5",
+    "B365<2.5",
+    "B365BTTSYes",
+    "B365BTTSNo",
     "HomeElo",
     "AwayElo",
     "Form3Home",
@@ -56,6 +62,8 @@ def write_sample_csv(path: Path):
             "MaxAway": "4.00",
             "MaxOver25": "1.90",
             "MaxUnder25": "2.05",
+            "B365BTTSYes": "1.78",
+            "B365BTTSNo": "2.05",
             "HomeElo": "1700",
             "AwayElo": "1600",
             "Form3Home": "7",
@@ -75,8 +83,8 @@ def write_sample_csv(path: Path):
             "OddHome": "2.30",
             "OddDraw": "3.00",
             "OddAway": "3.20",
-            "Over25": "1.95",
-            "Under25": "1.85",
+            "B365>2.5": "1.95",
+            "B365<2.5": "1.85",
             "HomeElo": "1500",
             "AwayElo": "1520",
         },
@@ -107,22 +115,28 @@ def main():
         candidates, stats = load_candidates(str(csv_path))
         assert stats.matches_lus == 3
         assert stats.matches_ignores == 1
-        assert len(candidates) == 10
+        assert len(candidates) == 12
         assert stats.h2h_crees == 4
         assert stats.draw_crees == 2
         assert stats.over_under_crees == 4
+        assert stats.btts_crees == 2
 
         home_pick = next(c for c in candidates if c["home"] == "Alpha FC" and c["pari"] == "Victoire Alpha FC")
         away_pick = next(c for c in candidates if c["home"] == "Alpha FC" and c["pari"] == "Victoire Beta FC")
         draw_pick = next(c for c in candidates if c["home"] == "Gamma" and c["market_type"] == "draw")
         over_pick = next(c for c in candidates if c["home"] == "Alpha FC" and c["pari"] == "Plus de 2.5 buts")
         under_pick = next(c for c in candidates if c["home"] == "Alpha FC" and c["pari"] == "Moins de 2.5 buts")
+        alt_over_pick = next(c for c in candidates if c["home"] == "Gamma" and c["pari"] == "Plus de 2.5 buts")
+        btts_yes = next(c for c in candidates if c["home"] == "Alpha FC" and c["market_type"] == "btts" and "Oui" in c["pari"])
 
         assert home_pick["result"] == "win"
         assert away_pick["result"] == "loss"
         assert draw_pick["result"] == "win"
         assert over_pick["result"] == "win"
         assert under_pick["result"] == "loss"
+        assert alt_over_pick["odds"] == 1.95
+        assert btts_yes["result"] == "win"
+        assert not any(c["home"] == "Gamma" and c["market_type"] == "btts" for c in candidates)
         assert home_pick["odds"] == 2.12
         assert home_pick["home_elo"] == 1700.0
         assert home_pick["away_elo"] == 1600.0
@@ -132,6 +146,8 @@ def main():
         assert result_for_market(1, 1, "draw") == "win"
         assert result_for_market(2, 1, "over25") == "win"
         assert result_for_market(2, 1, "under25") == "loss"
+        assert result_for_market(2, 1, "btts_yes") == "win"
+        assert result_for_market(2, 1, "btts_no") == "loss"
 
         os.environ["DB_FILE"] = str(db_path)
         os.environ["DATABASE_URL"] = ""

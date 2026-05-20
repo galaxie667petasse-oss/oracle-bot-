@@ -5,6 +5,7 @@ import bot_app as base
 from agents import AGENT_LABELS, agent_weights
 from config import settings
 from store import build_learning, load_db, save_db, settled_picks, settled_records
+from telegram_ui import segments_text
 from utils import target_day, esc
 from shadow_training import build_shadow_candidates
 from persistent_memory import status as persistent_status
@@ -237,7 +238,7 @@ async def start_cmd(update, context):
         "🚫 Pas de pari forcé si la value est faible\n"
         "🇫🇷 Interface en français\n"
         "✅ Start Railway fixe: <code>python main.py</code>\n\n"
-        "/scan force\n/settle\n/stats\n/memoire\n/rapport\n/diagnostic\n/export\n/chart\n/resultats",
+        "/scan force\n/settle\n/stats\n/segments\n/memoire\n/rapport\n/diagnostic\n/export\n/chart\n/resultats",
         parse_mode=base.ParseMode.HTML,
     )
 
@@ -260,6 +261,11 @@ async def rapport_cmd(update, context):
 async def diagnostic_cmd(update, context):
     if update.effective_chat.id == settings.chat_id:
         await update.message.reply_text(diagnostic_text(load_refreshed_db()), parse_mode=base.ParseMode.HTML)
+
+
+async def segments_cmd(update, context):
+    if update.effective_chat.id == settings.chat_id:
+        await update.message.reply_text(segments_text(load_refreshed_db()), parse_mode=base.ParseMode.HTML)
 
 
 async def export_cmd(update, context):
@@ -292,6 +298,7 @@ def create_app():
     app.add_handler(base.CommandHandler("learn", base.stats_cmd))
     app.add_handler(base.CommandHandler("memoire", memoire_cmd))
     app.add_handler(base.CommandHandler("rapport", rapport_cmd))
+    app.add_handler(base.CommandHandler("segments", segments_cmd))
     app.add_handler(base.CommandHandler("diagnostic", diagnostic_cmd))
     app.add_handler(base.CommandHandler("export", export_cmd))
     app.add_handler(base.CommandHandler("chart", base.chart_cmd))

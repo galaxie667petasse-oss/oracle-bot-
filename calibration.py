@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List
+from segment_analysis import build_segment_report, candidate_segment_keys
 
 
 def _num(value: Any, default: float = 0.0) -> float:
@@ -120,6 +121,8 @@ def build_calibration(db: Dict[str, Any], learning: Dict[str, Any] = None) -> Di
     rows = settled_rows(db)
     learning = learning or {}
     samples = int(learning.get("samples", len(rows)) or 0)
+    segment_report = build_segment_report(db)
+    db["segment_report"] = segment_report
     by_market = learning.get("by_market") or _group(rows, lambda p: p.get("market_type", "?"))
     by_odds = learning.get("by_odds") or _group(rows, lambda p: odds_bucket(_num(p.get("odds"), 2.0)))
     by_league = learning.get("by_league") or _group(rows, lambda p: league_bucket(p.get("competition", "")))
@@ -132,6 +135,9 @@ def build_calibration(db: Dict[str, Any], learning: Dict[str, Any] = None) -> Di
         "banned_or_penalized_odds_buckets": {},
         "confidence_cap_by_bucket": {"low": 72, "mid": 68, "high": 60, "very_high": 54},
         "positive_buckets": [],
+        "segment_report_samples": segment_report.get("samples", 0),
+        "positive_segments_count": len(segment_report.get("positive_segments", []) or []),
+        "blocked_segments_count": len(segment_report.get("blocked_segments", []) or []),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     })
 
@@ -166,3 +172,68 @@ def build_calibration(db: Dict[str, Any], learning: Dict[str, Any] = None) -> Di
     calibration["by_odds"] = by_odds
     calibration["by_league"] = by_league
     return calibration
+
+
+def segment_adjustment_for_pick(pick: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
+    report = db.get("segment_report") or {}
+    if not report.get("segments"):
+        report = build_segment_report(db)
+        db["segment_report"] = report
+    segments = report.get("segments", {}) or {}
+    selected = None
+    for key, label, _kind in candidate_segment_keys(pick):
+        stat = segments.get(key)
+        if not stat:
+            continue
+        if int(stat.get("n", 0) or 0) < 100:
+            continue
+        selected = stat
+        break
+    if not selected:
+        return {
+            "segment_key": "",
+            "label": "",
+            "roi": 0.0,
+            "n": 0,
+            "adjustment": 0.0,
+            "note": "neutre, volume segment insuffisant",
+            "status": "volume_insuffisant",
+            "block_top": False,
+            "positive_reliable": False,
+        }
+
+    roi = _num(selected.get("roi"))
+    n = int(selected.get("n", 0) or 0)
+    status = selected.get("status", "exploitable_neutre")
+    broad_positive_only = selected.get("kind") in {"odds", "price_profile", "elo_profile", "era"}
+    adjustment = 0.0
+    note = "neutre"
+    if n >= 300 and roi < -12:
+        adjustment = -3.0
+        note = "défavorable, top pick bloqué par ce segment"
+    elif n >= 300 and roi < -8:
+        adjustment = -2.0
+        note = "défavorable, prudence renforcée"
+    elif n >= 300 and roi > 5 and not broad_positive_only:
+        adjustment = 1.0
+        note = "favorable, petit bonus prudent"
+    elif n >= 300 and roi > 2 and not broad_positive_only:
+        adjustment = 0.5
+        note = "légèrement favorable, bonus limité"
+    elif n >= 300 and roi > 2:
+        note = "neutre, segment trop large pour bonus"
+    elif n >= 100 and roi < -8:
+        adjustment = -1.0
+        note = "signal faible défavorable"
+
+    return {
+        "segment_key": selected.get("key", ""),
+        "label": selected.get("label", ""),
+        "roi": roi,
+        "n": n,
+        "adjustment": adjustment,
+        "note": note,
+        "status": status,
+        "block_top": bool(selected.get("block_top")),
+        "positive_reliable": bool(selected.get("positive_reliable")) and not broad_positive_only,
+    }
