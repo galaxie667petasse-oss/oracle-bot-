@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Tuple
 from calibration import league_bucket, odds_bucket, segment_adjustment_for_pick
+from recency import record_weight
 
 AGENTS = ("marche", "valeur", "risque", "rythme", "memoire", "contradiction")
 AGENT_LABELS = {
@@ -132,8 +133,11 @@ def agent_weights(db: Dict[str, Any]) -> Dict[str, float]:
         if p.get("result") in ("win", "loss")
     ]
     raw = {a: {"score": 0.0, "n": 0} for a in AGENTS}
+    weighted_samples = 0.0
     for p in rows:
         won = p.get("result") == "win"
+        weight = record_weight(p)
+        weighted_samples += weight
         votes = ensure_agent_votes(p)
         for old, new in OLD_AGENT_MAP.items():
             if old in votes and new not in votes:
@@ -146,8 +150,8 @@ def agent_weights(db: Dict[str, Any]) -> Dict[str, float]:
                 delta = -0.7 if won else 0.7
             else:
                 delta = 0.2 if won else -0.1
-            raw[a]["score"] += delta
-            raw[a]["n"] += 1
+            raw[a]["score"] += delta * weight
+            raw[a]["n"] += weight
     weights = {}
     for a, st in raw.items():
         if st["n"] < 8:
@@ -156,6 +160,7 @@ def agent_weights(db: Dict[str, Any]) -> Dict[str, float]:
             weights[a] = round(max(0.70, min(1.30, 1.0 + (st["score"] / max(1, st["n"])) * 0.35)), 2)
     db["agent_weights"] = weights
     db["agent_weight_samples"] = len(rows)
+    db["agent_weight_weighted_samples"] = round(weighted_samples, 2)
     return weights
 
 

@@ -6,7 +6,7 @@ import types
 from datetime import timezone
 from pathlib import Path
 
-from xgabora_dataset_import import load_candidates, import_candidates, result_for_market
+from xgabora_dataset_import import inspect_dates, load_candidates, import_candidates, result_for_market
 
 
 HEADER = [
@@ -122,6 +122,9 @@ def main():
         assert stats.under_crees == 2
         assert stats.over_under_crees == 4
         assert stats.btts_crees == 2
+        assert stats.date_min_importee == "2024-01-10"
+        assert stats.date_max_importee == "2024-01-11"
+        assert stats.distribution_annuelle["2024"] == 2
 
         home_pick = next(c for c in candidates if c["home"] == "Alpha FC" and c["pari"] == "Victoire Alpha FC")
         away_pick = next(c for c in candidates if c["home"] == "Alpha FC" and c["pari"] == "Victoire Beta FC")
@@ -150,6 +153,22 @@ def main():
         assert home_pick["home_elo"] == 1700.0
         assert home_pick["away_elo"] == 1600.0
         assert home_pick["elo_diff"] == 100.0
+        assert home_pick["period_bucket"] == "test_2024_plus"
+        assert home_pick["data_weight"] == 1.0
+
+        only_2024, only_2024_stats = load_candidates(str(csv_path), date_from="2024-01-01")
+        assert len(only_2024) == len(candidates)
+        gamma_only, gamma_stats = load_candidates(str(csv_path), limit=1, date_from="2024-01-11", date_to="2024-01-11")
+        assert gamma_stats.matches_lus == 1
+        assert len(gamma_only) == 5
+        assert all(c["home"] == "Gamma" for c in gamma_only)
+
+        inspection = inspect_dates(str(csv_path))
+        assert inspection["total_lignes"] == 3
+        assert inspection["matchs_score_final"] == 3
+        assert inspection["date_min"] == "2024-01-10"
+        assert inspection["date_max"] == "2024-01-12"
+        assert inspection["matchs_over_under"] == 2
 
         assert result_for_market(2, 1, "h2h_home") == "win"
         assert result_for_market(1, 1, "draw") == "win"

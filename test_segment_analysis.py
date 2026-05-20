@@ -2,10 +2,10 @@ from calibration import segment_adjustment_for_pick
 from segment_analysis import build_segment_report
 
 
-def pick(idx, market_type, odds, result, competition="Premier League", family="", elo_diff=""):
+def pick(idx, market_type, odds, result, competition="Premier League", family="", elo_diff="", date_key="2021-02-01"):
     return {
         "match_id": f"m{idx}",
-        "date_key": f"2024-02-{(int(idx[-2:]) % 28) + 1:02d}" if str(idx)[-2:].isdigit() else "2024-02-01",
+        "date_key": date_key,
         "home": f"Home {idx}",
         "away": f"Away {idx}",
         "competition": competition,
@@ -56,6 +56,22 @@ def main():
     small_signal = segment_adjustment_for_pick(pick("new03", "btts", 2.00, "win"), db)
     assert small_signal["positive_reliable"] is False
     assert small_signal["adjustment"] <= 0
+
+    archive_recent = []
+    for i in range(320):
+        archive_recent.append(pick(f"a{i:03d}", "total", 1.55, "win" if i < 260 else "loss", date_key="2008-01-01"))
+    for i in range(320):
+        archive_recent.append(pick(f"r{i:03d}", "total", 1.55, "win" if i < 120 else "loss", date_key="2021-01-01"))
+    db2 = {"scans": {"mixed": {"picks": [], "candidates": archive_recent}}}
+    report2 = build_segment_report(db2)
+    assert "period:archive_pre2012" in report2["segments"]
+    assert "period:recent_2020_2023" in report2["segments"]
+    total_low = report2["segments"]["market_odds:total|low"]
+    recent_total_low = report2["segments"]["market_odds_period:total|low|recent_2020_2023"]
+    assert total_low["positive_reliable"] is False
+    assert "ancien" in total_low["recency_note"] or "contredit" in total_low["recency_note"]
+    assert recent_total_low["n"] == 320
+    assert recent_total_low["period_stats"]["recent_2020_2023"]["n"] == 320
 
     print("test_segment_analysis ok")
 
