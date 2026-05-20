@@ -1,10 +1,12 @@
 from backtest_evaluator import (
+    _period_conclusion,
     build_train_context,
     evaluate_backtest,
     max_drawdown,
     select_strategy_records,
     split_train_test,
     summarize_records,
+    threshold_sweep,
 )
 
 
@@ -69,8 +71,14 @@ def main():
     assert dd == 2.0
 
     baseline = report["strategies"]["baseline_all"]
+    no_blocked = report["strategies"]["no_blocked_segments"]
     strict = report["strategies"]["strict_oracle"]
+    relaxed = report["strategies"]["oracle_relaxed"]
+    balanced = report["strategies"]["oracle_balanced"]
+    oracle_strict = report["strategies"]["oracle_strict"]
+    assert no_blocked["picks"] < baseline["picks"]
     assert strict["picks"] <= baseline["picks"]
+    assert oracle_strict["picks"] <= balanced["picks"] <= relaxed["picks"] <= baseline["picks"]
 
     train_records, test_records = split_train_test(train + test, "2023-12-31", "2024-01-01")
     train_db = build_train_context(train_records)
@@ -96,6 +104,25 @@ def main():
     long = evaluate_backtest(db, preset="long")
     assert long["params"]["test_from"] == "2023-01-01"
     assert long["test"]["samples"] == 5
+
+    label = _period_conclusion({
+        "modern_2015_2019": {"picks": 200, "roi": 3.6},
+        "recent_2020_2023": {"picks": 200, "roi": 4.0},
+        "test_2024_plus": {"picks": 200, "roi": -1.3},
+    })
+    assert label == "positif train/recent mais non confirme sur test final"
+
+    sweep_train = [record(f"s-tr-{i}", "2022-01-01", "total", 1.55, "win") for i in range(120)]
+    sweep_validation = [record(f"s-va-{i}", "2023-01-01", "total", 1.55, "win") for i in range(120)]
+    sweep_test = [record(f"s-te-{i}", "2024-01-01", "total", 1.55, "loss") for i in range(120)]
+    sweep = threshold_sweep(sweep_train, sweep_validation, sweep_test)
+    assert sweep["top_train_rules"]
+    assert all(entry["selection_basis"] == "train_et_validation_sans_test" for entry in sweep["top_train_rules"])
+    assert sweep["rejected_train_positive_test_negative"]
+
+    empty_strategy = summarize_records([], include_groups=True)
+    assert empty_strategy["picks"] == 0
+    assert empty_strategy["roi"] == 0.0
 
     print("test_backtest_evaluator ok")
 

@@ -189,21 +189,56 @@ def build_calibration(db: Dict[str, Any], learning: Dict[str, Any] = None) -> Di
     return calibration
 
 
-def segment_adjustment_for_pick(pick: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
+def segment_matches_for_pick(pick: Dict[str, Any], db: Dict[str, Any], min_n: int = 100) -> List[Dict[str, Any]]:
     report = db.get("segment_report") or {}
     if not report.get("segments"):
         report = build_segment_report(db)
         db["segment_report"] = report
     segments = report.get("segments", {}) or {}
-    selected = None
-    for key, label, _kind in candidate_segment_keys(pick):
+    matches: List[Dict[str, Any]] = []
+    for order, (key, _label, kind) in enumerate(candidate_segment_keys(pick)):
         stat = segments.get(key)
         if not stat:
             continue
-        if int(stat.get("n", 0) or 0) < 100:
+        if int(stat.get("n", 0) or 0) < min_n:
             continue
-        selected = stat
-        break
+        match = dict(stat)
+        match["_match_order"] = order
+        match["_match_kind"] = kind
+        matches.append(match)
+    return matches
+
+
+def blocked_segment_for_pick(pick: Dict[str, Any], db: Dict[str, Any], min_n: int = 300) -> Dict[str, Any]:
+    blocked = [
+        seg
+        for seg in segment_matches_for_pick(pick, db, min_n=min_n)
+        if bool(seg.get("block_top")) or (int(seg.get("n", 0) or 0) >= min_n and _num(seg.get("roi")) < -12)
+    ]
+    if not blocked:
+        return {}
+    blocked.sort(key=lambda seg: (int(seg.get("_match_order", 99)), -int(seg.get("n", 0) or 0)))
+    return blocked[0]
+
+
+def segment_adjustment_for_pick(pick: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
+    matches = segment_matches_for_pick(pick, db, min_n=100)
+    selected = None
+    blocked = [seg for seg in matches if bool(seg.get("block_top"))]
+    if blocked:
+        blocked.sort(key=lambda seg: (int(seg.get("_match_order", 99)), -int(seg.get("n", 0) or 0)))
+        selected = blocked[0]
+    if not selected:
+        positives = [
+            seg
+            for seg in matches
+            if bool(seg.get("positive_reliable")) and seg.get("kind") not in {"odds", "price_profile", "elo_profile", "era"}
+        ]
+        if positives:
+            positives.sort(key=lambda seg: (int(seg.get("_match_order", 99)), -int(seg.get("n", 0) or 0)))
+            selected = positives[0]
+    if not selected and matches:
+        selected = matches[0]
     if not selected:
         return {
             "segment_key": "",
