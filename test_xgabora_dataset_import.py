@@ -61,7 +61,7 @@ def write_sample_csv(path: Path):
             "MaxDraw": "3.25",
             "MaxAway": "4.00",
             "MaxOver25": "1.90",
-            "MaxUnder25": "2.05",
+            "MaxUnder25": "2.00",
             "B365BTTSYes": "1.78",
             "B365BTTSNo": "2.05",
             "HomeElo": "1700",
@@ -78,8 +78,8 @@ def write_sample_csv(path: Path):
             "HomeTeam": "Gamma",
             "AwayTeam": "Delta",
             "FTHG": "1",
-            "FTAG": "1",
-            "FTR": "D",
+            "FTAG": "0",
+            "FTR": "H",
             "OddHome": "2.30",
             "OddDraw": "3.00",
             "OddAway": "3.20",
@@ -118,6 +118,8 @@ def main():
         assert len(candidates) == 12
         assert stats.h2h_crees == 4
         assert stats.draw_crees == 2
+        assert stats.over_crees == 2
+        assert stats.under_crees == 2
         assert stats.over_under_crees == 4
         assert stats.btts_crees == 2
 
@@ -127,14 +129,21 @@ def main():
         over_pick = next(c for c in candidates if c["home"] == "Alpha FC" and c["pari"] == "Plus de 2.5 buts")
         under_pick = next(c for c in candidates if c["home"] == "Alpha FC" and c["pari"] == "Moins de 2.5 buts")
         alt_over_pick = next(c for c in candidates if c["home"] == "Gamma" and c["pari"] == "Plus de 2.5 buts")
+        alt_under_pick = next(c for c in candidates if c["home"] == "Gamma" and c["pari"] == "Moins de 2.5 buts")
         btts_yes = next(c for c in candidates if c["home"] == "Alpha FC" and c["market_type"] == "btts" and "Oui" in c["pari"])
 
         assert home_pick["result"] == "win"
         assert away_pick["result"] == "loss"
-        assert draw_pick["result"] == "win"
+        assert draw_pick["result"] == "loss"
         assert over_pick["result"] == "win"
         assert under_pick["result"] == "loss"
+        assert over_pick["market_type"] == "total"
+        assert under_pick["market_type"] == "total"
+        assert over_pick["odds"] == 1.90
+        assert under_pick["odds"] == 2.00
         assert alt_over_pick["odds"] == 1.95
+        assert alt_over_pick["result"] == "loss"
+        assert alt_under_pick["result"] == "win"
         assert btts_yes["result"] == "win"
         assert not any(c["home"] == "Gamma" and c["market_type"] == "btts" for c in candidates)
         assert home_pick["odds"] == 2.12
