@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 from config import settings
 from calibration import build_calibration
 from persistent_memory import load_remote, save_remote, status as memory_status
+from recency import record_period, record_weight
 
 
 def _normalize(db: Dict[str, Any]) -> Dict[str, Any]:
@@ -100,6 +101,34 @@ def league_bucket(comp: str) -> str:
     return "other"
 
 
+def _summary(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    n = len(rows)
+    wins = sum(1 for p in rows if p.get("result") == "win")
+    profit = round(sum(unit_profit(p) for p in rows), 2)
+    return {
+        "n": n,
+        "w": wins,
+        "profit": profit,
+        "wr": round(wins / n * 100, 1) if n else 0,
+        "roi": round(profit / n * 100, 1) if n else 0,
+    }
+
+
+def _weighted_summary(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    weighted_n = sum(record_weight(p) for p in rows)
+    weighted_wins = sum(record_weight(p) for p in rows if p.get("result") == "win")
+    weighted_profit = sum(unit_profit(p) * record_weight(p) for p in rows)
+    return {
+        "n": len(rows),
+        "weighted_n": round(weighted_n, 2),
+        "weighted_w": round(weighted_wins, 2),
+        "weighted_profit": round(weighted_profit, 2),
+        "weighted_wr": round(weighted_wins / weighted_n * 100, 1) if weighted_n else 0,
+        "weighted_roi": round(weighted_profit / weighted_n * 100, 1) if weighted_n else 0,
+        "roi": round(weighted_profit / weighted_n * 100, 1) if weighted_n else 0,
+    }
+
+
 def _group(rows: List[Dict[str, Any]], fn):
     out = {}
     for p in rows:
@@ -114,16 +143,39 @@ def _group(rows: List[Dict[str, Any]], fn):
     return out
 
 
+def _weighted_group(rows: List[Dict[str, Any]], fn):
+    grouped = {}
+    for p in rows:
+        grouped.setdefault(fn(p), []).append(p)
+    return {key: _weighted_summary(items) for key, items in grouped.items()}
+
+
 def build_learning(db: Dict[str, Any]) -> Dict[str, Any]:
     rows = settled_records(db, include_shadow=True)
     visible = settled_picks(db)
+    raw = _summary(rows)
+    weighted = _weighted_summary(rows)
     learning = {
         "samples": len(rows),
+        "wins": raw["w"],
+        "profit": raw["profit"],
+        "wr": raw["wr"],
+        "roi": raw["roi"],
         "visible_samples": len(visible),
         "shadow_samples": max(0, len(rows) - len(visible)),
         "by_market": _group(rows, lambda p: p.get("market_type", "?")),
         "by_odds": _group(rows, lambda p: odds_bucket(float(p.get("odds", 2.0) or 2.0))),
         "by_league": _group(rows, lambda p: league_bucket(p.get("competition", ""))),
+        "by_period": _group(rows, lambda p: record_period(p)),
+        "weighted_samples": weighted["weighted_n"],
+        "weighted_wins": weighted["weighted_w"],
+        "weighted_profit": weighted["weighted_profit"],
+        "weighted_winrate": weighted["weighted_wr"],
+        "weighted_roi": weighted["weighted_roi"],
+        "weighted_by_market": _weighted_group(rows, lambda p: p.get("market_type", "?")),
+        "weighted_by_odds": _weighted_group(rows, lambda p: odds_bucket(float(p.get("odds", 2.0) or 2.0))),
+        "weighted_by_league": _weighted_group(rows, lambda p: league_bucket(p.get("competition", ""))),
+        "weighted_by_period": _weighted_group(rows, lambda p: record_period(p)),
         "memory_backend": memory_status().get("message"),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }

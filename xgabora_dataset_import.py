@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from recency import PERIOD_LABELS, PERIOD_ORDER, data_weight_for_period, period_bucket
+
 
 SCORE_HOME_COLUMNS = ("FTHome", "FTHG")
 SCORE_AWAY_COLUMNS = ("FTAway", "FTAG")
@@ -34,11 +36,20 @@ class ImportStats:
     btts_crees: int = 0
     doublons_ignores: int = 0
     total_appris: int = 0
+    date_min_importee: str = ""
+    date_max_importee: str = ""
+    distribution_annuelle: Dict[str, int] = None
+    distribution_periode: Dict[str, int] = None
+    periode_dominante: str = ""
     poids_agents: Dict[str, float] = None
 
     def __post_init__(self):
         if self.poids_agents is None:
             self.poids_agents = {}
+        if self.distribution_annuelle is None:
+            self.distribution_annuelle = {}
+        if self.distribution_periode is None:
+            self.distribution_periode = {}
 
 
 def _value(row: Dict[str, Any], *names: str) -> str:
@@ -125,6 +136,21 @@ def best_odds(row: Dict[str, Any]) -> Dict[str, Tuple[Optional[float], str]]:
     }
 
 
+def has_h2h_odds(row: Dict[str, Any]) -> bool:
+    odds = best_odds(row)
+    return all(odds[key][0] is not None for key in ("h2h_home", "draw", "h2h_away"))
+
+
+def has_over_under_odds(row: Dict[str, Any]) -> bool:
+    odds = best_odds(row)
+    return odds["over25"][0] is not None and odds["under25"][0] is not None
+
+
+def has_btts_odds(row: Dict[str, Any]) -> bool:
+    odds = best_odds(row)
+    return odds["btts_yes"][0] is not None and odds["btts_no"][0] is not None
+
+
 def result_for_market(home_goals: int, away_goals: int, market_key: str) -> str:
     total = home_goals + away_goals
     won = {
@@ -192,6 +218,8 @@ def row_to_candidates(row: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]], s
 
     odds = best_odds(row)
     features = xgabora_features(row)
+    bucket = period_bucket(date_key)
+    weight = data_weight_for_period(bucket)
     specs = [
         ("h2h_home", "h2h", f"Victoire {home}", "home"),
         ("draw", "draw", "Match nul", "draw"),
@@ -229,6 +257,8 @@ def row_to_candidates(row: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]], s
             "shadow": True,
             "visible": False,
             "import_family": family,
+            "period_bucket": bucket,
+            "data_weight": weight,
             "agent_votes": votes,
             "agent_accepts": agent_accepts,
             "agent_rejects": agent_rejects,
@@ -257,21 +287,41 @@ def _candidate_key(candidate: Dict[str, Any]) -> tuple:
     )
 
 
+def _mark_imported_match(stats: ImportStats, date_key: str) -> None:
+    if not date_key:
+        return
+    stats.date_min_importee = min(stats.date_min_importee, date_key) if stats.date_min_importee else date_key
+    stats.date_max_importee = max(stats.date_max_importee, date_key) if stats.date_max_importee else date_key
+    year = date_key[:4]
+    stats.distribution_annuelle[year] = stats.distribution_annuelle.get(year, 0) + 1
+    bucket = period_bucket(date_key)
+    stats.distribution_periode[bucket] = stats.distribution_periode.get(bucket, 0) + 1
+    stats.periode_dominante = max(stats.distribution_periode.items(), key=lambda item: item[1])[0]
+
+
 def load_candidates(csv_path: str, limit: Optional[int] = None, date_from: Optional[str] = None, date_to: Optional[str] = None, competitions: Optional[Iterable[str]] = None) -> Tuple[List[Dict[str, Any]], ImportStats]:
     stats = ImportStats()
     candidates = []
     seen = set()
+    eligible_seen = 0
     wanted_competitions = {c.strip() for c in competitions or [] if c.strip()}
     with Path(csv_path).open(newline="", encoding="utf-8-sig") as fh:
         reader = csv.DictReader(fh)
         for row in reader:
-            if limit is not None and stats.matches_lus >= limit:
-                break
-            stats.matches_lus += 1
             competition = _value(row, "Division")
             if wanted_competitions and competition not in wanted_competitions:
                 stats.matches_ignores += 1
                 continue
+            raw_date_key = parse_date(_value(row, *DATE_COLUMNS))
+            if raw_date_key and not in_date_range(raw_date_key, date_from, date_to):
+                continue
+            if not raw_date_key and (date_from or date_to):
+                stats.matches_ignores += 1
+                continue
+            if limit is not None and eligible_seen >= limit:
+                break
+            eligible_seen += 1
+            stats.matches_lus += 1
             date_key, row_candidates, reason = row_to_candidates(row)
             if date_key and not in_date_range(date_key, date_from, date_to):
                 stats.matches_ignores += 1
@@ -304,6 +354,8 @@ def load_candidates(csv_path: str, limit: Optional[int] = None, date_from: Optio
                     stats.btts_crees += 1
             if added_for_match == 0:
                 stats.matches_ignores += 1
+            else:
+                _mark_imported_match(stats, date_key)
     return candidates, stats
 
 
@@ -383,6 +435,20 @@ def print_summary(stats: ImportStats, dry_run: bool) -> None:
     print(f"- Over/Under créés: {stats.over_under_crees}")
     print(f"- BTTS créés: {stats.btts_crees}")
     print(f"- Doublons ignorés: {stats.doublons_ignores}")
+    print(f"- Date min importée: {stats.date_min_importee or 'aucune'}")
+    print(f"- Date max importée: {stats.date_max_importee or 'aucune'}")
+    print("- Distribution annuelle importée:")
+    if stats.distribution_annuelle:
+        for year in sorted(stats.distribution_annuelle):
+            print(f"  - {year}: {stats.distribution_annuelle[year]}")
+    else:
+        print("  - aucune")
+    dominant = stats.periode_dominante
+    print(f"- Période dominante: {PERIOD_LABELS.get(dominant, dominant or 'aucune')}")
+    before_2015 = stats.distribution_periode.get("archive_pre2012", 0) + stats.distribution_periode.get("transition_2012_2014", 0)
+    imported_matches = sum(stats.distribution_periode.values())
+    if imported_matches and before_2015 / imported_matches > 0.5:
+        print("- Avertissement: plus de 50% des matchs importés sont avant 2015, poids réduit recommandé.")
     if dry_run:
         print("- Mode dry-run: aucune sauvegarde effectuée.")
     else:
@@ -404,6 +470,7 @@ def parse_args(argv=None):
     parser.add_argument("--competitions", default=None, help="Divisions séparées par virgules, ex: E0,SP1,I1,D1,F1")
     parser.add_argument("--dry-run", action="store_true", help="Analyse le CSV sans sauvegarder")
     parser.add_argument("--inspect-columns", action="store_true", help="Inspecte les colonnes Over/Under sur les 1000 premières lignes sans importer")
+    parser.add_argument("--inspect-dates", action="store_true", help="Inspecte dates, scores et cotes sans importer")
     return parser.parse_args(argv)
 
 
@@ -427,10 +494,74 @@ def inspect_columns(csv_path: str, limit: int = 1000) -> None:
         print(f"- Valeurs numériques {column}: {counts[column]}")
 
 
+def inspect_dates(csv_path: str) -> Dict[str, Any]:
+    report = {
+        "total_lignes": 0,
+        "matchs_score_final": 0,
+        "date_min": "",
+        "date_max": "",
+        "distribution_annuelle": {},
+        "matchs_h2h_odds": 0,
+        "matchs_over_under": 0,
+        "matchs_btts": 0,
+        "colonnes": {},
+    }
+    with Path(csv_path).open(newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        fieldnames = reader.fieldnames or []
+        report["colonnes"] = {
+            "dates": [c for c in DATE_COLUMNS if c in fieldnames],
+            "scores_home": [c for c in SCORE_HOME_COLUMNS if c in fieldnames],
+            "scores_away": [c for c in SCORE_AWAY_COLUMNS if c in fieldnames],
+            "h2h_odds": [c for c in ("OddHome", "OddDraw", "OddAway", "MaxHome", "MaxDraw", "MaxAway") if c in fieldnames],
+            "over_under": [c for c in ("Over25", "Under25", "MaxOver25", "MaxUnder25") if c in fieldnames],
+            "btts": [c for c in (*BTTS_YES_COLUMNS, *BTTS_NO_COLUMNS) if c in fieldnames],
+        }
+        for row in reader:
+            report["total_lignes"] += 1
+            date_key = parse_date(_value(row, *DATE_COLUMNS))
+            home_goals = parse_int(_value(row, *SCORE_HOME_COLUMNS))
+            away_goals = parse_int(_value(row, *SCORE_AWAY_COLUMNS))
+            if date_key:
+                report["date_min"] = min(report["date_min"], date_key) if report["date_min"] else date_key
+                report["date_max"] = max(report["date_max"], date_key) if report["date_max"] else date_key
+                year = date_key[:4]
+                report["distribution_annuelle"][year] = report["distribution_annuelle"].get(year, 0) + 1
+            if home_goals is not None and away_goals is not None:
+                report["matchs_score_final"] += 1
+            if has_h2h_odds(row):
+                report["matchs_h2h_odds"] += 1
+            if has_over_under_odds(row):
+                report["matchs_over_under"] += 1
+            if has_btts_odds(row):
+                report["matchs_btts"] += 1
+    return report
+
+
+def print_date_inspection(report: Dict[str, Any]) -> None:
+    print("Diagnostic dates xgabora")
+    print(f"- Nombre total de lignes: {report['total_lignes']}")
+    print(f"- Matchs avec score final: {report['matchs_score_final']}")
+    print(f"- Date min: {report['date_min'] or 'inconnue'}")
+    print(f"- Date max: {report['date_max'] or 'inconnue'}")
+    print(f"- Matchs avec cotes H2H exploitables: {report['matchs_h2h_odds']}")
+    print(f"- Matchs avec Over/Under exploitables: {report['matchs_over_under']}")
+    print(f"- Matchs avec BTTS exploitables: {report['matchs_btts']}")
+    print("- Colonnes détectées:")
+    for key, columns in report["colonnes"].items():
+        print(f"  - {key}: {', '.join(columns) if columns else 'aucune'}")
+    print("- Distribution par année:")
+    for year in sorted(report["distribution_annuelle"]):
+        print(f"  - {year}: {report['distribution_annuelle'][year]}")
+
+
 def main(argv=None):
     args = parse_args(argv)
     if args.inspect_columns:
         inspect_columns(args.csv_path)
+        return
+    if args.inspect_dates:
+        print_date_inspection(inspect_dates(args.csv_path))
         return
     competitions = args.competitions.split(",") if args.competitions else None
     candidates, load_stats = load_candidates(args.csv_path, args.limit, args.date_from, args.date_to, competitions)

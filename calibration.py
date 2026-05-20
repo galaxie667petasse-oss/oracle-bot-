@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 from segment_analysis import build_segment_report, candidate_segment_keys
+from recency import PERIOD_WEIGHTS
 
 
 def _num(value: Any, default: float = 0.0) -> float:
@@ -108,12 +109,12 @@ def _base_thresholds(samples: int) -> Dict[str, Any]:
 
 
 def _risk_entry(stat: Dict[str, Any], strong_roi: float, block_roi: float, strong_n: int, block_n: int) -> Dict[str, Any]:
-    n = int(stat.get("n", 0) or 0)
-    roi = _num(stat.get("roi"))
+    n = _num(stat.get("weighted_n", stat.get("n", 0)))
+    roi = _num(stat.get("weighted_roi", stat.get("roi", 0)))
     if n >= block_n and roi < block_roi:
-        return {"n": n, "roi": roi, "penalty": "blocage_top", "block_top": True}
+        return {"n": round(n, 2), "roi": roi, "penalty": "blocage_top", "block_top": True}
     if n >= strong_n and roi < strong_roi:
-        return {"n": n, "roi": roi, "penalty": "forte", "block_top": False}
+        return {"n": round(n, 2), "roi": roi, "penalty": "forte", "block_top": False}
     return {}
 
 
@@ -123,9 +124,13 @@ def build_calibration(db: Dict[str, Any], learning: Dict[str, Any] = None) -> Di
     samples = int(learning.get("samples", len(rows)) or 0)
     segment_report = build_segment_report(db)
     db["segment_report"] = segment_report
-    by_market = learning.get("by_market") or _group(rows, lambda p: p.get("market_type", "?"))
-    by_odds = learning.get("by_odds") or _group(rows, lambda p: odds_bucket(_num(p.get("odds"), 2.0)))
-    by_league = learning.get("by_league") or _group(rows, lambda p: league_bucket(p.get("competition", "")))
+    raw_by_market = learning.get("by_market") or _group(rows, lambda p: p.get("market_type", "?"))
+    raw_by_odds = learning.get("by_odds") or _group(rows, lambda p: odds_bucket(_num(p.get("odds"), 2.0)))
+    raw_by_league = learning.get("by_league") or _group(rows, lambda p: league_bucket(p.get("competition", "")))
+    by_market = learning.get("weighted_by_market") or raw_by_market
+    by_odds = learning.get("weighted_by_odds") or raw_by_odds
+    by_league = learning.get("weighted_by_league") or raw_by_league
+    by_period = learning.get("weighted_by_period") or learning.get("by_period") or {}
 
     calibration = _base_thresholds(samples)
     calibration.update({
@@ -138,6 +143,16 @@ def build_calibration(db: Dict[str, Any], learning: Dict[str, Any] = None) -> Di
         "segment_report_samples": segment_report.get("samples", 0),
         "positive_segments_count": len(segment_report.get("positive_segments", []) or []),
         "blocked_segments_count": len(segment_report.get("blocked_segments", []) or []),
+        "period_summary": by_period,
+        "weighted_samples": learning.get("weighted_samples", samples),
+        "weighted_by_market": by_market,
+        "weighted_by_odds": by_odds,
+        "weighted_by_period": by_period,
+        "recency_policy": {
+            "weights": dict(PERIOD_WEIGHTS),
+            "decision_priority": ["recent_2020_2023", "modern_2015_2019"],
+            "archive_rule": "archive_pre2012 ne suffit jamais à autoriser un top pick",
+        },
         "updated_at": datetime.now(timezone.utc).isoformat(),
     })
 
@@ -162,15 +177,15 @@ def build_calibration(db: Dict[str, Any], learning: Dict[str, Any] = None) -> Di
             if bucket == "very_high":
                 entry["block_top"] = True
                 calibration["confidence_cap_by_bucket"]["very_high"] = 52
-        n = int(stat.get("n", 0) or 0)
-        roi = _num(stat.get("roi"))
+        n = _num(stat.get("weighted_n", stat.get("n", 0)))
+        roi = _num(stat.get("weighted_roi", stat.get("roi", 0)))
         if bucket == "low" and n >= 100 and roi > 0:
             calibration["positive_buckets"].append("low")
             calibration["confidence_cap_by_bucket"]["low"] = 74
 
-    calibration["by_market"] = by_market
-    calibration["by_odds"] = by_odds
-    calibration["by_league"] = by_league
+    calibration["by_market"] = raw_by_market
+    calibration["by_odds"] = raw_by_odds
+    calibration["by_league"] = raw_by_league
     return calibration
 
 
