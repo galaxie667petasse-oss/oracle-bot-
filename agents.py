@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Tuple
-from calibration import league_bucket, odds_bucket
+from calibration import league_bucket, odds_bucket, segment_adjustment_for_pick
 
 AGENTS = ("marche", "valeur", "risque", "rythme", "memoire", "contradiction")
 AGENT_LABELS = {
@@ -212,15 +212,26 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     lg = league_bucket(p.get("competition", ""))
     bucket = odds_bucket(odds)
     calibration = db.get("calibration", {}) or {}
+    segment = segment_adjustment_for_pick(p, db)
+    segment_adj = _num(segment.get("adjustment"))
+    segment_positive = bool(segment.get("positive_reliable"))
+    segment_block = bool(segment.get("block_top"))
     market_risk = (calibration.get("banned_or_penalized_markets", {}) or {}).get(typ, {}) or {}
     bucket_risk = (calibration.get("banned_or_penalized_odds_buckets", {}) or {}).get(bucket, {}) or {}
     confidence_cap = (calibration.get("confidence_cap_by_bucket", {}) or {}).get(bucket)
-    if confidence_cap:
-        conf = min(conf, _num(confidence_cap, conf))
+    if segment_block:
+        danger += 8
+    elif segment_adj < 0:
+        danger += 3
+    elif segment_adj > 0:
+        danger = max(0, danger - 2)
+        conf += min(2, segment_adj * 2)
     if market_risk:
         danger += 6 if market_risk.get("block_top") else 3
     if bucket_risk:
         danger += 7 if bucket_risk.get("block_top") else 4
+    if confidence_cap:
+        conf = min(conf, _num(confidence_cap, conf))
     flags = outlier_flags(p)
     fair = fair_odds(_num(p.get("p_fused"), 0))
     votes = {}
@@ -228,6 +239,12 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     m_score = (2 if edge >= 2.5 else 1 if edge >= 1.0 else -1) + (1 if 1.55 <= odds <= 2.35 else 0) - (2 if odds >= 3.2 else 0)
     if flags:
         m_score -= 1
+    if segment_block:
+        m_score -= 2
+    elif segment_adj < 0:
+        m_score -= 1
+    elif segment_adj > 0:
+        m_score += 1
     if market_risk:
         m_score -= 2 if market_risk.get("block_top") else 1
     if bucket_risk:
@@ -235,11 +252,19 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     market_note = f"écart {edge}% · cote juste estimée {fair}"
     if market_risk or bucket_risk:
         market_note += " · historique défavorable"
+    if segment.get("n"):
+        market_note += f" · segment {segment.get('roi')}% sur {segment.get('n')}"
     votes["marche"] = {"vote": "ACCEPTE" if m_score >= 2 else "SURVEILLANCE" if m_score >= 0 else "REFUSE", "score": m_score, "note": market_note}
 
     v_score = (3 if ev >= 2 else 2 if ev >= 0.8 else 1 if ev >= 0 else -3) + (1 if value >= 4 else -1 if value < 0 else 0)
     if ev >= 25 and odds >= 3.2:
         v_score -= 2
+    if segment_block:
+        v_score -= 2
+    elif segment_adj < 0:
+        v_score -= 1
+    elif segment_adj > 0:
+        v_score += 0.5
     if market_risk.get("block_top") or bucket_risk.get("block_top"):
         v_score -= 2
     elif market_risk or bucket_risk:
@@ -249,6 +274,12 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     r_score = (2 if danger <= 38 else 1 if danger <= 55 else -2) - (2 if typ == "draw" else 1 if typ == "h2h" else 0) - (2 if lg == "volatile" else 0) - (2 if odds >= 3.5 else 1 if odds >= 2.8 else 0)
     if flags:
         r_score -= 1
+    if segment_block:
+        r_score -= 2
+    elif segment_adj < 0:
+        r_score -= 1
+    elif segment_adj > 0:
+        r_score += 0.5
     if market_risk:
         r_score -= 2 if market_risk.get("block_top") else 1
     if bucket_risk:
@@ -266,6 +297,9 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     if bucket_risk:
         mem_score -= 2 if bucket_risk.get("block_top") else 1
         notes.append(f"{bucket}: ROI historique {bucket_risk.get('roi')}%")
+    if segment.get("n"):
+        mem_score += segment_adj
+        notes.append(f"segment {segment.get('label')}: ROI {segment.get('roi')}% sur {segment.get('n')}")
     votes["memoire"] = {"vote": "ACCEPTE" if mem_score >= 2 else "SURVEILLANCE" if mem_score >= -1 else "REFUSE", "score": mem_score, "note": "; ".join(notes) or "mémoire neutre"}
 
     c_score = 1
@@ -282,6 +316,12 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     if danger > 55:
         c_score -= 2
         reasons.append("danger élevé")
+    if segment_block:
+        c_score -= 2
+        reasons.append("segment historique à bloquer")
+    elif segment_adj < 0:
+        c_score -= 1
+        reasons.append("segment historique défavorable")
     votes["contradiction"] = {"vote": "ACCEPTE" if c_score >= 1 else "SURVEILLANCE" if c_score >= -2 else "REFUSE", "score": c_score, "note": ", ".join(reasons) or "pas d'alerte majeure"}
 
     weights = db.get("agent_weights") or agent_weights(db)
@@ -312,15 +352,20 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
         decision, stake = "REFUSE", 0
     draw_stats = (calibration.get("by_market", {}) or {}).get("draw", {}) or {}
     draw_memory_positive = int(draw_stats.get("n", 0) or 0) >= 100 and _num(draw_stats.get("roi")) > 3
-    block_top = bool(market_risk.get("block_top") or bucket_risk.get("block_top"))
+    h2h_segment_positive = typ == "h2h" and segment_positive
+    draw_segment_positive = typ == "draw" and segment_positive
+    very_high_block = bucket == "very_high" and bool(bucket_risk.get("block_top"))
+    market_block = bool(market_risk.get("block_top")) and not (h2h_segment_positive or draw_segment_positive)
+    bucket_block = bool(bucket_risk.get("block_top")) and not (segment_positive and bucket != "very_high")
+    block_top = bool(segment_block or very_high_block or market_block or bucket_block)
     if decision == "ACCEPTE":
         top_blocked = (
             ev < min_ev_top
             or weighted < min_score_top
             or danger > max_danger_top
             or block_top
-            or (typ == "h2h" and odds > max_h2h_top)
-            or (typ == "draw" and (not draw_memory_positive or max_draw_top <= 0 or odds > max_draw_top))
+            or (typ == "h2h" and odds > max_h2h_top and not h2h_segment_positive)
+            or (typ == "draw" and not draw_segment_positive and (not draw_memory_positive or max_draw_top <= 0 or odds > max_draw_top))
         )
         if top_blocked:
             decision, stake = ("SURVEILLANCE", 0) if weighted >= max_obs_negative and rejects <= 2 else ("REFUSE", 0)
@@ -330,7 +375,27 @@ def council(p: Dict[str, Any], db: Dict[str, Any]) -> Dict[str, Any]:
     summary = "Signal intéressant, conservé en observation." if decision == "SURVEILLANCE" else "Signal accepté par le conseil, à suivre avec prudence." if decision == "ACCEPTE" else "Marché refusé par prudence."
     if flags:
         summary += " Alerte: " + ", ".join(flags) + "."
-    return {"decision": decision, "confidence": int(conf), "danger": int(danger), "council_score": weighted, "agent_votes": votes, "agent_accepts": accepts, "agent_rejects": rejects, "agent_weights": weights, "stake_pct": stake, "quality": grade, "fair_odds": fair, "outlier_flags": flags, "resume": summary, "calibration_max_observation_negative_score": max_obs_negative}
+    return {
+        "decision": decision,
+        "confidence": int(conf),
+        "danger": int(danger),
+        "council_score": weighted,
+        "agent_votes": votes,
+        "agent_accepts": accepts,
+        "agent_rejects": rejects,
+        "agent_weights": weights,
+        "stake_pct": stake,
+        "quality": grade,
+        "fair_odds": fair,
+        "outlier_flags": flags,
+        "resume": summary,
+        "segment_key": segment.get("segment_key", ""),
+        "segment_label": segment.get("label", ""),
+        "segment_roi": segment.get("roi", 0),
+        "segment_n": segment.get("n", 0),
+        "segment_note": segment.get("note", "neutre"),
+        "calibration_max_observation_negative_score": max_obs_negative,
+    }
 
 
 def _keep_observation(p: Dict[str, Any]) -> bool:

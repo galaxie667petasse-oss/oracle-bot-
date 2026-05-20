@@ -11,6 +11,7 @@ def _normalize(db: Dict[str, Any]) -> Dict[str, Any]:
     db.setdefault("learning", {})
     db.setdefault("agent_weights", {})
     db.setdefault("calibration", {})
+    db.setdefault("segment_report", {})
     return db
 
 

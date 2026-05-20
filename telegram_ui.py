@@ -2,6 +2,7 @@ from config import settings
 from utils import esc
 from store import league_bucket, odds_bucket, settled_picks, unit_profit, settled_records
 from agents import AGENTS, AGENT_LABELS, agent_outcome_counts
+from segment_analysis import build_segment_report
 
 
 def agent_lines(p):
@@ -149,6 +150,11 @@ def pick_card(rank, p, section):
     alert = "\n🚨 <b>Alerte</b> : " + esc(", ".join(flags)) if flags else ""
     resume = p.get("resume") or "Signal analysé par le conseil."
     version = p.get("version") or "V5.2"
+    segment_line = ""
+    if p.get("segment_n"):
+        roi = float(p.get("segment_roi", 0) or 0)
+        tone = "favorable" if roi > 2 else "défavorable" if roi < -8 else "neutre"
+        segment_line = f"\n📚 Segment historique : <b>{tone}</b> · {esc(p.get('segment_label', 'segment'))} · ROI {p.get('segment_roi')}% · n={p.get('segment_n')}"
     return f"""{medal} <b>{esc(p['home'])} vs {esc(p['away'])}</b>
 🏆 {esc(p['competition'])} · ⏰ {esc(p['heure'])} · Qualité {esc(p.get('quality','B-'))}
 🧬 Oracle {esc(version)} · <b>{section}</b> · Décision <b>{esc(p.get('decision','SURVEILLANCE'))}</b>
@@ -157,7 +163,7 @@ def pick_card(rank, p, section):
 🧩 Marché : {esc(market_fr(p['market_type']))} · ⚡ cote {p['odds']}
 📊 Confiance <b>{p['confidence']}%</b> · ⚠️ Danger <b>{p['danger']}%</b>
 💎 Valeur {p['value_score']} · EV <b>{p['ev_pct']}%</b> · cote juste estimée {p.get('fair_odds','?')}
-🗳 Score conseil {p.get('council_score', 0)} · ✅ {p.get('agent_accepts', 0)} / ❌ {p.get('agent_rejects', 0)}
+🗳 Score conseil {p.get('council_score', 0)} · ✅ {p.get('agent_accepts', 0)} / ❌ {p.get('agent_rejects', 0)}{segment_line}
 💰 Mise : {stake_line}{alert}
 
 🧾 <b>Résumé</b>
@@ -221,4 +227,41 @@ def stats_text(db):
     if alert:
         lines.append("")
         lines.append(alert)
+    return "\n".join(lines)
+
+
+def _segment_line(rank, segment):
+    return (
+        f"{rank}. {esc(segment.get('label', '?'))} — "
+        f"ROI {segment.get('roi', 0)}%, n={segment.get('n', 0)}, "
+        f"réussite {segment.get('winrate', 0)}%, cote moy. {segment.get('average_odds', 0)}"
+    )
+
+
+def segments_text(db):
+    report = db.get("segment_report") or build_segment_report(db)
+    samples = int(report.get("samples", 0) or 0)
+    positives = report.get("positive_segments", []) or []
+    best = report.get("best_segments", []) or []
+    worst = report.get("worst_segments", []) or []
+    lines = [
+        "📊 <b>SEGMENTS HISTORIQUES</b>",
+        f"Échantillons: <b>{samples}</b>",
+    ]
+    if positives:
+        lines.append(f"Segments positifs fiables: <b>{len(positives)}</b>")
+    else:
+        lines.append("Aucun segment positif fiable détecté.")
+    lines.extend(["", "<b>Moins mauvais / positifs</b>"])
+    if best:
+        lines.extend(_segment_line(i, seg) for i, seg in enumerate(best[:5], 1))
+    else:
+        lines.append("pas encore assez de volume exploitable")
+    lines.extend(["", "<b>À éviter</b>"])
+    if worst:
+        lines.extend(_segment_line(i, seg) for i, seg in enumerate(worst[:5], 1))
+    else:
+        lines.append("aucun segment négatif fort détecté")
+    lines.append("")
+    lines.append("Lecture prudente : un segment favorable ne force jamais un pari, il limite seulement la pénalité si le reste du signal est solide.")
     return "\n".join(lines)

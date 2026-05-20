@@ -66,6 +66,26 @@ python xgabora_dataset_import.py data/MATCHES.csv
 
 Après chaque étape, vérifier `/stats`, `/memoire` et `/diagnostic`. L'importeur ignore les candidats déjà présents avec une clé stable `date + home + away + market_type + pari + odds`, donc il ne faut pas réimporter volontairement les mêmes lignes pour chercher à gonfler l'échantillon.
 
+## Analyse de segments
+
+Après un import large, le ROI global peut rester négatif sans rendre le projet inutile. Il indique surtout que les marchés bruts sont difficiles et que le bot doit refuser beaucoup.
+
+La commande Telegram `/segments` cherche des sous-groupes plus précis :
+
+- marché seul ;
+- tranche de cote seule ;
+- marché + tranche de cote ;
+- marché + ligue ;
+- marché + tranche + ligue ;
+- domicile/extérieur en H2H ;
+- favori/outsider ;
+- profils Elo si disponibles ;
+- période récente ou ancienne.
+
+Un segment n'est utilisé pour ajuster une décision que s'il a assez de volume. Sous 100 résultats, il est ignoré pour la décision. Entre 100 et 300, il reste un signal faible. À partir de 300, il devient exploitable, mais seulement comme garde-fou statistique.
+
+Un segment positif donne au maximum un petit bonus prudent. Il ne peut jamais compenser une EV négative, un danger trop haut, une très haute cote bloquée ou un marché draw globalement mauvais sans vrai segment draw positif. Le but reste de refuser mieux, pas de forcer plus de paris.
+
 ## Tests simples
 
 ```bash
@@ -73,5 +93,7 @@ python test_settlement.py
 python test_shadow_learning.py
 python test_agent_weights.py
 python test_calibration.py
+python test_segment_analysis.py
+python test_segments_text.py
 python test_xgabora_dataset_import.py
 ```

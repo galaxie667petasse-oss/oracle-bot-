@@ -11,6 +11,10 @@ SCORE_HOME_COLUMNS = ("FTHome", "FTHG")
 SCORE_AWAY_COLUMNS = ("FTAway", "FTAG")
 DATE_COLUMNS = ("MatchDate", "Date")
 REQUIRED_MATCH_COLUMNS = ("Division", "HomeTeam", "AwayTeam")
+OVER25_COLUMNS = ("MaxOver25", "Max>2.5", "AvgOver25", "Avg>2.5", "OddOver25", "Over25", "O25", "B365>2.5", "P>2.5")
+UNDER25_COLUMNS = ("MaxUnder25", "Max<2.5", "AvgUnder25", "Avg<2.5", "OddUnder25", "Under25", "U25", "B365<2.5", "P<2.5")
+BTTS_YES_COLUMNS = ("MaxBTTSYes", "AvgBTTSYes", "B365BTTSYes", "BTTSYes")
+BTTS_NO_COLUMNS = ("MaxBTTSNo", "AvgBTTSNo", "B365BTTSNo", "BTTSNo")
 
 
 @dataclass
@@ -24,6 +28,7 @@ class ImportStats:
     h2h_crees: int = 0
     draw_crees: int = 0
     over_under_crees: int = 0
+    btts_crees: int = 0
     doublons_ignores: int = 0
     total_appris: int = 0
     poids_agents: Dict[str, float] = None
@@ -110,8 +115,10 @@ def best_odds(row: Dict[str, Any]) -> Dict[str, Tuple[Optional[float], str]]:
         "h2h_home": odds_from_columns(row, "MaxHome", "OddHome"),
         "draw": odds_from_columns(row, "MaxDraw", "OddDraw"),
         "h2h_away": odds_from_columns(row, "MaxAway", "OddAway"),
-        "over25": odds_from_columns(row, "MaxOver25", "Over25"),
-        "under25": odds_from_columns(row, "MaxUnder25", "Under25"),
+        "over25": odds_from_columns(row, *OVER25_COLUMNS),
+        "under25": odds_from_columns(row, *UNDER25_COLUMNS),
+        "btts_yes": odds_from_columns(row, *BTTS_YES_COLUMNS),
+        "btts_no": odds_from_columns(row, *BTTS_NO_COLUMNS),
     }
 
 
@@ -123,6 +130,8 @@ def result_for_market(home_goals: int, away_goals: int, market_key: str) -> str:
         "h2h_away": away_goals > home_goals,
         "over25": total >= 3,
         "under25": total <= 2,
+        "btts_yes": home_goals > 0 and away_goals > 0,
+        "btts_no": home_goals == 0 or away_goals == 0,
     }.get(market_key, False)
     return "win" if won else "loss"
 
@@ -154,7 +163,7 @@ def _training_votes(market_type: str, odds: float, features: Dict[str, Any]) -> 
     elo_diff = float(features.get("elo_diff", 0) or 0)
     market_score = 1 if 1.45 <= odds <= 2.60 else -1 if odds >= 4.0 else 0
     risk_score = -2 if odds >= 3.8 else -1 if odds >= 3.1 else 1
-    rhythm_score = 1 if market_type == "total" else 0
+    rhythm_score = 1 if market_type in ("total", "btts") else 0
     value_score = 0
     if market_type == "h2h" and abs(elo_diff) >= 80 and odds >= 1.7:
         value_score = 1
@@ -162,7 +171,7 @@ def _training_votes(market_type: str, odds: float, features: Dict[str, Any]) -> 
         "marche": {"vote": "ACCEPTE" if market_score > 0 else "REFUSE" if market_score < 0 else "SURVEILLANCE", "score": market_score, "note": "cote historique réelle"},
         "valeur": {"vote": "ACCEPTE" if value_score > 0 else "SURVEILLANCE", "score": value_score, "note": "signal Elo disponible" if value_score else "pas de value calculée"},
         "risque": {"vote": "ACCEPTE" if risk_score > 0 else "REFUSE" if risk_score < 0 else "SURVEILLANCE", "score": risk_score, "note": "risque estimé par niveau de cote"},
-        "rythme": {"vote": "ACCEPTE" if rhythm_score > 0 else "SURVEILLANCE", "score": rhythm_score, "note": "marché buts" if market_type == "total" else "rythme non modélisé"},
+        "rythme": {"vote": "ACCEPTE" if rhythm_score > 0 else "SURVEILLANCE", "score": rhythm_score, "note": "marché buts" if market_type in ("total", "btts") else "rythme non modélisé"},
         "memoire": {"vote": "SURVEILLANCE", "score": 0, "note": "échantillon import xgabora"},
         "contradiction": {"vote": "REFUSE" if odds >= 4.0 else "SURVEILLANCE", "score": -1 if odds >= 4.0 else 0, "note": "cote très haute" if odds >= 4.0 else "pas d'alerte majeure"},
     }
@@ -186,6 +195,8 @@ def row_to_candidates(row: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]], s
         ("h2h_away", "h2h", f"Victoire {away}", "away"),
         ("over25", "total", "Plus de 2.5 buts", "over_under"),
         ("under25", "total", "Moins de 2.5 buts", "over_under"),
+        ("btts_yes", "btts", "Les deux équipes marquent - Oui", "btts"),
+        ("btts_no", "btts", "Les deux équipes marquent - Non", "btts"),
     ]
     candidates = []
     for market_key, market_type, pari, family in specs:
@@ -282,6 +293,8 @@ def load_candidates(csv_path: str, limit: Optional[int] = None, date_from: Optio
                     stats.draw_crees += 1
                 elif family == "over_under":
                     stats.over_under_crees += 1
+                elif family == "btts":
+                    stats.btts_crees += 1
             if added_for_match == 0:
                 stats.matches_ignores += 1
     return candidates, stats
@@ -292,6 +305,7 @@ def import_candidates(candidates: List[Dict[str, Any]], dry_run: bool = False) -
     stats.h2h_crees = sum(1 for c in candidates if c.get("import_family") in ("home", "away"))
     stats.draw_crees = sum(1 for c in candidates if c.get("import_family") == "draw")
     stats.over_under_crees = sum(1 for c in candidates if c.get("import_family") == "over_under")
+    stats.btts_crees = sum(1 for c in candidates if c.get("import_family") == "btts")
     if dry_run:
         return stats
 
@@ -356,6 +370,7 @@ def print_summary(stats: ImportStats, dry_run: bool) -> None:
     print(f"- H2H créés: {stats.h2h_crees}")
     print(f"- Draw créés: {stats.draw_crees}")
     print(f"- Over/Under créés: {stats.over_under_crees}")
+    print(f"- BTTS créés: {stats.btts_crees}")
     print(f"- Doublons ignorés: {stats.doublons_ignores}")
     if dry_run:
         print("- Mode dry-run: aucune sauvegarde effectuée.")
