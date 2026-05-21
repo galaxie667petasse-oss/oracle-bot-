@@ -2,6 +2,7 @@ import argparse
 import csv
 import math
 import os
+from itertools import groupby
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -9,12 +10,72 @@ from backtest_evaluator import all_settled_records, pricing_records
 from pricing import expected_value, fair_odds, implied_probability
 from recency import period_bucket
 from segment_analysis import h2h_side, odds_bucket
+from xgabora_dataset_import import DATE_COLUMNS, SCORE_AWAY_COLUMNS, SCORE_HOME_COLUMNS, _value, parse_date, parse_int, xgabora_match_stats
+
+
+POST_MATCH_FEATURES = [
+    "home_shots",
+    "away_shots",
+    "shots_diff",
+    "home_target",
+    "away_target",
+    "target_diff",
+    "total_shots",
+    "total_target",
+    "home_corners",
+    "away_corners",
+    "corners_diff",
+    "total_corners",
+    "home_yellow",
+    "away_yellow",
+    "cards_diff",
+    "home_red",
+    "away_red",
+    "red_card_any",
+    "ht_home",
+    "ht_away",
+    "ht_total_goals",
+    "ft_total_goals",
+    "second_half_goals",
+    "home_clean_sheet",
+    "away_clean_sheet",
+    "both_teams_scored",
+    "over_2_5_result",
+    "under_2_5_result",
+    "attacking_pressure_home",
+    "attacking_pressure_away",
+    "attacking_pressure_diff",
+    "shot_accuracy_home",
+    "shot_accuracy_away",
+    "shot_accuracy_diff",
+    "tempo_proxy",
+    "discipline_risk",
+]
+
+ROLLING_FEATURES = [
+    "home_team_goals_for_avg5",
+    "home_team_goals_against_avg5",
+    "away_team_goals_for_avg5",
+    "away_team_goals_against_avg5",
+    "home_team_shots_avg5",
+    "away_team_shots_avg5",
+    "home_team_target_avg5",
+    "away_team_target_avg5",
+    "home_team_corners_avg5",
+    "away_team_corners_avg5",
+    "home_team_btts_rate5",
+    "away_team_btts_rate5",
+    "home_team_over25_rate5",
+    "away_team_over25_rate5",
+]
 
 
 FEATURE_COLUMNS = [
     "date",
     "year",
     "period_bucket",
+    "home",
+    "away",
     "market_type",
     "pari",
     "result",
@@ -50,6 +111,8 @@ FEATURE_COLUMNS = [
     "is_away_pick",
     "is_over",
     "is_under",
+    *POST_MATCH_FEATURES,
+    *ROLLING_FEATURES,
     "competition",
 ]
 
@@ -117,6 +180,21 @@ def _diff(left: Any, right: Any) -> Optional[float]:
     return left_number - right_number
 
 
+def _sum_optional(*values: Any) -> Optional[float]:
+    numbers = [_num(value) for value in values]
+    if any(value is None for value in numbers):
+        return None
+    return sum(float(value) for value in numbers)
+
+
+def _safe_ratio(numerator: Any, denominator: Any) -> Optional[float]:
+    num = _num(numerator)
+    den = _num(denominator)
+    if num is None or den is None or den == 0:
+        return None
+    return num / den
+
+
 def _elo_diff(record: Dict[str, Any]) -> Optional[float]:
     existing = _num(record.get("elo_diff"))
     if existing is not None:
@@ -174,16 +252,193 @@ def _complete_pricing(record: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def build_feature_rows(db: Dict[str, Any], modern_from: str = "2015-01-01") -> List[Dict[str, Any]]:
-    records = [
+def match_key_from_values(date_key: Any, home: Any, away: Any) -> Tuple[str, str, str]:
+    return (
+        str(date_key or ""),
+        str(home or "").strip().lower(),
+        str(away or "").strip().lower(),
+    )
+
+
+def _match_key(record: Dict[str, Any]) -> Tuple[str, str, str]:
+    return match_key_from_values(_date_key(record), record.get("home"), record.get("away"))
+
+
+def _score_goals(record: Dict[str, Any]) -> Tuple[Optional[int], Optional[int]]:
+    score = str(record.get("score") or "").strip()
+    if "-" in score:
+        left, right = score.split("-", 1)
+        try:
+            return int(float(left.strip())), int(float(right.strip()))
+        except ValueError:
+            pass
+    ft_total = _num(record.get("ft_total_goals"))
+    if ft_total is not None:
+        return None, None
+    return None, None
+
+
+def _auto_matches_csv_path() -> Optional[Path]:
+    for candidate in (Path("data/MATCHES.csv"), Path("data/Matches.csv")):
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def load_match_csv_context(csv_path: Optional[str] = None) -> Dict[Tuple[str, str, str], Dict[str, Any]]:
+    path = Path(csv_path) if csv_path else _auto_matches_csv_path()
+    if not path or not path.exists():
+        return {}
+    context: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
+    with path.open(newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            date_key = parse_date(_value(row, *DATE_COLUMNS))
+            home = _value(row, "HomeTeam")
+            away = _value(row, "AwayTeam")
+            home_goals = parse_int(_value(row, *SCORE_HOME_COLUMNS))
+            away_goals = parse_int(_value(row, *SCORE_AWAY_COLUMNS))
+            if not date_key or not home or not away or home_goals is None or away_goals is None:
+                continue
+            stats = xgabora_match_stats(row, home_goals, away_goals)
+            stats.update({
+                "score": f"{home_goals}-{away_goals}",
+                "home": home,
+                "away": away,
+            })
+            context[match_key_from_values(date_key, home, away)] = stats
+    return context
+
+
+def _merge_match_context(record: Dict[str, Any], match_context: Dict[Tuple[str, str, str], Dict[str, Any]]) -> Dict[str, Any]:
+    out = dict(record)
+    context = match_context.get(_match_key(record)) or {}
+    for key, value in context.items():
+        if out.get(key) in (None, "") and value is not None:
+            out[key] = value
+    return out
+
+
+def _post_match_fields(record: Dict[str, Any]) -> Dict[str, Optional[float]]:
+    fields = {key: _rounded(record.get(key), 6) for key in POST_MATCH_FEATURES}
+    home_shots = _num(record.get("home_shots"))
+    away_shots = _num(record.get("away_shots"))
+    home_target = _num(record.get("home_target"))
+    away_target = _num(record.get("away_target"))
+    total_shots = _num(record.get("total_shots"))
+    total_corners = _num(record.get("total_corners"))
+    home_yellow = _num(record.get("home_yellow"))
+    away_yellow = _num(record.get("away_yellow"))
+    home_red = _num(record.get("home_red"))
+    away_red = _num(record.get("away_red"))
+    pressure_home = _sum_optional(home_shots, 2 * home_target if home_target is not None else None)
+    pressure_away = _sum_optional(away_shots, 2 * away_target if away_target is not None else None)
+    fields["attacking_pressure_home"] = _rounded(pressure_home)
+    fields["attacking_pressure_away"] = _rounded(pressure_away)
+    fields["attacking_pressure_diff"] = _rounded(_diff(pressure_home, pressure_away))
+    fields["shot_accuracy_home"] = _rounded(_safe_ratio(home_target, home_shots))
+    fields["shot_accuracy_away"] = _rounded(_safe_ratio(away_target, away_shots))
+    fields["shot_accuracy_diff"] = _rounded(_diff(fields["shot_accuracy_home"], fields["shot_accuracy_away"]))
+    fields["tempo_proxy"] = _rounded(_sum_optional(total_shots, total_corners))
+    total_yellows = _sum_optional(home_yellow, away_yellow)
+    total_reds = _sum_optional(home_red, away_red)
+    fields["discipline_risk"] = _rounded(_sum_optional(total_yellows, 2 * total_reds if total_reds is not None else None))
+    return fields
+
+
+def _avg_last(history: List[Dict[str, Any]], key: str, limit: int = 5) -> Optional[float]:
+    values = [_num(item.get(key)) for item in history[-limit:]]
+    clean = [value for value in values if value is not None]
+    if not clean:
+        return None
+    return sum(clean) / len(clean)
+
+
+def _unique_match_records(records: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    matches: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
+    for record in records:
+        key = _match_key(record)
+        if not key[0] or not key[1] or not key[2]:
+            continue
+        if key not in matches:
+            matches[key] = record
+    return sorted(matches.values(), key=lambda record: (_date_key(record), str(record.get("home") or ""), str(record.get("away") or "")))
+
+
+def rolling_feature_context(records: Iterable[Dict[str, Any]]) -> Dict[Tuple[str, str, str], Dict[str, Optional[float]]]:
+    history: Dict[str, List[Dict[str, Any]]] = {}
+    context: Dict[Tuple[str, str, str], Dict[str, Optional[float]]] = {}
+    matches = _unique_match_records(records)
+
+    for date_key, day_iter in groupby(matches, key=_date_key):
+        day_matches = list(day_iter)
+        for match in day_matches:
+            home = str(match.get("home") or "")
+            away = str(match.get("away") or "")
+            home_history = history.get(home, [])
+            away_history = history.get(away, [])
+            context[_match_key(match)] = {
+                "home_team_goals_for_avg5": _avg_last(home_history, "goals_for"),
+                "home_team_goals_against_avg5": _avg_last(home_history, "goals_against"),
+                "away_team_goals_for_avg5": _avg_last(away_history, "goals_for"),
+                "away_team_goals_against_avg5": _avg_last(away_history, "goals_against"),
+                "home_team_shots_avg5": _avg_last(home_history, "shots"),
+                "away_team_shots_avg5": _avg_last(away_history, "shots"),
+                "home_team_target_avg5": _avg_last(home_history, "target"),
+                "away_team_target_avg5": _avg_last(away_history, "target"),
+                "home_team_corners_avg5": _avg_last(home_history, "corners"),
+                "away_team_corners_avg5": _avg_last(away_history, "corners"),
+                "home_team_btts_rate5": _avg_last(home_history, "btts"),
+                "away_team_btts_rate5": _avg_last(away_history, "btts"),
+                "home_team_over25_rate5": _avg_last(home_history, "over25"),
+                "away_team_over25_rate5": _avg_last(away_history, "over25"),
+            }
+
+        for match in day_matches:
+            home_goals, away_goals = _score_goals(match)
+            if home_goals is None or away_goals is None:
+                continue
+            home = str(match.get("home") or "")
+            away = str(match.get("away") or "")
+            total_goals = home_goals + away_goals
+            btts = 1 if home_goals > 0 and away_goals > 0 else 0
+            over25 = 1 if total_goals >= 3 else 0
+            history.setdefault(home, []).append({
+                "goals_for": home_goals,
+                "goals_against": away_goals,
+                "shots": _num(match.get("home_shots")),
+                "target": _num(match.get("home_target")),
+                "corners": _num(match.get("home_corners")),
+                "btts": btts,
+                "over25": over25,
+            })
+            history.setdefault(away, []).append({
+                "goals_for": away_goals,
+                "goals_against": home_goals,
+                "shots": _num(match.get("away_shots")),
+                "target": _num(match.get("away_target")),
+                "corners": _num(match.get("away_corners")),
+                "btts": btts,
+                "over25": over25,
+            })
+    return context
+
+
+def build_feature_rows(db: Dict[str, Any], modern_from: str = "2015-01-01", matches_csv: Optional[str] = None) -> List[Dict[str, Any]]:
+    raw_records = [
         record for record in all_settled_records(db)
-        if record.get("result") in ("win", "loss") and _date_key(record) >= modern_from
+        if record.get("result") in ("win", "loss")
     ]
+    match_context = load_match_csv_context(matches_csv)
+    records = [_merge_match_context(record, match_context) for record in raw_records]
     priced_records, _instances = pricing_records(records)
     priced_by_key = {_record_key(record): record for record in priced_records}
+    rolling_context = rolling_feature_context(records)
 
     rows: List[Dict[str, Any]] = []
     for original in records:
+        if _date_key(original) < modern_from:
+            continue
         record = _complete_pricing(priced_by_key.get(_record_key(original), original))
         date_key = _date_key(record)
         year = _year(date_key)
@@ -195,11 +450,15 @@ def build_feature_rows(db: Dict[str, Any], modern_from: str = "2015-01-01") -> L
         elo_diff = _elo_diff(record)
         form3_diff = _diff(record.get("form3_home"), record.get("form3_away"))
         form5_diff = _diff(record.get("form5_home"), record.get("form5_away"))
+        post_match = _post_match_fields(record)
+        rolling = {key: _rounded(value) for key, value in (rolling_context.get(_match_key(record)) or {}).items()}
 
         rows.append({
             "date": date_key,
             "year": year,
             "period_bucket": record.get("period_bucket") or period_bucket(date_key),
+            "home": record.get("home") or "",
+            "away": record.get("away") or "",
             "market_type": market_type,
             "pari": record.get("pari") or "",
             "result": record.get("result") or "",
@@ -235,6 +494,8 @@ def build_feature_rows(db: Dict[str, Any], modern_from: str = "2015-01-01") -> L
             "is_away_pick": 1 if side == "away" else 0,
             "is_over": 1 if total_side == "over" else 0,
             "is_under": 1 if total_side == "under" else 0,
+            **post_match,
+            **rolling,
             "competition": record.get("competition") or "",
         })
     return rows
@@ -254,17 +515,25 @@ def summarize_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     distribution = {"train": 0, "validation": 0, "test": 0, "hors_split": 0}
     by_market: Dict[str, int] = {}
     pricing_complete = 0
+    post_match_complete = 0
+    rolling_complete = 0
     for row in rows:
         distribution[_split_name(str(row.get("date") or ""))] += 1
         market = str(row.get("market_type") or "inconnu")
         by_market[market] = by_market.get(market, 0) + 1
         if row.get("no_vig_probability") not in (None, ""):
             pricing_complete += 1
+        if any(row.get(column) not in (None, "") for column in POST_MATCH_FEATURES):
+            post_match_complete += 1
+        if any(row.get(column) not in (None, "") for column in ROLLING_FEATURES):
+            rolling_complete += 1
     return {
         "rows": len(rows),
         "distribution": distribution,
         "by_market": by_market,
         "pricing_complete": pricing_complete,
+        "post_match_complete": post_match_complete,
+        "rolling_complete": rolling_complete,
     }
 
 
@@ -273,6 +542,8 @@ def print_summary(summary: Dict[str, Any], output_path: str) -> None:
     print(f"- Fichier ecrit: {output_path}")
     print(f"- Lignes exportees: {summary.get('rows', 0)}")
     print(f"- Lignes avec probabilite no-vig: {summary.get('pricing_complete', 0)}")
+    print(f"- Lignes avec stats post-match: {summary.get('post_match_complete', 0)}")
+    print(f"- Lignes avec rolling pre-match: {summary.get('rolling_complete', 0)}")
     print("- Distribution temporelle:")
     distribution = summary.get("distribution", {})
     print(f"  - train 2015-2022: {distribution.get('train', 0)}")
@@ -299,13 +570,14 @@ def _load_db_local_only() -> Dict[str, Any]:
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Construit une matrice de features locale sans modifier la memoire.")
     parser.add_argument("--output", required=True, help="Chemin CSV de sortie, ex: data/features_modern.csv")
+    parser.add_argument("--matches-csv", default=None, help="CSV MATCHES optionnel pour enrichissement local en lecture seule")
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> None:
     args = parse_args(argv)
     db = _load_db_local_only()
-    rows = build_feature_rows(db)
+    rows = build_feature_rows(db, matches_csv=args.matches_csv)
     write_features(rows, args.output)
     print_summary(summarize_rows(rows), args.output)
 

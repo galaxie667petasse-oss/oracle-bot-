@@ -42,6 +42,21 @@ def make_row(date, result, odds, no_vig, market_type="h2h", competition="TRAIN",
         "is_mid_odds": 1,
         "is_home_pick": 1 if market_type == "h2h" else 0,
         "is_over": 1 if market_type == "total" else 0,
+        "shots_diff": 5 if result == "win" else -4,
+        "total_shots": 22,
+        "target_diff": 2 if result == "win" else -2,
+        "total_target": 8,
+        "corners_diff": 1,
+        "total_corners": 10,
+        "both_teams_scored": 1,
+        "home_team_goals_for_avg5": 1.4 if result == "win" else 0.8,
+        "home_team_goals_against_avg5": 0.7 if result == "win" else 1.6,
+        "away_team_goals_for_avg5": 1.0,
+        "away_team_goals_against_avg5": 1.2,
+        "home_team_btts_rate5": 0.4,
+        "away_team_btts_rate5": 0.6,
+        "home_team_over25_rate5": 0.5,
+        "away_team_over25_rate5": 0.5,
         "competition": competition,
     })
     row.update(extra)
@@ -100,8 +115,20 @@ def main():
         assert report.get("splits", {}).get("train") == 4
         assert report.get("splits", {}).get("validation") == 2
         assert report.get("splits", {}).get("test") == 3
+        assert report.get("excluded_post_match_features")
+        assert any(item["name"] == "Baseline sans rolling" for item in report.get("feature_sets", []))
+        assert any(item["name"] == "Modele avec rolling pre-match" for item in report.get("feature_sets", []))
+        baseline = next(item for item in report["feature_sets"] if item["name"] == "Baseline sans rolling")
+        rolling = next(item for item in report["feature_sets"] if item["name"] == "Modele avec rolling pre-match")
+        assert "shots_diff" not in baseline["numeric_features"]
+        assert "home_team_goals_for_avg5" not in baseline["numeric_features"]
+        assert "home_team_goals_for_avg5" in rolling["numeric_features"]
         if model_trainer.np is not None:
             assert "models" in report
+        allow_report = build_training_report(str(path), allow_post_match_features=True)
+        allow_baseline = next(item for item in allow_report["feature_sets"] if item["name"] == "Baseline sans rolling")
+        assert allow_report["excluded_post_match_features"] == []
+        assert "shots_diff" in allow_baseline["numeric_features"]
         market_report = build_training_report(str(path), market="total")
         assert market_report.get("error") or market_report.get("splits", {}).get("test") == 1
 

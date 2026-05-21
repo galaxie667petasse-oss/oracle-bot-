@@ -41,6 +41,18 @@ HEADER = [
     "Form3Away",
     "Form5Home",
     "Form5Away",
+    "HTHome",
+    "HTAway",
+    "HomeShots",
+    "AwayShots",
+    "HomeTarget",
+    "AwayTarget",
+    "HomeCorners",
+    "AwayCorners",
+    "HomeYellow",
+    "AwayYellow",
+    "HomeRed",
+    "AwayRed",
 ]
 
 
@@ -71,6 +83,18 @@ def write_sample_csv(path: Path):
             "Form3Away": "4",
             "Form5Home": "11",
             "Form5Away": "6",
+            "HTHome": "1",
+            "HTAway": "0",
+            "HomeShots": "14",
+            "AwayShots": "9",
+            "HomeTarget": "6",
+            "AwayTarget": "3",
+            "HomeCorners": "7",
+            "AwayCorners": "4",
+            "HomeYellow": "2",
+            "AwayYellow": "3",
+            "HomeRed": "0",
+            "AwayRed": "1",
         },
         {
             "Division": "SP1",
@@ -88,6 +112,18 @@ def write_sample_csv(path: Path):
             "B365<2.5": "1.85",
             "HomeElo": "1500",
             "AwayElo": "1520",
+            "HTHome": "0",
+            "HTAway": "0",
+            "HomeShots": "8",
+            "AwayShots": "11",
+            "HomeTarget": "4",
+            "AwayTarget": "2",
+            "HomeCorners": "3",
+            "AwayCorners": "6",
+            "HomeYellow": "1",
+            "AwayYellow": "1",
+            "HomeRed": "0",
+            "AwayRed": "0",
         },
         {
             "Division": "I1",
@@ -156,6 +192,26 @@ def main():
         assert home_pick["elo_diff"] == 100.0
         assert home_pick["period_bucket"] == "test_2024_plus"
         assert home_pick["data_weight"] == 1.0
+        assert home_pick["home_shots"] == 14.0
+        assert home_pick["away_shots"] == 9.0
+        assert home_pick["shots_diff"] == 5.0
+        assert home_pick["home_target"] == 6.0
+        assert home_pick["away_target"] == 3.0
+        assert home_pick["target_diff"] == 3.0
+        assert home_pick["total_shots"] == 23.0
+        assert home_pick["total_target"] == 9.0
+        assert home_pick["corners_diff"] == 3.0
+        assert home_pick["total_corners"] == 11.0
+        assert home_pick["cards_diff"] == -1.0
+        assert home_pick["red_card_any"] == 1
+        assert home_pick["ht_total_goals"] == 1.0
+        assert home_pick["ft_total_goals"] == 3.0
+        assert home_pick["second_half_goals"] == 2.0
+        assert home_pick["home_clean_sheet"] == 0
+        assert home_pick["away_clean_sheet"] == 0
+        assert home_pick["both_teams_scored"] == 1
+        assert home_pick["over_2_5_result"] == 1
+        assert home_pick["under_2_5_result"] == 0
         assert home_pick["implied_probability"] == round(implied_probability(2.12), 6)
         h2h_no_vig = remove_vig_1x2(2.12, 3.25, 4.00)
         h2h_margin = market_margin([implied_probability(2.12), implied_probability(3.25), implied_probability(4.00)])

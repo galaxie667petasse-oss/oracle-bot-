@@ -139,6 +139,51 @@ Un bucket bien calibre a un taux reel proche de la probabilite predite. Si le mo
 
 Le test 2024+ reste la verite finale parce qu'il represente les matchs les plus recents et n'est pas utilise pour entrainer, calibrer ou choisir les seuils. Si la validation est positive mais que 2024+ devient negatif, le signal est invalide.
 
+## Enrichissement local et anti-fuite
+
+La phase V6.2 enrichit la matrice avec des informations terrain issues du CSV local `MATCHES.csv`/`Matches.csv`, sans API ni scraping. Les stats finales du match comme tirs, tirs cadres, corners, cartons, score mi-temps et clean sheets sont des `post-match features` : elles decrivent ce qui s'est passe pendant le match.
+
+Ces colonnes ne doivent pas predire ce meme match en mode live, car le bot ne les connait pas avant le coup d'envoi. `model_trainer.py` les exclut donc par defaut et affiche la liste des features retirees pour eviter la fuite de donnees.
+
+Pour une analyse volontairement non predictive, on peut les inclure explicitement :
+
+```bash
+python model_trainer.py --features data/features_modern.csv --allow-post-match-features
+```
+
+Cette option sert uniquement a verifier la valeur descriptive des stats finales. Elle ne doit pas etre utilisee pour juger un modele exploitable avant match.
+
+Pour donner du contexte terrain sans fuite, `feature_builder.py` calcule aussi des rolling features pre-match par equipe, par exemple buts marques/encaisses avg5, tirs avg5, corners avg5, BTTS rate5 et over 2.5 rate5. Pour un match donne, ces moyennes utilisent seulement les matchs precedents de l'equipe, jamais le match courant ni un match futur. Les matchs d'une meme date sont traites ensemble avant mise a jour de l'historique afin d'eviter une fuite entre deux matchs du meme jour.
+
+Le rapport ML compare maintenant :
+
+- baseline sans rolling ;
+- modele avec rolling pre-match ;
+- marche no-vig.
+
+Une amelioration de Brier score ou log loss doit rester coherente sur validation puis test 2024+. Si les edges positifs validation deviennent negatifs sur test, le signal est invalide, meme si une feature semble intuitive.
+
+## External Dataset Lab
+
+La phase V6.3 ajoute un laboratoire de datasets externes. Il ne remplace pas xgabora, ne telecharge rien, ne scrape rien, ne modifie pas `oracle_db.json` et ne branche aucune source aux picks. xgabora reste la base principale parce qu'il fournit le volume historique, les resultats et les cotes necessaires pour mesurer le marche.
+
+Le modele actuel ne bat pas encore le marche no-vig sur test 2024+. Les rolling features pre-match donnent du contexte, mais les signaux positifs validation sont invalides sur 2024+. Le prochain axe raisonnable est donc de profiler des sources plus riches en xG, tirs, lineups et stats joueurs/equipes, sans les croire avant test.
+
+Commandes utiles :
+
+```bash
+python external_dataset_probe.py --list
+python external_dataset_probe.py --profile-csv chemin/vers/fichier.csv
+python external_dataset_probe.py --profile-folder chemin/vers/dossier
+python external_dataset_probe.py --recommend chemin/vers/fichier.csv
+python external_join_plan.py --xgabora data/features_modern.csv --external chemin/vers/fichier.csv
+python external_adapters/epl_fbref_lab.py --profile chemin/vers/dossier
+```
+
+Le score d'utilite Oracle note `match_results`, `odds`, `xg`, `shots`, `lineups`, `player_stats`, `team_stats`, `recency`, `join_possible_with_xgabora` et `leak_risk`. Un dataset sans cotes mais riche en xG/stats avancees peut enrichir ou servir de laboratoire, mais il ne remplace pas xgabora.
+
+Pour eviter les fuites, les rapports marquent les colonnes post-match comme xG final, tirs finaux, corners finaux, scores et resultats. Ces colonnes ne doivent pas predire le meme match si elles ne sont connues qu'apres coup. Aucune source externe ne doit influencer les picks sans jointure controlee et backtest train/validation/test.
+
 ## Politique de récence des données
 
 Les données 2000-2011 sont utiles comme archive, mais elles ne doivent pas dominer les décisions actuelles. Le football, les marchés de cotes, les modèles bookmaker et les compétitions ont trop changé pour traiter 2002 comme 2024.

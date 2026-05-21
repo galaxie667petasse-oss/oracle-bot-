@@ -5,13 +5,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+from feature_builder import POST_MATCH_FEATURES, ROLLING_FEATURES
+
 try:
     import numpy as np
 except Exception:
     np = None
 
 
-NUMERIC_FEATURES = [
+BASE_NUMERIC_FEATURES = [
     "odds",
     "implied_probability",
     "no_vig_probability",
@@ -29,6 +31,7 @@ NUMERIC_FEATURES = [
     "form5_away",
     "form5_diff",
 ]
+NUMERIC_FEATURES = list(BASE_NUMERIC_FEATURES)
 
 BINARY_FEATURES = [
     "is_h2h",
@@ -123,6 +126,9 @@ def temporal_split(rows: Iterable[Dict[str, Any]]) -> Dict[str, List[Dict[str, A
 
 @dataclass
 class FeatureTransformer:
+    numeric_features: List[str]
+    binary_features: List[str]
+    categorical_features: List[str]
     numeric_medians: Dict[str, float]
     numeric_means: Dict[str, float]
     numeric_stds: Dict[str, float]
@@ -130,13 +136,21 @@ class FeatureTransformer:
     feature_names: List[str]
 
 
-def fit_feature_transformer(train_rows: List[Dict[str, Any]]) -> FeatureTransformer:
+def fit_feature_transformer(
+    train_rows: List[Dict[str, Any]],
+    numeric_features: Optional[List[str]] = None,
+    binary_features: Optional[List[str]] = None,
+    categorical_features: Optional[List[str]] = None,
+) -> FeatureTransformer:
     if np is None:
         raise RuntimeError("numpy est requis pour entrainer le modele local.")
+    numeric_features = list(numeric_features or NUMERIC_FEATURES)
+    binary_features = list(binary_features or BINARY_FEATURES)
+    categorical_features = list(categorical_features or CATEGORICAL_FEATURES)
     numeric_medians: Dict[str, float] = {}
     numeric_means: Dict[str, float] = {}
     numeric_stds: Dict[str, float] = {}
-    for column in NUMERIC_FEATURES:
+    for column in numeric_features:
         values = [_num(row.get(column)) for row in train_rows]
         clean = np.asarray([value for value in values if value is not None], dtype=np.float32)
         median = float(np.median(clean)) if clean.size else 0.0
@@ -150,14 +164,14 @@ def fit_feature_transformer(train_rows: List[Dict[str, Any]]) -> FeatureTransfor
         numeric_stds[column] = std
 
     categories: Dict[str, List[str]] = {}
-    for column in CATEGORICAL_FEATURES:
+    for column in categorical_features:
         values = sorted({str(row.get(column) or "inconnu") for row in train_rows})
         categories[column] = values
 
-    feature_names = list(NUMERIC_FEATURES) + list(BINARY_FEATURES)
-    for column in CATEGORICAL_FEATURES:
+    feature_names = list(numeric_features) + list(binary_features)
+    for column in categorical_features:
         feature_names.extend([f"{column}={value}" for value in categories[column]])
-    return FeatureTransformer(numeric_medians, numeric_means, numeric_stds, categories, feature_names)
+    return FeatureTransformer(numeric_features, binary_features, categorical_features, numeric_medians, numeric_means, numeric_stds, categories, feature_names)
 
 
 def transform_rows(rows: List[Dict[str, Any]], transformer: FeatureTransformer):
@@ -166,16 +180,16 @@ def transform_rows(rows: List[Dict[str, Any]], transformer: FeatureTransformer):
     matrix = np.zeros((len(rows), len(transformer.feature_names)), dtype=np.float32)
     for row_index, row in enumerate(rows):
         col_index = 0
-        for column in NUMERIC_FEATURES:
+        for column in transformer.numeric_features:
             value = _num(row.get(column))
             if value is None:
                 value = transformer.numeric_medians[column]
             matrix[row_index, col_index] = (float(value) - transformer.numeric_means[column]) / transformer.numeric_stds[column]
             col_index += 1
-        for column in BINARY_FEATURES:
+        for column in transformer.binary_features:
             matrix[row_index, col_index] = 1.0 if _num(row.get(column)) and _num(row.get(column)) > 0 else 0.0
             col_index += 1
-        for column in CATEGORICAL_FEATURES:
+        for column in transformer.categorical_features:
             value = str(row.get(column) or "inconnu")
             for category in transformer.categories[column]:
                 matrix[row_index, col_index] = 1.0 if value == category else 0.0
@@ -416,7 +430,7 @@ def model_conclusion(model_metrics: Dict[str, float], market_metrics: Dict[str, 
     return "modele prometteur mais non jouable"
 
 
-def evaluate_model(name: str, model: Any, splits: Dict[str, List[Dict[str, Any]]], matrices: Dict[str, Any], targets: Dict[str, Any]) -> Dict[str, Any]:
+def evaluate_model(feature_set: str, feature_count: int, name: str, model: Any, splits: Dict[str, List[Dict[str, Any]]], matrices: Dict[str, Any], targets: Dict[str, Any]) -> Dict[str, Any]:
     probabilities = {
         split: predict_probability(model, matrices[split])
         for split in ("validation", "test")
@@ -440,6 +454,8 @@ def evaluate_model(name: str, model: Any, splits: Dict[str, List[Dict[str, Any]]
     selected_test = test_edges.get(threshold, summarize_bets([])) if threshold is not None else summarize_bets([])
     calibration = calibration_buckets(splits["test"], probabilities["test"])
     return {
+        "feature_set": feature_set,
+        "feature_count": feature_count,
         "name": name,
         "model_metrics": model_metrics,
         "market_metrics": market_metrics,
@@ -454,7 +470,35 @@ def evaluate_model(name: str, model: Any, splits: Dict[str, List[Dict[str, Any]]
     }
 
 
-def build_training_report(feature_path: str, market: str = "") -> Dict[str, Any]:
+def _feature_configs(allow_post_match_features: bool = False) -> List[Dict[str, Any]]:
+    post_features = list(POST_MATCH_FEATURES) if allow_post_match_features else []
+    return [
+        {
+            "name": "Baseline sans rolling",
+            "numeric_features": list(BASE_NUMERIC_FEATURES) + post_features,
+        },
+        {
+            "name": "Modele avec rolling pre-match",
+            "numeric_features": list(BASE_NUMERIC_FEATURES) + list(ROLLING_FEATURES) + post_features,
+        },
+    ]
+
+
+def _fit_and_evaluate_config(config: Dict[str, Any], splits: Dict[str, List[Dict[str, Any]]]) -> Tuple[List[Dict[str, Any]], int, List[str]]:
+    transformer = fit_feature_transformer(splits["train"], numeric_features=config["numeric_features"])
+    matrices = {}
+    targets = {}
+    for split in ("train", "validation", "test"):
+        matrices[split], targets[split] = transform_rows(splits[split], transformer)
+    models, notes = train_models(matrices["train"], targets["train"])
+    evaluations = [
+        evaluate_model(config["name"], len(transformer.feature_names), name, model, splits, matrices, targets)
+        for name, model in models
+    ]
+    return evaluations, len(transformer.feature_names), notes
+
+
+def build_training_report(feature_path: str, market: str = "", allow_post_match_features: bool = False) -> Dict[str, Any]:
     if np is None:
         return {
             "error": "numpy est requis pour model_trainer.py. Installez numpy ou lancez dans l'environnement Codex.",
@@ -462,29 +506,33 @@ def build_training_report(feature_path: str, market: str = "") -> Dict[str, Any]
         }
     rows = usable_rows(read_feature_rows(feature_path, market))
     splits = temporal_split(rows)
-    transformer = fit_feature_transformer(splits["train"]) if splits["train"] else None
-    if transformer is None:
+    if not splits["train"]:
         return {
             "error": "Train vide: impossible d'entrainer un modele local.",
             "rows": len(rows),
             "models": [],
         }
-    matrices = {}
-    targets = {}
-    for split in ("train", "validation", "test"):
-        matrices[split], targets[split] = transform_rows(splits[split], transformer)
-    models, notes = train_models(matrices["train"], targets["train"])
-    evaluations = [
-        evaluate_model(name, model, splits, matrices, targets)
-        for name, model in models
-    ]
+    evaluations: List[Dict[str, Any]] = []
+    notes: List[str] = []
+    feature_sets: List[Dict[str, Any]] = []
+    for config in _feature_configs(allow_post_match_features):
+        config_evaluations, feature_count, config_notes = _fit_and_evaluate_config(config, splits)
+        evaluations.extend(config_evaluations)
+        for note in config_notes:
+            if note not in notes:
+                notes.append(note)
+        feature_sets.append({"name": config["name"], "feature_count": feature_count, "numeric_features": config["numeric_features"]})
+    if allow_post_match_features:
+        notes.append("Attention: les features post-match sont incluses explicitement. Elles ne sont pas disponibles avant un match live.")
     return {
         "feature_path": feature_path,
         "market": market or "tous",
         "rows": len(rows),
         "splits": {key: len(value) for key, value in splits.items()},
-        "feature_count": len(transformer.feature_names),
-        "feature_names": transformer.feature_names,
+        "allow_post_match_features": allow_post_match_features,
+        "excluded_post_match_features": [] if allow_post_match_features else list(POST_MATCH_FEATURES),
+        "rolling_features": list(ROLLING_FEATURES),
+        "feature_sets": feature_sets,
         "notes": notes,
         "models": evaluations,
     }
@@ -545,7 +593,14 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Lignes utilisables: {report.get('rows', 0)}")
     splits = report.get("splits", {})
     print(f"- Split temporel: train={splits.get('train', 0)}, validation={splits.get('validation', 0)}, test={splits.get('test', 0)}")
-    print(f"- Nombre de variables modele: {report.get('feature_count', 0)}")
+    print("- Jeux de features:")
+    for feature_set in report.get("feature_sets") or []:
+        print(f"  - {feature_set.get('name')}: {feature_set.get('feature_count', 0)} variables")
+    excluded = report.get("excluded_post_match_features") or []
+    if excluded:
+        print("- Features post-match exclues pour eviter la fuite: " + ", ".join(excluded))
+    if report.get("allow_post_match_features"):
+        print("- Attention: option post-match active, analyse non predictive live.")
     for note in report.get("notes") or []:
         print(f"- Note: {note}")
     if not report.get("models"):
@@ -553,7 +608,8 @@ def print_report(report: Dict[str, Any]) -> None:
         return
     print("- Rappel: le modele mesure une probabilite; il ne cree aucun pick automatique.")
     for model in report["models"]:
-        print(f"\nModele: {model['name']}")
+        print(f"\nJeu de features: {model.get('feature_set')} ({model.get('feature_count', 0)} variables)")
+        print(f"Modele: {model['name']}")
         print_metrics("Validation 2023", model["model_metrics"]["validation"], model["market_metrics"]["validation"])
         print_metrics("Test 2024+", model["model_metrics"]["test"], model["market_metrics"]["test"])
         print_calibration(model["calibration"])
@@ -573,12 +629,13 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Entraine un modele ML leger local sur la feature matrix, sans API ni Telegram.")
     parser.add_argument("--features", required=True, help="Chemin du CSV de features")
     parser.add_argument("--market", choices=["h2h", "total"], default="", help="Filtre optionnel de marche")
+    parser.add_argument("--allow-post-match-features", action="store_true", help="Inclut explicitement les stats finales du match, uniquement pour analyse anti-fuite")
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> None:
     args = parse_args(argv)
-    report = build_training_report(args.features, args.market)
+    report = build_training_report(args.features, args.market, allow_post_match_features=args.allow_post_match_features)
     print_report(report)
 
 

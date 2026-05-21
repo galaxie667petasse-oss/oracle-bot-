@@ -26,6 +26,36 @@ OVER25_COLUMNS = ("MaxOver25", "Max>2.5", "AvgOver25", "Avg>2.5", "OddOver25", "
 UNDER25_COLUMNS = ("MaxUnder25", "Max<2.5", "AvgUnder25", "Avg<2.5", "OddUnder25", "Under25", "U25", "B365<2.5", "P<2.5")
 BTTS_YES_COLUMNS = ("MaxBTTSYes", "AvgBTTSYes", "B365BTTSYes", "BTTSYes")
 BTTS_NO_COLUMNS = ("MaxBTTSNo", "AvgBTTSNo", "B365BTTSNo", "BTTSNo")
+MATCH_STAT_COLUMNS = (
+    "home_shots",
+    "away_shots",
+    "shots_diff",
+    "home_target",
+    "away_target",
+    "target_diff",
+    "total_shots",
+    "total_target",
+    "home_corners",
+    "away_corners",
+    "corners_diff",
+    "total_corners",
+    "home_yellow",
+    "away_yellow",
+    "cards_diff",
+    "home_red",
+    "away_red",
+    "red_card_any",
+    "ht_home",
+    "ht_away",
+    "ht_total_goals",
+    "ft_total_goals",
+    "second_half_goals",
+    "home_clean_sheet",
+    "away_clean_sheet",
+    "both_teams_scored",
+    "over_2_5_result",
+    "under_2_5_result",
+)
 
 
 @dataclass
@@ -86,9 +116,12 @@ def parse_number(value: Any) -> Optional[float]:
     if not text:
         return None
     try:
-        return float(text)
+        number = float(text)
     except ValueError:
         return None
+    if not math.isfinite(number):
+        return None
+    return number
 
 
 def parse_int(value: Any) -> Optional[int]:
@@ -233,6 +266,74 @@ def _optional_float(row: Dict[str, Any], column: str):
     return value if value is not None else ""
 
 
+def _stat_value(row: Dict[str, Any], *columns: str) -> Optional[float]:
+    for column in columns:
+        value = parse_number(row.get(column))
+        if value is not None:
+            return value
+    return None
+
+
+def _sum_optional(*values: Optional[float]) -> Optional[float]:
+    if any(value is None for value in values):
+        return None
+    return sum(float(value) for value in values)
+
+
+def _diff_optional(left: Optional[float], right: Optional[float]) -> Optional[float]:
+    if left is None or right is None:
+        return None
+    return float(left) - float(right)
+
+
+def xgabora_match_stats(row: Dict[str, Any], home_goals: int, away_goals: int) -> Dict[str, Any]:
+    home_shots = _stat_value(row, "HomeShots")
+    away_shots = _stat_value(row, "AwayShots")
+    home_target = _stat_value(row, "HomeTarget")
+    away_target = _stat_value(row, "AwayTarget")
+    home_corners = _stat_value(row, "HomeCorners")
+    away_corners = _stat_value(row, "AwayCorners")
+    home_yellow = _stat_value(row, "HomeYellow")
+    away_yellow = _stat_value(row, "AwayYellow")
+    home_red = _stat_value(row, "HomeRed")
+    away_red = _stat_value(row, "AwayRed")
+    ht_home = _stat_value(row, "HTHome", "HTHG")
+    ht_away = _stat_value(row, "HTAway", "HTAG")
+    ht_total = _sum_optional(ht_home, ht_away)
+    ft_total = float(home_goals + away_goals)
+    total_red = _sum_optional(home_red, away_red)
+    return {
+        "home_shots": home_shots,
+        "away_shots": away_shots,
+        "shots_diff": _diff_optional(home_shots, away_shots),
+        "home_target": home_target,
+        "away_target": away_target,
+        "target_diff": _diff_optional(home_target, away_target),
+        "total_shots": _sum_optional(home_shots, away_shots),
+        "total_target": _sum_optional(home_target, away_target),
+        "home_corners": home_corners,
+        "away_corners": away_corners,
+        "corners_diff": _diff_optional(home_corners, away_corners),
+        "total_corners": _sum_optional(home_corners, away_corners),
+        "home_yellow": home_yellow,
+        "away_yellow": away_yellow,
+        "cards_diff": _diff_optional(home_yellow, away_yellow),
+        "home_red": home_red,
+        "away_red": away_red,
+        "red_card_any": 1 if total_red is not None and total_red > 0 else 0 if total_red is not None else None,
+        "ht_home": ht_home,
+        "ht_away": ht_away,
+        "ht_total_goals": ht_total,
+        "ft_total_goals": ft_total,
+        "second_half_goals": ft_total - ht_total if ht_total is not None else None,
+        "home_clean_sheet": 1 if away_goals == 0 else 0,
+        "away_clean_sheet": 1 if home_goals == 0 else 0,
+        "both_teams_scored": 1 if home_goals > 0 and away_goals > 0 else 0,
+        "over_2_5_result": 1 if home_goals + away_goals >= 3 else 0,
+        "under_2_5_result": 1 if home_goals + away_goals <= 2 else 0,
+    }
+
+
 def xgabora_features(row: Dict[str, Any]) -> Dict[str, Any]:
     home_elo = _optional_float(row, "HomeElo")
     away_elo = _optional_float(row, "AwayElo")
@@ -282,6 +383,7 @@ def row_to_candidates(row: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]], s
     odds = best_odds(row)
     price_context = pricing_context(odds)
     features = xgabora_features(row)
+    match_stats = xgabora_match_stats(row, home_goals, away_goals)
     bucket = period_bucket(date_key)
     weight = data_weight_for_period(bucket)
     specs = [
@@ -331,6 +433,7 @@ def row_to_candidates(row: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]], s
             "imported_at": datetime.now(timezone.utc).isoformat(),
             **price_fields,
             **features,
+            **match_stats,
         }
         candidates.append(candidate)
     if not candidates:
