@@ -106,6 +106,39 @@ L'outil compare plusieurs stratégies : baseline brute, exclusion des segments b
 
 Un bot sérieux doit souvent refuser : si aucune stratégie n'est positive sur le test, le bon signal est de rester plus strict. Même un ROI positif faible sur le test n'est pas une preuve définitive.
 
+## Feature matrix et ML leger
+
+La phase V6.1 ajoute une analyse locale hors production. Elle ne modifie pas la memoire, ne lance pas Telegram, n'appelle aucune API et ne transforme jamais un modele en generateur automatique de picks.
+
+La matrice de features se construit avec :
+
+```bash
+python feature_builder.py --output data/features_modern.csv
+```
+
+Elle exporte les records regles visibles et fantomes en CSV avec les cotes, probabilites implicites, probabilites no-vig, marge marche, variables Elo, formes recentes, type de marche et drapeaux simples comme favori, outsider, home/away, over/under. Si un champ pricing manque dans la memoire, il est recalcule quand le marche complet du match le permet. Les champs indisponibles restent vides : l'outil ne cree pas de cote artificielle.
+
+Le modele local se lance ensuite avec :
+
+```bash
+python model_trainer.py --features data/features_modern.csv
+python model_trainer.py --features data/features_modern.csv --market h2h
+python model_trainer.py --features data/features_modern.csv --market total
+```
+
+Le split temporel est fixe : train 2015-2022, validation 2023, test final 2024+. La validation sert a choisir un seuil d'edge, puis le test 2024+ sert uniquement a verifier. Le test ne doit jamais servir a choisir la regle.
+
+Le rapport compare la probabilite du modele a la baseline marche `no_vig_probability` avec :
+
+- `Brier score` : plus bas est meilleur ; il mesure l'erreur quadratique de probabilite.
+- `log loss` : plus bas est meilleur ; il penalise fortement les predictions trop confiantes et fausses.
+- buckets de calibration : comparent la probabilite moyenne predite au vrai taux de victoire.
+- simulations d'edge : `model_probability - no_vig_probability` avec plusieurs seuils, sans pick automatique.
+
+Un bucket bien calibre a un taux reel proche de la probabilite predite. Si le modele predit 0.60 mais gagne seulement 0.52, il est surconfiant. S'il predit 0.52 mais gagne 0.60, il est sous-confiant. Meme un modele prometteur reste non jouable tant que validation et test 2024+ ne confirment pas un signal robuste avec assez de volume.
+
+Le test 2024+ reste la verite finale parce qu'il represente les matchs les plus recents et n'est pas utilise pour entrainer, calibrer ou choisir les seuils. Si la validation est positive mais que 2024+ devient negatif, le signal est invalide.
+
 ## Politique de récence des données
 
 Les données 2000-2011 sont utiles comme archive, mais elles ne doivent pas dominer les décisions actuelles. Le football, les marchés de cotes, les modèles bookmaker et les compétitions ont trop changé pour traiter 2002 comme 2024.
