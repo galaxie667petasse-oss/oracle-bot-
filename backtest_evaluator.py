@@ -1,9 +1,10 @@
 import argparse
 import json
+import math
 from collections import Counter
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from calibration import (
     blocked_segment_for_pick,
@@ -14,6 +15,7 @@ from calibration import (
 )
 from segment_analysis import h2h_side, odds_bucket
 from recency import PERIOD_ORDER, date_min_max, record_period
+from pricing import expected_value, fair_odds, implied_probability, market_margin, remove_vig_1x2, remove_vig_two_way
 
 
 STRATEGIES = (
@@ -87,12 +89,33 @@ PRESETS = {
     },
 }
 
+PRICING_LOW_MARGIN = 0.03
+PRICING_HIGH_MARGIN = 0.08
+PRICING_TOO_HIGH_MARGIN = 0.10
+
 
 def _num(value: Any, default: float = 0.0) -> float:
     try:
         return float(value)
     except Exception:
         return default
+
+
+def _optional_num(value: Any) -> Optional[float]:
+    try:
+        number = float(value)
+    except Exception:
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
+
+
+def _round_metric(value: Any, digits: int = 6) -> Optional[float]:
+    number = _optional_num(value)
+    if number is None:
+        return None
+    return round(number, digits)
 
 
 def _date_key(record: Dict[str, Any]) -> str:
@@ -129,6 +152,126 @@ def all_settled_records(db: Dict[str, Any]) -> List[Dict[str, Any]]:
             seen.add(key)
             rows.append(deepcopy(record))
     return sorted(rows, key=lambda record: (_date_key(record), str(record.get("home", "")), str(record.get("pari", ""))))
+
+
+def _match_key(record: Dict[str, Any]) -> Tuple[Any, ...]:
+    match_id = record.get("match_id")
+    if match_id:
+        return ("match_id", match_id)
+    return (
+        "match",
+        _date_key(record),
+        record.get("home"),
+        record.get("away"),
+        record.get("competition"),
+    )
+
+
+def _total_side(record: Dict[str, Any]) -> Optional[str]:
+    if record.get("market_type") != "total":
+        return None
+    pari = str(record.get("pari") or "").lower()
+    if "plus" in pari or "over" in pari or ">2.5" in pari:
+        return "over"
+    if "moins" in pari or "under" in pari or "<2.5" in pari:
+        return "under"
+    return None
+
+
+def _pricing_market_label(record: Dict[str, Any]) -> str:
+    market = str(record.get("market_type") or "")
+    if market in ("h2h", "draw"):
+        return "H2H 1X2"
+    if market == "total":
+        return "Over/Under 2.5"
+    return market or "marche inconnu"
+
+
+def _with_pricing(record: Dict[str, Any], market_label: str, no_vig_probability: Optional[float] = None, margin: Optional[float] = None) -> Dict[str, Any]:
+    item = deepcopy(record)
+    item["pricing_market"] = market_label
+    implied = _round_metric(implied_probability(item.get("odds")))
+    if implied is not None:
+        item["implied_probability"] = implied
+    if no_vig_probability is None:
+        no_vig_probability = _optional_num(item.get("no_vig_probability"))
+    if margin is None:
+        margin = _optional_num(item.get("market_margin"))
+    if no_vig_probability is None or margin is None:
+        return item
+    fair = fair_odds(no_vig_probability)
+    ev = expected_value(no_vig_probability, item.get("odds"))
+    item["no_vig_probability"] = _round_metric(no_vig_probability)
+    item["market_margin"] = _round_metric(margin)
+    fair_value = _round_metric(fair, digits=4)
+    ev_value = _round_metric(ev)
+    if fair_value is not None:
+        item["fair_odds_market"] = fair_value
+    if ev_value is not None:
+        item["ev_market_baseline"] = ev_value
+    return item
+
+
+def _market_instance(label: str, key: Tuple[Any, ...], margin: Optional[float], records: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if margin is None:
+        return None
+    return {
+        "pricing_market": label,
+        "match_key": key,
+        "market_margin": _round_metric(margin),
+        "records": len(records),
+    }
+
+
+def pricing_records(records: Iterable[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    groups: Dict[Tuple[Any, ...], List[Dict[str, Any]]] = {}
+    for record in records:
+        groups.setdefault(_match_key(record), []).append(record)
+
+    priced: List[Dict[str, Any]] = []
+    instances: List[Dict[str, Any]] = []
+    seen = set()
+
+    for key, group in groups.items():
+        home = next((r for r in group if r.get("market_type") == "h2h" and h2h_side(r) == "home"), None)
+        draw = next((r for r in group if r.get("market_type") == "draw" or str(r.get("import_family", "")).lower() == "draw"), None)
+        away = next((r for r in group if r.get("market_type") == "h2h" and h2h_side(r) == "away"), None)
+        if home and draw and away:
+            probabilities = [implied_probability(home.get("odds")), implied_probability(draw.get("odds")), implied_probability(away.get("odds"))]
+            margin = market_margin(probabilities) if all(p is not None for p in probabilities) else None
+            no_vig = remove_vig_1x2(home.get("odds"), draw.get("odds"), away.get("odds"))
+            if no_vig is not None and margin is not None:
+                instance = _market_instance("H2H 1X2", key, margin, [home, draw, away])
+                if instance:
+                    instances.append(instance)
+                for record, side in ((home, "home"), (draw, "draw"), (away, "away")):
+                    priced_record = _with_pricing(record, "H2H 1X2", no_vig[side], margin)
+                    priced.append(priced_record)
+                    seen.add(_record_key(record))
+
+        over = next((r for r in group if _total_side(r) == "over"), None)
+        under = next((r for r in group if _total_side(r) == "under"), None)
+        if over and under:
+            probabilities = [implied_probability(over.get("odds")), implied_probability(under.get("odds"))]
+            margin = market_margin(probabilities) if all(p is not None for p in probabilities) else None
+            no_vig = remove_vig_two_way(over.get("odds"), under.get("odds"))
+            if no_vig is not None and margin is not None:
+                instance = _market_instance("Over/Under 2.5", key, margin, [over, under])
+                if instance:
+                    instances.append(instance)
+                for record, side in ((over, "over"), (under, "under")):
+                    priced_record = _with_pricing(record, "Over/Under 2.5", no_vig[side], margin)
+                    priced.append(priced_record)
+                    seen.add(_record_key(record))
+
+    for record in records:
+        if _record_key(record) in seen:
+            continue
+        if _optional_num(record.get("no_vig_probability")) is None or _optional_num(record.get("market_margin")) is None:
+            continue
+        priced.append(_with_pricing(record, _pricing_market_label(record)))
+
+    return priced, instances
 
 
 def split_train_test(records: Iterable[Dict[str, Any]], train_to: str, test_from: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -572,6 +715,94 @@ def targeted_reports(test_records: List[Dict[str, Any]], train_db: Dict[str, Any
         "draw_high_watchlist": summarize_records(
             [r for r in test_records if r.get("market_type") == "draw" and odds_bucket(_num(r.get("odds"), 2.0)) == "high"]
         ),
+    }
+
+
+def _average(values: Iterable[Any]) -> Optional[float]:
+    numbers = [_optional_num(value) for value in values]
+    clean = [number for number in numbers if number is not None]
+    if not clean:
+        return None
+    return round(sum(clean) / len(clean), 6)
+
+
+def _margin_bucket(margin: Any) -> str:
+    value = _num(margin, 0.0)
+    if value < 0.02:
+        return "marge < 2%"
+    if value < 0.05:
+        return "2% <= marge < 5%"
+    if value < 0.08:
+        return "5% <= marge < 8%"
+    if value < 0.12:
+        return "8% <= marge < 12%"
+    return "marge >= 12%"
+
+
+def _pricing_group(records: Iterable[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for record in records:
+        margin = _optional_num(record.get("market_margin"))
+        if margin is None:
+            continue
+        groups.setdefault(_margin_bucket(margin), []).append(record)
+    ordered = ["marge < 2%", "2% <= marge < 5%", "5% <= marge < 8%", "8% <= marge < 12%", "marge >= 12%"]
+    return {bucket: summarize_records(groups[bucket], include_groups=False) for bucket in ordered if bucket in groups}
+
+
+def _pricing_comparison(records: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+    rows = [
+        record for record in records
+        if _optional_num(record.get("implied_probability")) is not None and _optional_num(record.get("no_vig_probability")) is not None
+    ]
+    gaps = [_num(record.get("implied_probability")) - _num(record.get("no_vig_probability")) for record in rows]
+    return {
+        "picks": len(rows),
+        "average_raw_odds": _average(record.get("odds") for record in rows),
+        "average_implied_probability": _average(record.get("implied_probability") for record in rows),
+        "average_no_vig_probability": _average(record.get("no_vig_probability") for record in rows),
+        "average_probability_gap": _average(gaps),
+        "average_fair_odds_market": _average(record.get("fair_odds_market") for record in rows),
+        "average_ev_market_baseline": _average(record.get("ev_market_baseline") for record in rows),
+    }
+
+
+def build_pricing_report(db: Dict[str, Any]) -> Dict[str, Any]:
+    records = all_settled_records(db)
+    priced, instances = pricing_records(records)
+    h2h_instances = [item for item in instances if item.get("pricing_market") == "H2H 1X2"]
+    total_instances = [item for item in instances if item.get("pricing_market") == "Over/Under 2.5"]
+    low_records = [record for record in priced if _optional_num(record.get("market_margin")) is not None and _num(record.get("market_margin")) <= PRICING_LOW_MARGIN]
+    high_records = [record for record in priced if _optional_num(record.get("market_margin")) is not None and _num(record.get("market_margin")) >= PRICING_HIGH_MARGIN]
+
+    comparison: Dict[str, Dict[str, Any]] = {"global": _pricing_comparison(priced)}
+    for market in sorted({str(record.get("pricing_market") or "marche inconnu") for record in priced}):
+        comparison[market] = _pricing_comparison([record for record in priced if record.get("pricing_market") == market])
+
+    too_high_records = [record for record in priced if _optional_num(record.get("market_margin")) is not None and _num(record.get("market_margin")) >= PRICING_TOO_HIGH_MARGIN]
+    too_high_by_market: Dict[str, Dict[str, Any]] = {}
+    for market in sorted({str(record.get("pricing_market") or "marche inconnu") for record in too_high_records}):
+        rows = [record for record in too_high_records if record.get("pricing_market") == market]
+        market_rows = [record for record in priced if record.get("pricing_market") == market]
+        stat = summarize_records(rows, include_groups=False)
+        stat["average_margin"] = _average(record.get("market_margin") for record in rows)
+        stat["share_of_market"] = round(len(rows) / len(market_rows) * 100, 1) if market_rows else 0.0
+        too_high_by_market[market] = stat
+
+    return {
+        "records_total": len(records),
+        "priced_records": len(priced),
+        "market_instances": len(instances),
+        "h2h_market_count": len(h2h_instances),
+        "over_under_market_count": len(total_instances),
+        "average_margin_h2h": _average(item.get("market_margin") for item in h2h_instances),
+        "average_margin_over_under": _average(item.get("market_margin") for item in total_instances),
+        "roi_by_margin": _pricing_group(priced),
+        "low_margin": summarize_records(low_records, include_groups=False),
+        "high_margin": summarize_records(high_records, include_groups=False),
+        "comparison": comparison,
+        "too_high_threshold": PRICING_TOO_HIGH_MARGIN,
+        "too_high_markets": too_high_by_market,
     }
 
 
@@ -1155,6 +1386,73 @@ def _short_stat(stat: Dict[str, Any]) -> str:
     return f"n={stat.get('picks', 0)}, ROI={_fmt_pct(stat.get('roi', 0))}, profit={stat.get('profit', 0)}"
 
 
+def _fmt_margin(value: Any) -> str:
+    number = _optional_num(value)
+    if number is None:
+        return "n/a"
+    return f"{number * 100:.2f}%"
+
+
+def _fmt_decimal(value: Any, digits: int = 2) -> str:
+    number = _optional_num(value)
+    if number is None:
+        return "n/a"
+    return f"{number:.{digits}f}"
+
+
+def print_pricing_report(report: Dict[str, Any]) -> None:
+    print("Rapport pricing Oracle Bot")
+    print(f"- Records regles: {report.get('records_total', 0)}")
+    print(f"- Records avec pricing exploitable: {report.get('priced_records', 0)}")
+    print(f"- Marches complets reconstruits: {report.get('market_instances', 0)}")
+    print(f"- Marge moyenne H2H: {_fmt_margin(report.get('average_margin_h2h'))} (marches={report.get('h2h_market_count', 0)})")
+    print(f"- Marge moyenne Over/Under: {_fmt_margin(report.get('average_margin_over_under'))} (marches={report.get('over_under_market_count', 0)})")
+
+    print("\nROI par tranche de marge")
+    roi_by_margin = report.get("roi_by_margin") or {}
+    if roi_by_margin:
+        for bucket, stat in roi_by_margin.items():
+            print(f"- {bucket}: {_short_stat(stat)}, cote moy={stat.get('average_odds', 0)}")
+    else:
+        print("- Aucune tranche disponible.")
+
+    print("\nROI selon niveau de marge")
+    print(f"- Marge faible (<= {_fmt_margin(PRICING_LOW_MARGIN)}): {_short_stat(report.get('low_margin', {}))}")
+    print(f"- Marge elevee (>= {_fmt_margin(PRICING_HIGH_MARGIN)}): {_short_stat(report.get('high_margin', {}))}")
+
+    print("\nComparaison cotes brutes vs probabilite no-vig")
+    comparison = report.get("comparison") or {}
+    if comparison:
+        for market, stat in comparison.items():
+            if not stat.get("picks"):
+                continue
+            print(
+                f"- {market}: n={stat.get('picks', 0)}, "
+                f"cote brute moy={_fmt_decimal(stat.get('average_raw_odds'))}, "
+                f"proba implicite={_fmt_margin(stat.get('average_implied_probability'))}, "
+                f"proba no-vig={_fmt_margin(stat.get('average_no_vig_probability'))}, "
+                f"ecart={_fmt_margin(stat.get('average_probability_gap'))}, "
+                f"cote juste marche={_fmt_decimal(stat.get('average_fair_odds_market'))}, "
+                f"EV baseline={_fmt_margin(stat.get('average_ev_market_baseline'))}"
+            )
+    else:
+        print("- Aucune comparaison disponible.")
+
+    print("\nMarches ou la marge est trop elevee")
+    print(f"- Seuil: >= {_fmt_margin(report.get('too_high_threshold'))}")
+    too_high = report.get("too_high_markets") or {}
+    if too_high:
+        for market, stat in too_high.items():
+            print(
+                f"- {market}: {_short_stat(stat)}, "
+                f"marge moy={_fmt_margin(stat.get('average_margin'))}, "
+                f"part du marche={_fmt_decimal(stat.get('share_of_market'), 1)}%"
+            )
+    else:
+        print("- Aucun marche au-dessus du seuil.")
+    print("- Note prudente: ce rapport nettoie le prix marche; il n'ajoute aucune selection automatique.")
+
+
 def print_targeted_reports(report: Dict[str, Any]) -> None:
     targeted = report.get("targeted_reports", {})
     if not targeted:
@@ -1427,6 +1725,7 @@ def parse_args(argv=None):
     parser.add_argument("--period-report", action="store_true", help="Affiche un rapport ROI par période sans backtest")
     parser.add_argument("--favorite-report", action="store_true", help="Analyse locale detaillee des favoris H2H")
     parser.add_argument("--stability-report", action="store_true", help="Analyse la stabilite annuelle des strategies locales")
+    parser.add_argument("--pricing-report", action="store_true", help="Analyse les marges marche, probabilites no-vig et ROI associe")
     parser.add_argument("--debug-strategies", action="store_true", help="Affiche les raisons de rejet et les segments appliques")
     parser.add_argument("--json", dest="json_path", default=None, help="Chemin de sortie JSON optionnel")
     return parser.parse_args(argv)
@@ -1452,6 +1751,12 @@ def main(argv=None) -> None:
     if args.stability_report:
         report = build_stability_report(db)
         print_stability_report(report)
+        if args.json_path:
+            write_json(report, args.json_path)
+        return
+    if args.pricing_report:
+        report = build_pricing_report(db)
+        print_pricing_report(report)
         if args.json_path:
             write_json(report, args.json_path)
         return

@@ -7,6 +7,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from pricing import (
+    expected_value,
+    fair_odds,
+    implied_probability,
+    market_margin,
+    remove_vig_1x2,
+    remove_vig_two_way,
+)
 from recency import PERIOD_LABELS, PERIOD_ORDER, data_weight_for_period, period_bucket
 
 
@@ -136,6 +144,61 @@ def best_odds(row: Dict[str, Any]) -> Dict[str, Tuple[Optional[float], str]]:
     }
 
 
+def _rounded(value: Any, digits: int = 6) -> Optional[float]:
+    try:
+        number = float(value)
+    except Exception:
+        return None
+    if not math.isfinite(number):
+        return None
+    return round(number, digits)
+
+
+def _pricing_fields(price: float, no_vig_probability: Optional[float] = None, margin: Optional[float] = None) -> Dict[str, float]:
+    fields: Dict[str, float] = {}
+    implied = _rounded(implied_probability(price))
+    if implied is not None:
+        fields["implied_probability"] = implied
+    if no_vig_probability is None or margin is None:
+        return fields
+    no_vig = _rounded(no_vig_probability)
+    fair = _rounded(fair_odds(no_vig_probability), digits=4)
+    ev = _rounded(expected_value(no_vig_probability, price))
+    margin_value = _rounded(margin)
+    if no_vig is not None:
+        fields["no_vig_probability"] = no_vig
+    if margin_value is not None:
+        fields["market_margin"] = margin_value
+    if fair is not None:
+        fields["fair_odds_market"] = fair
+    if ev is not None:
+        fields["ev_market_baseline"] = ev
+    return fields
+
+
+def pricing_context(odds: Dict[str, Tuple[Optional[float], str]]) -> Dict[str, Dict[str, float]]:
+    context: Dict[str, Dict[str, float]] = {}
+
+    h2h_prices = {key: odds[key][0] for key in ("h2h_home", "draw", "h2h_away")}
+    h2h_probabilities = [implied_probability(price) for price in h2h_prices.values()]
+    h2h_margin = market_margin(h2h_probabilities) if all(p is not None for p in h2h_probabilities) else None
+    h2h_no_vig = remove_vig_1x2(h2h_prices["h2h_home"], h2h_prices["draw"], h2h_prices["h2h_away"])
+    if h2h_no_vig is not None and h2h_margin is not None:
+        context["h2h_home"] = _pricing_fields(float(h2h_prices["h2h_home"]), h2h_no_vig["home"], h2h_margin)
+        context["draw"] = _pricing_fields(float(h2h_prices["draw"]), h2h_no_vig["draw"], h2h_margin)
+        context["h2h_away"] = _pricing_fields(float(h2h_prices["h2h_away"]), h2h_no_vig["away"], h2h_margin)
+
+    total_prices = {key: odds[key][0] for key in ("over25", "under25")}
+    total_probabilities = [implied_probability(price) for price in total_prices.values()]
+    total_margin = market_margin(total_probabilities) if all(p is not None for p in total_probabilities) else None
+    total_no_vig = remove_vig_two_way(total_prices["over25"], total_prices["under25"])
+    if total_no_vig is not None and total_margin is not None:
+        context["over25"] = _pricing_fields(float(total_prices["over25"]), total_no_vig["over"], total_margin)
+        context["under25"] = _pricing_fields(float(total_prices["under25"]), total_no_vig["under"], total_margin)
+
+    return context
+
+
 def has_h2h_odds(row: Dict[str, Any]) -> bool:
     odds = best_odds(row)
     return all(odds[key][0] is not None for key in ("h2h_home", "draw", "h2h_away"))
@@ -217,6 +280,7 @@ def row_to_candidates(row: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]], s
         return "", [], "score_final_manquant"
 
     odds = best_odds(row)
+    price_context = pricing_context(odds)
     features = xgabora_features(row)
     bucket = period_bucket(date_key)
     weight = data_weight_for_period(bucket)
@@ -234,6 +298,7 @@ def row_to_candidates(row: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]], s
         price, source_column = odds[market_key]
         if price is None:
             continue
+        price_fields = price_context.get(market_key) or _pricing_fields(float(price))
         votes = _training_votes(market_type, float(price), features)
         agent_accepts = sum(1 for v in votes.values() if v.get("vote") == "ACCEPTE")
         agent_rejects = sum(1 for v in votes.values() if v.get("vote") == "REFUSE")
@@ -264,6 +329,7 @@ def row_to_candidates(row: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]], s
             "agent_rejects": agent_rejects,
             "council_score": council_score,
             "imported_at": datetime.now(timezone.utc).isoformat(),
+            **price_fields,
             **features,
         }
         candidates.append(candidate)

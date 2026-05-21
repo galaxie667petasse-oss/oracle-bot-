@@ -6,6 +6,7 @@ import types
 from datetime import timezone
 from pathlib import Path
 
+from pricing import expected_value, fair_odds, implied_probability, market_margin, remove_vig_1x2, remove_vig_two_way
 from xgabora_dataset_import import inspect_dates, load_candidates, import_candidates, result_for_market
 
 
@@ -155,6 +156,25 @@ def main():
         assert home_pick["elo_diff"] == 100.0
         assert home_pick["period_bucket"] == "test_2024_plus"
         assert home_pick["data_weight"] == 1.0
+        assert home_pick["implied_probability"] == round(implied_probability(2.12), 6)
+        h2h_no_vig = remove_vig_1x2(2.12, 3.25, 4.00)
+        h2h_margin = market_margin([implied_probability(2.12), implied_probability(3.25), implied_probability(4.00)])
+        assert h2h_no_vig is not None
+        assert home_pick["no_vig_probability"] == round(h2h_no_vig["home"], 6)
+        assert home_pick["market_margin"] == round(h2h_margin, 6)
+        assert home_pick["fair_odds_market"] == round(fair_odds(h2h_no_vig["home"]), 4)
+        assert home_pick["ev_market_baseline"] == round(expected_value(h2h_no_vig["home"], 2.12), 6)
+        assert away_pick["no_vig_probability"] == round(h2h_no_vig["away"], 6)
+
+        total_no_vig = remove_vig_two_way(1.90, 2.00)
+        total_margin = market_margin([implied_probability(1.90), implied_probability(2.00)])
+        assert total_no_vig is not None
+        assert over_pick["no_vig_probability"] == round(total_no_vig["over"], 6)
+        assert under_pick["no_vig_probability"] == round(total_no_vig["under"], 6)
+        assert over_pick["market_margin"] == round(total_margin, 6)
+        assert under_pick["fair_odds_market"] == round(fair_odds(total_no_vig["under"]), 4)
+        assert btts_yes["implied_probability"] == round(implied_probability(1.78), 6)
+        assert "no_vig_probability" not in btts_yes
 
         only_2024, only_2024_stats = load_candidates(str(csv_path), date_from="2024-01-01")
         assert len(only_2024) == len(candidates)

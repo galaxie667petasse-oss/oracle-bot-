@@ -3,11 +3,13 @@ from io import StringIO
 
 from backtest_evaluator import (
     _period_conclusion,
+    build_pricing_report,
     build_favorite_report,
     build_stability_report,
     build_train_context,
     evaluate_backtest,
     max_drawdown,
+    print_pricing_report,
     print_favorite_report,
     print_stability_report,
     select_strategy_records,
@@ -132,6 +134,23 @@ def main():
     empty_strategy = summarize_records([], include_groups=True)
     assert empty_strategy["picks"] == 0
     assert empty_strategy["roi"] == 0.0
+
+    pricing_sample = [
+        record("price-h", "2024-04-01", "h2h", 2.0, "win", match_id="pricing-1", import_family="home", pari="Victoire Home"),
+        record("price-d", "2024-04-01", "draw", 3.5, "loss", match_id="pricing-1", import_family="draw", pari="Match nul"),
+        record("price-a", "2024-04-01", "h2h", 4.0, "loss", match_id="pricing-1", import_family="away", pari="Victoire Away"),
+        record("price-o", "2024-04-01", "total", 1.9, "win", match_id="pricing-1", pari="Plus de 2.5 buts"),
+        record("price-u", "2024-04-01", "total", 2.0, "loss", match_id="pricing-1", pari="Moins de 2.5 buts"),
+    ]
+    pricing = build_pricing_report(db_from(pricing_sample))
+    assert pricing["h2h_market_count"] == 1
+    assert pricing["over_under_market_count"] == 1
+    assert pricing["priced_records"] == 5
+    assert pricing["comparison"]["global"]["picks"] == 5
+    buffer = StringIO()
+    with redirect_stdout(buffer):
+        print_pricing_report(pricing)
+    assert "Rapport pricing Oracle Bot" in buffer.getvalue()
 
     fav_train = [
         record(f"fav-tr-{i}", "2022-01-01", "h2h", 1.70, "win", import_family="home", home_elo=1700, away_elo=1600, form3_home=6, form3_away=3, form5_home=10, form5_away=7)
