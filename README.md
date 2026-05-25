@@ -1,124 +1,135 @@
-# Oracle Bot
+# Oracle Football Bot
 
-Bot Telegram de scan football avec calibration progressive, mémoire locale et mémoire PostgreSQL Railway quand `DATABASE_URL` existe.
+## Vision du projet
 
-## Démarrage Railway
+Oracle Football Bot est un outil local d'analyse football et de controle statistique. Il aide a comprendre les marches, les cotes, les marges bookmaker, les backtests et les limites des signaux disponibles.
 
-Le point d'entrée reste volontairement fixe :
+Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si un signal ne survit pas au split train/validation/test, il reste une observation et ne devient pas un pick conseille.
 
-```bash
-python main.py
-```
+## Ce que le bot fait
 
-`main.py` lance `bot_app_v52.py`, qui enveloppe le moteur Telegram historique dans `bot_app.py`.
+- Charge une memoire locale de matchs et candidats regles.
+- Importe un historique xgabora/Football-Data/ClubElo depuis un CSV local.
+- Calcule les probabilites implicites, les probabilites no-vig, les marges marche et l'EV baseline.
+- Construit une feature matrix locale avec features pre-match et rolling avg5.
+- Exclut par defaut les stats post-match pour eviter la fuite de donnees.
+- Lance des backtests temporels, rapports favoris, stabilite et pricing.
+- Entraine un ML leger local pour mesurer une probabilite, pas pour generer des picks.
+- Profile des datasets externes fournis localement, sans telechargement ni scraping.
+- Genere un rapport central local HTML/JSON pour audit.
 
-## Mémoire
+## Ce que le bot ne fait pas
 
-- Sans `DATABASE_URL`, le bot utilise `oracle_db.json`.
-- Avec `DATABASE_URL`, `store.py` lit PostgreSQL en priorité via `persistent_memory.py`.
-- `save_db()` conserve aussi une copie locale comme secours.
+- Il ne garantit aucun profit.
+- Il ne transforme pas un edge fragile en pick automatique.
+- Il ne remplace pas xgabora par un dataset externe sans test.
+- Il ne scrape pas FBref, Understat, Kaggle ou une autre source.
+- Il n'appelle pas d'API pour les phases locales.
+- Il ne doit pas rendre Telegram plus agressif.
+- Il ne doit pas etre redeploye sur Railway tant qu'aucune strategie robuste positive n'est validee.
 
-## Backtest CSV
+## Architecture
 
-Le backtest permet d'entraîner la mémoire sans attendre les prochains matchs et sans appeler Telegram ni API externe.
+- `main.py` : point d'entree historique Telegram/Railway. Ne pas modifier sans bug bloquant prouve.
+- `bot_app.py`, `bot_app_v52.py`, `telegram_ui.py` : couche Telegram historique.
+- `pricing.py` : probabilites implicites, no-vig, marge marche, fair odds et EV.
+- `xgabora_dataset_import.py` : import du CSV historique local et enrichissement des records.
+- `feature_builder.py` : feature matrix locale, rolling pre-match, marquage post-match.
+- `model_trainer.py` : regression logistique locale, modeles sklearn optionnels, edge simulation.
+- `backtest_evaluator.py` : backtests et rapports modern/recent/favoris/stabilite/pricing.
+- `external_dataset_probe.py` : profilage de CSV/dossiers externes.
+- `external_join_plan.py` : plan de jointure theorique date/home/away sans ecriture.
+- `external_xg_lab.py` : laboratoire xG externe, jointure controlee et preview local.
+- `team_name_normalizer.py` : normalisation prudente et suggestions de mapping d'equipes.
+- `external_adapters/epl_fbref_lab.py` : adaptateur laboratoire EPL/FBref local.
+- `report_runner.py` : orchestration des rapports locaux.
+- `dashboard_builder.py` : generation de `index.html` et `summary.json`.
+- `project_audit.py` : audit release candidate local.
 
-Format requis :
+## Pipeline local
 
-```csv
-date,home,away,competition,market_type,pari,odds,result
-```
+1. Verifier l'environnement et les fichiers sensibles.
+2. Importer ou conserver la memoire moderne 2015-2025.
+3. Generer `data/features_modern.csv`.
+4. Lancer pricing, backtest, favorite-report et stability-report.
+5. Lancer le ML leger uniquement comme mesure de probabilite.
+6. Generer le rapport central local.
+7. Lire les conclusions avant toute decision Railway ou Telegram.
 
-Commande :
-
-```bash
-python backtest_import.py docs/backtest_example.csv
-```
-
-Par défaut, les lignes sont ajoutées comme candidats fantômes historiques. Une colonne optionnelle `visible` peut valoir `oui`, `true`, `1`, `visible` ou `pick` pour les importer comme picks visibles.
-
-## Import xgabora et calibration
-
-Le dataset `xgabora/Club-Football-Match-Data-2000-2025` peut être importé avec :
-
-```bash
-python xgabora_dataset_import.py data/MATCHES.csv --limit 1000
-```
-
-Les premières statistiques xgabora montrent souvent un ROI négatif sur beaucoup de catégories, surtout les marchés `h2h`, `draw` et les cotes hautes. C'est normal sur un historique brut : le but n'est pas de parier plus, mais de refuser davantage les catégories faibles.
-
-La calibration Oracle utilise cet historique pour durcir automatiquement :
-
-- EV minimum pour un top pick ;
-- score conseil minimum ;
-- danger maximum ;
-- limites sur les cotes H2H/draw ;
-- pénalités sur marchés ou tranches de cotes avec ROI négatif.
-
-Une tranche `low` peut afficher un ROI positif, mais elle reste peu rentable et sensible aux frais, limites et variations de cote. Le bot ne doit donc jamais transformer ce signal en excès de confiance.
-
-Import progressif conseillé :
-
-```bash
-python xgabora_dataset_import.py data/MATCHES.csv --limit 1000
-python xgabora_dataset_import.py data/MATCHES.csv --limit 10000
-python xgabora_dataset_import.py data/MATCHES.csv
-```
-
-Après chaque étape, vérifier `/stats`, `/memoire` et `/diagnostic`. L'importeur ignore les candidats déjà présents avec une clé stable `date + home + away + market_type + pari + odds`, donc il ne faut pas réimporter volontairement les mêmes lignes pour chercher à gonfler l'échantillon.
-
-## Analyse de segments
-
-Après un import large, le ROI global peut rester négatif sans rendre le projet inutile. Il indique surtout que les marchés bruts sont difficiles et que le bot doit refuser beaucoup.
-
-La commande Telegram `/segments` cherche des sous-groupes plus précis :
-
-- marché seul ;
-- tranche de cote seule ;
-- marché + tranche de cote ;
-- marché + ligue ;
-- marché + tranche + ligue ;
-- domicile/extérieur en H2H ;
-- favori/outsider ;
-- profils Elo si disponibles ;
-- période récente ou ancienne.
-
-Un segment n'est utilisé pour ajuster une décision que s'il a assez de volume. Sous 100 résultats, il est ignoré pour la décision. Entre 100 et 300, il reste un signal faible. À partir de 300, il devient exploitable, mais seulement comme garde-fou statistique.
-
-Un segment positif donne au maximum un petit bonus prudent. Il ne peut jamais compenser une EV négative, un danger trop haut, une très haute cote bloquée ou un marché draw globalement mauvais sans vrai segment draw positif. Le but reste de refuser mieux, pas de forcer plus de paris.
-
-## Backtest train/test
-
-Le ROI global historique ne suffit pas : il peut seulement décrire le passé. Pour vérifier si une règle généralise, il faut apprendre sur une période train puis mesurer sur une période test jamais utilisée pour construire la calibration.
-
-Commande par défaut :
+Commandes courtes :
 
 ```bash
-python backtest_evaluator.py
-```
-
-Découpage personnalisé :
-
-```bash
-python backtest_evaluator.py --train-to 2022-12-31 --test-from 2023-01-01 --json out/backtest.json
-```
-
-L'outil compare plusieurs stratégies : baseline brute, exclusion des segments bloqués, marchés total seulement, total low/mid, Oracle strict, favoris seulement et exclusion des outsiders. Il affiche le ROI, le profit unité, le drawdown et le détail par marché/tranche de cote.
-
-Un bot sérieux doit souvent refuser : si aucune stratégie n'est positive sur le test, le bon signal est de rester plus strict. Même un ROI positif faible sur le test n'est pas une preuve définitive.
-
-## Feature matrix et ML leger
-
-La phase V6.1 ajoute une analyse locale hors production. Elle ne modifie pas la memoire, ne lance pas Telegram, n'appelle aucune API et ne transforme jamais un modele en generateur automatique de picks.
-
-La matrice de features se construit avec :
-
-```bash
+python project_audit.py
 python feature_builder.py --output data/features_modern.csv
+python backtest_evaluator.py --preset modern
+python model_trainer.py --features data/features_modern.csv
+python report_runner.py --quick
+python dashboard_builder.py --latest
 ```
 
-Elle exporte les records regles visibles et fantomes en CSV avec les cotes, probabilites implicites, probabilites no-vig, marge marche, variables Elo, formes recentes, type de marche et drapeaux simples comme favori, outsider, home/away, over/under. Si un champ pricing manque dans la memoire, il est recalcule quand le marche complet du match le permet. Les champs indisponibles restent vides : l'outil ne cree pas de cote artificielle.
+## Memoire
 
-Le modele local se lance ensuite avec :
+La memoire recommandee est la periode moderne 2015-2025. Les donnees anciennes peuvent servir d'archive, mais elles ne doivent pas dominer une decision moderne.
+
+- Sans `DATABASE_URL`, le projet lit `oracle_db.json`.
+- Les scripts locaux forcent ou privilegient l'usage local quand c'est necessaire.
+- Les rapports et builders ne doivent pas modifier `oracle_db.json`.
+- Le test 2024+ reste la verification finale.
+
+## Import historique
+
+Inspecter les dates :
+
+```bash
+python xgabora_dataset_import.py data/MATCHES.csv --inspect-dates
+```
+
+Importer la periode moderne :
+
+```bash
+python xgabora_dataset_import.py data/MATCHES.csv --from 2015-01-01 --to 2025-12-31
+```
+
+L'importeur ignore les doublons via une cle stable. Ne pas modifier `data/MATCHES.csv` pour ameliorer artificiellement un resultat.
+
+## Pricing
+
+`pricing.py` fournit :
+
+- `implied_probability`
+- `fair_odds`
+- `market_margin`
+- `remove_vig_1x2`
+- `remove_vig_two_way`
+- `edge_probability`
+- `expected_value`
+
+Le pricing sert a mesurer le marche. Il ne cree jamais une cote absente et ne rend pas le bot plus agressif.
+
+Rapport :
+
+```bash
+python backtest_evaluator.py --pricing-report
+```
+
+Resultat connu : les marges elevees sont dangereuses. Une marge faible ne suffit pas a rendre un pari jouable.
+
+## Backtest
+
+Le backtest se lit avec un split temporel. Le passe de train permet de construire une regle, la validation sert a choisir prudemment, et le test 2024+ sert de juge final.
+
+```bash
+python backtest_evaluator.py --preset modern
+python backtest_evaluator.py --favorite-report
+python backtest_evaluator.py --stability-report
+python backtest_evaluator.py --pricing-report
+```
+
+Si aucune strategie n'est positive et stable sur test, la bonne conclusion est de ne pas jouer.
+
+## ML
+
+Le ML local mesure si une probabilite legere peut ameliorer la baseline marche no-vig. Il ne pilote pas Telegram et ne genere aucun pick.
 
 ```bash
 python model_trainer.py --features data/features_modern.csv
@@ -126,67 +137,22 @@ python model_trainer.py --features data/features_modern.csv --market h2h
 python model_trainer.py --features data/features_modern.csv --market total
 ```
 
-Le split temporel est fixe : train 2015-2022, validation 2023, test final 2024+. La validation sert a choisir un seuil d'edge, puis le test 2024+ sert uniquement a verifier. Le test ne doit jamais servir a choisir la regle.
+`numpy` est requis pour le ML local. `sklearn` est optionnel : s'il est absent, random forest et gradient boosting sont ignores proprement.
 
-Le rapport compare la probabilite du modele a la baseline marche `no_vig_probability` avec :
+Mesures principales :
 
-- `Brier score` : plus bas est meilleur ; il mesure l'erreur quadratique de probabilite.
-- `log loss` : plus bas est meilleur ; il penalise fortement les predictions trop confiantes et fausses.
-- buckets de calibration : comparent la probabilite moyenne predite au vrai taux de victoire.
-- simulations d'edge : `model_probability - no_vig_probability` avec plusieurs seuils, sans pick automatique.
+- Brier score : plus bas est meilleur, mesure l'erreur de probabilite.
+- Log loss : plus bas est meilleur, penalise les predictions trop confiantes.
+- Calibration buckets : comparent probabilite predite et taux reel.
+- Edge simulation : teste `model_probability - no_vig_probability` sans creer de pick automatique.
 
-Un bucket bien calibre a un taux reel proche de la probabilite predite. Si le modele predit 0.60 mais gagne seulement 0.52, il est surconfiant. S'il predit 0.52 mais gagne 0.60, il est sous-confiant. Meme un modele prometteur reste non jouable tant que validation et test 2024+ ne confirment pas un signal robuste avec assez de volume.
-
-Le test 2024+ reste la verite finale parce qu'il represente les matchs les plus recents et n'est pas utilise pour entrainer, calibrer ou choisir les seuils. Si la validation est positive mais que 2024+ devient negatif, le signal est invalide.
-
-## Enrichissement local et anti-fuite
-
-La phase V6.2 enrichit la matrice avec des informations terrain issues du CSV local `MATCHES.csv`/`Matches.csv`, sans API ni scraping. Les stats finales du match comme tirs, tirs cadres, corners, cartons, score mi-temps et clean sheets sont des `post-match features` : elles decrivent ce qui s'est passe pendant le match.
-
-Ces colonnes ne doivent pas predire ce meme match en mode live, car le bot ne les connait pas avant le coup d'envoi. `model_trainer.py` les exclut donc par defaut et affiche la liste des features retirees pour eviter la fuite de donnees.
-
-Pour une analyse volontairement non predictive, on peut les inclure explicitement :
+Les stats finales du match sont exclues par defaut. L'option suivante est seulement descriptive :
 
 ```bash
 python model_trainer.py --features data/features_modern.csv --allow-post-match-features
 ```
 
-Cette option sert uniquement a verifier la valeur descriptive des stats finales. Elle ne doit pas etre utilisee pour juger un modele exploitable avant match.
-
-Pour donner du contexte terrain sans fuite, `feature_builder.py` calcule aussi des rolling features pre-match par equipe, par exemple buts marques/encaisses avg5, tirs avg5, corners avg5, BTTS rate5 et over 2.5 rate5. Pour un match donne, ces moyennes utilisent seulement les matchs precedents de l'equipe, jamais le match courant ni un match futur. Les matchs d'une meme date sont traites ensemble avant mise a jour de l'historique afin d'eviter une fuite entre deux matchs du meme jour.
-
-Le rapport ML compare maintenant :
-
-- baseline sans rolling ;
-- modele avec rolling pre-match ;
-- marche no-vig.
-
-Une amelioration de Brier score ou log loss doit rester coherente sur validation puis test 2024+. Si les edges positifs validation deviennent negatifs sur test, le signal est invalide, meme si une feature semble intuitive.
-
-## External Dataset Lab
-
-La phase V6.3 ajoute un laboratoire de datasets externes. Il ne remplace pas xgabora, ne telecharge rien, ne scrape rien, ne modifie pas `oracle_db.json` et ne branche aucune source aux picks. xgabora reste la base principale parce qu'il fournit le volume historique, les resultats et les cotes necessaires pour mesurer le marche.
-
-Le modele actuel ne bat pas encore le marche no-vig sur test 2024+. Les rolling features pre-match donnent du contexte, mais les signaux positifs validation sont invalides sur 2024+. Le prochain axe raisonnable est donc de profiler des sources plus riches en xG, tirs, lineups et stats joueurs/equipes, sans les croire avant test.
-
-Commandes utiles :
-
-```bash
-python external_dataset_probe.py --list
-python external_dataset_probe.py --profile-csv chemin/vers/fichier.csv
-python external_dataset_probe.py --profile-folder chemin/vers/dossier
-python external_dataset_probe.py --recommend chemin/vers/fichier.csv
-python external_join_plan.py --xgabora data/features_modern.csv --external chemin/vers/fichier.csv
-python external_adapters/epl_fbref_lab.py --profile chemin/vers/dossier
-```
-
-Le score d'utilite Oracle note `match_results`, `odds`, `xg`, `shots`, `lineups`, `player_stats`, `team_stats`, `recency`, `join_possible_with_xgabora` et `leak_risk`. Un dataset sans cotes mais riche en xG/stats avancees peut enrichir ou servir de laboratoire, mais il ne remplace pas xgabora.
-
-Pour eviter les fuites, les rapports marquent les colonnes post-match comme xG final, tirs finaux, corners finaux, scores et resultats. Ces colonnes ne doivent pas predire le meme match si elles ne sont connues qu'apres coup. Aucune source externe ne doit influencer les picks sans jointure controlee et backtest train/validation/test.
-
-## Rapport central local
-
-La phase V6.4 ajoute un rapport central local pour auditer le projet avant toute decision Railway ou Telegram. Il capture les sorties console des rapports existants dans un dossier `reports/` et ne modifie pas la memoire.
+## Rapports
 
 Rapport rapide :
 
@@ -202,44 +168,125 @@ python report_runner.py --full
 python dashboard_builder.py --latest
 ```
 
-Le mode rapide lance pricing, backtest modern, favorite-report et stability-report. Le mode complet ajoute recent, period-report, ML global/H2H/total et External Dataset Lab. Si une commande echoue, l'erreur est enregistree dans son `.txt` et les autres rapports continuent.
+Chaque execution cree un dossier `reports/oracle_YYYY_MM_DD_HHMMSS/` avec les sorties `.txt`, `index.html` et `summary.json`. Le rapport est descriptif et ne declenche aucun pick.
 
-Chaque execution cree un dossier horodate comme `reports/oracle_YYYY_MM_DD_HHMMSS/`. Le dashboard est disponible dans `index.html`, ouvrable directement dans le navigateur. `summary.json` contient les metriques detectees automatiquement, avec `null` si une valeur n'est pas lisible.
+## External Dataset Lab
 
-Ce rapport ne declenche aucun pick, ne change aucun seuil et ne contacte aucune API. Il sert a verifier l'etat du projet, les signaux invalides, les risques de fuite et les prochaines priorites avant de penser a Railway ou Telegram.
-
-## Politique de récence des données
-
-Les données 2000-2011 sont utiles comme archive, mais elles ne doivent pas dominer les décisions actuelles. Le football, les marchés de cotes, les modèles bookmaker et les compétitions ont trop changé pour traiter 2002 comme 2024.
-
-Oracle sépare donc la mémoire en périodes :
-
-- `archive_pre2012` : poids 0.15 ;
-- `transition_2012_2014` : poids 0.35 ;
-- `modern_2015_2019` : poids 0.70 ;
-- `recent_2020_2023` : poids 1.00 ;
-- `test_2024_plus` : poids 1.00, à garder surtout comme test final.
-
-La calibration privilégie 2015+ et surtout 2020+. Un signal positif uniquement présent dans l'archive ancienne est dangereux : il peut refléter un vieux contexte de marché et ne doit jamais suffire à débloquer un top pick moderne.
-
-Commandes conseillées :
+Le lab externe sert a profiler une source locale plus riche, par exemple xG, xGA, tirs, tirs cadres, lineups, stats joueurs/equipes et resultats.
 
 ```bash
-python xgabora_dataset_import.py data/MATCHES.csv --inspect-dates
-python xgabora_dataset_import.py data/MATCHES.csv --from 2015-01-01 --to 2023-12-31
-python xgabora_dataset_import.py data/MATCHES.csv --from 2020-01-01 --to 2023-12-31
-python backtest_evaluator.py --preset modern
+python external_dataset_probe.py --list
+python external_dataset_probe.py --profile-csv chemin/vers/fichier.csv
+python external_dataset_probe.py --profile-folder chemin/vers/dossier
+python external_dataset_probe.py --recommend chemin/vers/fichier.csv
+python external_join_plan.py --xgabora data/features_modern.csv --external chemin/vers/fichier.csv
 ```
 
-## Tests simples
+Un dataset sans cotes mais riche en xG ne remplace pas xgabora. Il peut enrichir un laboratoire, puis seulement etre evalue en train/validation/test.
+
+## External xG Integration Lab
+
+La phase V6.6 prepare un laboratoire d'integration xG externe. Elle ne telecharge aucun dataset, n'appelle pas Kaggle, ne scrape aucun site, ne modifie pas `oracle_db.json` et ne branche rien aux picks Telegram.
+
+Objectif :
+
+- profiler un CSV ou dossier externe fourni manuellement ;
+- detecter date, equipes, scores, xG/xGA, tirs, tirs cadres, lineups et stats joueurs/equipes ;
+- tester une jointure theorique avec xgabora/features ;
+- generer un petit preview dans `reports/` pour verifier la jointure ;
+- documenter comment transformer le xG final en rolling features pre-match.
+
+Commandes futures, quand un dataset externe sera disponible localement :
 
 ```bash
-python test_settlement.py
-python test_shadow_learning.py
-python test_agent_weights.py
-python test_calibration.py
-python test_segment_analysis.py
+python external_xg_lab.py --profile external_data/epl_fbref_2024_2025
+python external_xg_lab.py --evaluate-join --xgabora data/features_modern.csv --external external_data/epl_fbref_2024_2025/matches.csv
+python external_xg_lab.py --build-preview --xgabora data/features_modern.csv --external external_data/epl_fbref_2024_2025/matches.csv --output reports/external_xg_preview.csv
+```
+
+Le preview ne sert pas a entrainer le bot. Il sert uniquement a verifier les colonnes et la jointure. Le xG final du match est post-match : il doit etre transforme en rolling features comme `home_xg_avg5_before_match` avant toute evaluation predictive.
+
+Les details sont dans `docs/external_xg_integration_plan.md`.
+
+## Telegram
+
+Telegram reste la couche historique du bot, mais les phases V6.x locales ne doivent pas le rendre plus agressif. Les rapports locaux, le ML, le pricing et le lab externe ne doivent pas envoyer de message Telegram.
+
+Le point d'entree Telegram/Railway reste :
+
+```bash
+python main.py
+```
+
+Ne pas l'utiliser pour valider les phases d'audit local.
+
+## Railway plus tard
+
+Ne pas redeployer Railway maintenant. Un redeploiement n'a de sens qu'apres :
+
+- strategie robuste positive sur validation puis test 2024+ ;
+- volume suffisant ;
+- drawdown acceptable ;
+- absence de fuite de donnees ;
+- revue explicite des changements Telegram.
+
+## Securite
+
+Fichiers a ne pas versionner :
+
+- `oracle_db.json`
+- `oracle_db_backup_*.json`
+- `oracle_db_archive_*.json`
+- `data/`
+- `external_data/`
+- `.env`
+- `variable/`
+- `reports/`
+
+Verifier :
+
+```bash
+python project_audit.py
+git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
+```
+
+## Commandes principales
+
+La liste complete est dans `COMMANDS.md`.
+
+```bash
+python -m compileall -q .
+python test_project_audit.py
+python test_pricing.py
+python test_feature_builder.py
+python test_model_trainer.py
 python test_backtest_evaluator.py
-python test_segments_text.py
-python test_xgabora_dataset_import.py
+python test_report_runner.py
+python project_audit.py
 ```
+
+## Etat actuel : aucune strategie robuste positive
+
+Etat V6.5 Release Candidate locale :
+
+- memoire moderne 2015-2025 ;
+- environ 528066 records regles ;
+- pricing et no-vig disponibles ;
+- rolling pre-match disponibles ;
+- post-match features exclues par defaut ;
+- External Dataset Lab disponible ;
+- External xG Integration Lab disponible ;
+- rapport central local disponible ;
+- aucune strategie robuste positive validee ;
+- ML actuel ne bat pas le marche no-vig sur test 2024+ ;
+- favoris H2H proches du break-even mais non confirmes.
+
+## Roadmap
+
+Priorite suivante :
+
+1. Profiler un dataset externe local riche en xG/FBref/Kaggle avec `external_dataset_probe.py`.
+2. Tester une jointure theorique propre avec `external_join_plan.py`.
+3. Ameliorer les features pre-match sans fuite.
+4. Relancer train/validation/test.
+5. Ne penser a Railway ou Telegram qu'apres un signal robuste, stable et assez volumineux.

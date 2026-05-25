@@ -1,0 +1,93 @@
+import hashlib
+import tempfile
+from pathlib import Path
+
+import project_audit
+
+
+def write(path: Path, text: str = "") -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def digest_tree(root: Path):
+    digests = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            digests[str(path.relative_to(root))] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return digests
+
+
+def make_minimal_project(root: Path) -> None:
+    for filename in project_audit.ESSENTIAL_FILES:
+        if filename.endswith(".md"):
+            write(root / filename, "# Test\n\nVision du projet\nCe que le bot fait\nCe que le bot ne fait pas\nArchitecture\nPipeline local\nEtat actuel\nRoadmap\nV6.5\nAucune strategie robuste positive\nnumpy\n")
+        else:
+            write(root / filename, "# fichier test\n")
+    for filename in project_audit.MAIN_TESTS:
+        write(root / filename, "# test\n")
+    write(root / "COMMANDS.md", "# Commandes\n\nnumpy\n")
+    write(root / ".gitignore", "\n".join(project_audit.SENSITIVE_PATTERNS) + "\n")
+
+
+def test_audit_read_only_and_oracle_db_optional():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        make_minimal_project(root)
+        assert not (root / "oracle_db.json").exists()
+        before = digest_tree(root)
+        result = project_audit.run_audit(root, check_import_modules=False, use_git=False)
+        after = digest_tree(root)
+        assert before == after
+        assert result.success
+
+
+def test_sensitive_files_not_tracked_in_current_repo():
+    root = Path.cwd()
+    tracked = project_audit._git_ls_files(root, project_audit.SENSITIVE_PATTERNS)
+    assert tracked == []
+
+
+def test_release_candidate_docs_exist_and_have_sections():
+    root = Path.cwd()
+    assert (root / "COMMANDS.md").exists()
+    assert (root / "PROJECT_STATUS.md").exists()
+    assert (root / "README.md").exists()
+
+    readme = (root / "README.md").read_text(encoding="utf-8").lower()
+    for section in [
+        "vision du projet",
+        "ce que le bot fait",
+        "ce que le bot ne fait pas",
+        "architecture",
+        "pipeline local",
+        "memoire",
+        "import historique",
+        "pricing",
+        "backtest",
+        "ml",
+        "rapports",
+        "external dataset lab",
+        "telegram",
+        "railway plus tard",
+        "securite",
+        "commandes principales",
+        "etat actuel",
+        "roadmap",
+    ]:
+        assert section in readme
+
+    status = (root / "PROJECT_STATUS.md").read_text(encoding="utf-8").lower()
+    assert "v6.6 external xg integration lab" in status
+    assert "aucune strategie robuste positive" in status
+
+
+def main():
+    test_audit_read_only_and_oracle_db_optional()
+    test_sensitive_files_not_tracked_in_current_repo()
+    test_release_candidate_docs_exist_and_have_sections()
+    print("test_project_audit ok")
+
+
+if __name__ == "__main__":
+    main()

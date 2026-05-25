@@ -1,63 +1,84 @@
 # Statut Oracle Football Bot
 
-## Etat actuel
+## Version actuelle
 
-Oracle Football Bot dispose d'une memoire moderne 2015-2025 avec environ 528066 records regles, des rapports locaux de backtest, pricing, favoris H2H, stabilite, feature matrix, ML leger et laboratoire de datasets externes.
+V6.6 External xG Integration Lab.
 
-Le projet reste en posture prudente : aucune strategie robuste positive n'est validee a ce stade.
+Le projet reste une release candidate locale prudente. V6.6 ajoute seulement un laboratoire d'integration xG externe, sans source branchee au bot et sans influence sur les picks.
 
-## Modules existants
+## Etat general
 
-- `pricing.py` : probabilites implicites, no-vig, marge marche, EV baseline.
-- `xgabora_dataset_import.py` : import historique xgabora et enrichissement terrain local.
-- `feature_builder.py` : matrice de features, rolling pre-match avg5, exclusion anti-fuite.
-- `model_trainer.py` : regression logistique locale, comparaison au marche no-vig, edge simulation validation -> test.
-- `backtest_evaluator.py` : backtest temporel, rapports favoris/stabilite/pricing.
-- `external_dataset_probe.py` : profilage local de datasets externes.
-- `external_join_plan.py` : plan de jointure theorique date/home/away.
+- Memoire moderne recommandee : 2015-2025.
+- Volume connu : environ 528066 records regles.
+- Rapports locaux disponibles : backtest, favoris, stabilite, pricing, ML, External Dataset Lab, dashboard central.
+- Lab xG externe disponible pour profiler un dataset fourni manuellement.
+- Aucun signal robuste positif n'est valide a ce stade.
+- Aucun changement local V6.x ne doit rendre Telegram plus agressif.
+
+## Etat des modules
+
+- `pricing.py` : stable pour probabilites implicites, no-vig, marge marche et EV baseline.
+- `xgabora_dataset_import.py` : import historique local et enrichissement terrain depuis CSV.
+- `feature_builder.py` : feature matrix, rolling pre-match avg5, marquage des post-match features.
+- `model_trainer.py` : regression logistique locale, sklearn optionnel, comparaison au marche no-vig.
+- `backtest_evaluator.py` : split temporel, rapports modern/recent/favoris/stabilite/pricing.
+- `external_dataset_probe.py` : profilage local de datasets externes sans telechargement.
+- `external_join_plan.py` : jointure theorique date/home/away sans ecriture.
+- `external_xg_lab.py` : profilage xG, jointure theorique, evaluation et preview dans `reports/`.
+- `team_name_normalizer.py` : normalisation prudente des noms d'equipes et suggestions de mapping manuel.
 - `external_adapters/epl_fbref_lab.py` : adaptateur laboratoire EPL/FBref local.
-- `report_runner.py` et `dashboard_builder.py` : rapport central local et dashboard HTML.
+- `report_runner.py` : execution reproductible des rapports locaux.
+- `dashboard_builder.py` : dashboard HTML local et `summary.json`.
+- `project_audit.py` : audit release candidate local.
+- `COMMANDS.md` : fiche de commandes pour developpeur.
 
-## Memoire active recommandee
+## Resultats connus
 
-Conserver la memoire moderne 2015-2025 actuelle. Ne pas reintegrer massivement l'archive ancienne dans les decisions modernes. Le test 2024+ reste la reference finale.
+- Aucune strategie robuste positive n'est validee.
+- Le ML local ne bat pas encore le marche no-vig sur test 2024+.
+- Les marges elevees sont dangereuses et degradent fortement le ROI.
+- Les signaux favoris H2H restent proches du break-even mais non confirmes.
+- Les edges ML positifs en validation ont ete invalides sur test dans les essais V6.1/V6.2.
+- Les rolling pre-match ajoutent du contexte mais ne suffisent pas encore a battre le marche.
+- V6.6 ne valide aucune strategie : il prepare seulement le test d'un dataset xG externe.
 
-## Resultats importants connus
+## Ce qui est valide
 
-- Pricing : marge moyenne H2H environ 0.66%, Over/Under environ 1.83%.
-- Pricing : ROI marge faible negatif, ROI marge elevee tres negatif.
-- V6.1/V6.2 : le modele local ne bat pas le marche no-vig sur test 2024+.
-- H2H rolling : validation positive mais test negatif, donc signal invalide.
-- Total rolling : validation positive mais test negatif, donc signal invalide.
-- External Lab : xgabora/features est riche en cotes et resultats, mais sans xG.
-
-## Valide
-
-- Import historique massif.
-- Backtest train/validation/test.
+- Import historique massif local.
 - Pricing no-vig descriptif.
-- Feature matrix locale.
-- Rolling pre-match sans fuite du match courant.
+- Backtest train/validation/test.
+- Feature matrix locale reproductible.
 - Exclusion par defaut des post-match features.
-- Lab externe sans API, scraping ni telechargement.
-- Rapport central local reproductible.
+- Rolling features pre-match sans usage du match courant.
+- Rapports locaux qui ne modifient pas `oracle_db.json`.
+- Lab externe sans API, scraping ni telechargement automatique.
+- Lab xG externe sans API, scraping ni telechargement automatique.
+- Preview xG limite a `reports/`, non utilisable comme dataset d'entrainement production.
 
-## Invalide ou non confirme
+## Ce qui est invalide ou non confirme
 
-- Aucune strategie robuste positive.
-- Favoris H2H proches du break-even mais non confirmes.
-- Edges ML positifs validation invalides sur test.
-- Stats post-match interdites pour prediction live du meme match.
+- Transformer un edge validation en pick conseille.
+- Utiliser les stats finales du match pour predire ce meme match en live.
+- Considerer les favoris H2H comme strategie jouable.
+- Redeployer Railway sans signal robuste.
+- Augmenter l'agressivite Telegram.
+- Utiliser un xG final post-match pour predire le meme match.
+- Considerer un preview de jointure comme dataset final.
 
-## A ne pas faire
+## Ce qu'il ne faut pas faire
 
-- Ne pas redéployer Railway maintenant.
-- Ne pas rendre Telegram plus agressif.
-- Ne pas transformer un signal validation en pick automatique.
-- Ne pas utiliser xG final, tirs finaux ou corners finaux pour predire le meme match.
-- Ne pas modifier `oracle_db.json` sans sauvegarde et raison explicite.
-- Ne pas scraper FBref/Understat automatiquement.
+- Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
+- Ne pas toucher a `oracle_db.json`, aux backups ou a `data/MATCHES.csv` pour stabiliser la release.
+- Ne pas scraper FBref, Understat ou Kaggle automatiquement.
+- Ne pas utiliser Railway maintenant.
+- Ne pas transformer un rapport local en mecanisme de picks.
+- Ne pas brancher un dataset xG externe aux picks Telegram.
 
-## Prochaine priorite
+## Prochaine vraie priorite
 
-Chercher un dataset externe local riche, idealement EPL/FBref ou Kaggle 2024-2025/multi-saisons, avec date, equipes, resultats, xG/xGA, tirs, tirs cadres, lineups horodatees si possible, stats equipes/joueurs et cotes si disponibles. Le profiler avec `external_dataset_probe.py`, evaluer la jointure avec `external_join_plan.py`, puis seulement ensuite tester en train/validation/test.
+1. Telecharger manuellement un dataset externe xG/FBref/Kaggle dans `external_data/`.
+2. Profiler la source avec `external_xg_lab.py --profile`.
+3. Evaluer la jointure avec `external_xg_lab.py --evaluate-join`.
+4. Transformer le xG final en rolling features pre-match si la source vaut le coup.
+5. Relancer train/validation/test.
+6. Maintenir Railway et Telegram en attente tant qu'aucune strategie robuste positive n'est validee.
