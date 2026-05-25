@@ -184,6 +184,30 @@ Le score d'utilite Oracle note `match_results`, `odds`, `xg`, `shots`, `lineups`
 
 Pour eviter les fuites, les rapports marquent les colonnes post-match comme xG final, tirs finaux, corners finaux, scores et resultats. Ces colonnes ne doivent pas predire le meme match si elles ne sont connues qu'apres coup. Aucune source externe ne doit influencer les picks sans jointure controlee et backtest train/validation/test.
 
+## Rapport central local
+
+La phase V6.4 ajoute un rapport central local pour auditer le projet avant toute decision Railway ou Telegram. Il capture les sorties console des rapports existants dans un dossier `reports/` et ne modifie pas la memoire.
+
+Rapport rapide :
+
+```bash
+python report_runner.py --quick
+python dashboard_builder.py --latest
+```
+
+Rapport complet :
+
+```bash
+python report_runner.py --full
+python dashboard_builder.py --latest
+```
+
+Le mode rapide lance pricing, backtest modern, favorite-report et stability-report. Le mode complet ajoute recent, period-report, ML global/H2H/total et External Dataset Lab. Si une commande echoue, l'erreur est enregistree dans son `.txt` et les autres rapports continuent.
+
+Chaque execution cree un dossier horodate comme `reports/oracle_YYYY_MM_DD_HHMMSS/`. Le dashboard est disponible dans `index.html`, ouvrable directement dans le navigateur. `summary.json` contient les metriques detectees automatiquement, avec `null` si une valeur n'est pas lisible.
+
+Ce rapport ne declenche aucun pick, ne change aucun seuil et ne contacte aucune API. Il sert a verifier l'etat du projet, les signaux invalides, les risques de fuite et les prochaines priorites avant de penser a Railway ou Telegram.
+
 ## Politique de récence des données
 
 Les données 2000-2011 sont utiles comme archive, mais elles ne doivent pas dominer les décisions actuelles. Le football, les marchés de cotes, les modèles bookmaker et les compétitions ont trop changé pour traiter 2002 comme 2024.

@@ -2,6 +2,7 @@ oracle_db.json
 oracle_db_backup_*.json
 oracle_export_backup*.json
 data/
+reports/
 variable/
 __pycache__/
 *.pyc
