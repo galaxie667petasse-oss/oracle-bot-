@@ -33,6 +33,22 @@ FULL_EXTRA_COMMANDS = [
     ReportCommand("ML total", "ml_total.txt", ["model_trainer.py", "--features", "data/features_modern.csv", "--market", "total"], timeout=1200),
     ReportCommand("External dataset profile", "external_profile.txt", ["external_dataset_probe.py", "--profile-csv", "data/features_modern.csv"]),
     ReportCommand("External dataset recommendation", "external_recommend.txt", ["external_dataset_probe.py", "--recommend", "data/features_modern.csv"]),
+    ReportCommand(
+        "Benchmark governance",
+        "benchmark_governance.txt",
+        [
+            "benchmark_governance.py",
+            "--features",
+            "data/features_modern.csv",
+            "--summary-json",
+            "{report_dir}/benchmark_summary.json",
+            "--html",
+            "{report_dir}/benchmark_governance.html",
+            "--registry",
+            "{report_dir}/model_registry.json",
+        ],
+        timeout=1800,
+    ),
 ]
 
 
@@ -66,7 +82,8 @@ def local_env() -> Dict[str, str]:
 
 def run_one(command: ReportCommand, report_dir: Path, cwd: Path, env: Dict[str, str]) -> Dict[str, object]:
     started = datetime.now().isoformat(timespec="seconds")
-    full_command = [sys.executable, *command.args]
+    expanded_args = [arg.replace("{report_dir}", str(report_dir)) for arg in command.args]
+    full_command = [sys.executable, *expanded_args]
     output_path = report_dir / command.filename
     start_time = time.time()
     status = {

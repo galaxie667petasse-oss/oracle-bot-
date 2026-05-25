@@ -36,6 +36,8 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 - `xgabora_dataset_import.py` : import du CSV historique local et enrichissement des records.
 - `feature_builder.py` : feature matrix locale, rolling pre-match, marquage post-match.
 - `model_trainer.py` : regression logistique locale, modeles sklearn optionnels, edge simulation.
+- `benchmark_governance.py` : benchmark scientifique, scoring de robustesse et registre modele.
+- `decision_policy.py` : politique de classification/promotion sans dependance Telegram.
 - `backtest_evaluator.py` : backtests et rapports modern/recent/favoris/stabilite/pricing.
 - `external_dataset_probe.py` : profilage de CSV/dossiers externes.
 - `external_join_plan.py` : plan de jointure theorique date/home/away sans ecriture.
@@ -45,6 +47,7 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 - `report_runner.py` : orchestration des rapports locaux.
 - `dashboard_builder.py` : generation de `index.html` et `summary.json`.
 - `project_audit.py` : audit release candidate local.
+- `model_registry.json` : metadonnees agregees des modeles/strategies evalues.
 
 ## Pipeline local
 
@@ -208,6 +211,65 @@ Le preview ne sert pas a entrainer le bot. Il sert uniquement a verifier les col
 
 Les details sont dans `docs/external_xg_integration_plan.md`.
 
+## Scientific Benchmark
+
+La phase V6.7 consolide les resultats disponibles dans un benchmark scientifique local. Elle compare le marche, les regles Oracle, les segments, les modeles ML et le futur lab xG avec une meme logique de prudence.
+
+```bash
+python benchmark_governance.py --features data/features_modern.csv --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
+```
+
+Si une section echoue, le benchmark continue et marque la section comme indisponible. Le rapport reste descriptif : il ne modifie pas la DB, ne lance pas Telegram et ne cree aucun pick.
+
+## Model Governance
+
+Chaque strategie recoit un `robustness_score` prudent sur 100. Le statut peut etre :
+
+- candidat robuste, mais pas pick automatique ;
+- observation forte a confirmer ;
+- fragile / surveillance ;
+- faible / non confirme ;
+- invalide ou a eviter ;
+- invalide fuite de donnees.
+
+Regles importantes :
+
+- ROI test 2024+ negatif ou nul : jamais robuste.
+- Validation positive mais test negatif : invalide.
+- Test absent : maximum fragile.
+- Sample test inferieur a 300 : echantillon faible.
+- Fuite post-match : score force a 0.
+
+## Model Registry
+
+`model_registry.json` contient uniquement des metadonnees et resultats agreges :
+
+- nom, type, version ;
+- periodes train/validation/test ;
+- features utilisees ;
+- risque de fuite ;
+- metriques validation/test ;
+- score robustesse ;
+- statut, decision et notes.
+
+Il ne contient pas de secrets, pas de dataset lourd et pas de predictions individuelles.
+
+## Promotion Policy
+
+La politique de promotion est documentee dans `docs/model_promotion_policy.md`. Meme le niveau `production_allowed` ne signifie pas pari automatique : cela autorise seulement un affichage explicable comme aide a la decision.
+
+## Decision Policy
+
+`decision_policy.py` formalise les regles de prudence dans des fonctions testables :
+
+- `classify_strategy`
+- `can_promote_to_watchlist`
+- `can_promote_to_candidate`
+- `can_use_in_shadow`
+- `can_use_in_telegram`
+
+La calibration compte davantage que l'accuracy brute. Le test 2024+ reste la verite finale. Les signaux peuvent rester longtemps en watchlist sans etre actives.
+
 ## Telegram
 
 Telegram reste la couche historique du bot, mais les phases V6.x locales ne doivent pas le rendre plus agressif. Les rapports locaux, le ML, le pricing et le lab externe ne doivent pas envoyer de message Telegram.
@@ -276,6 +338,7 @@ Etat V6.5 Release Candidate locale :
 - post-match features exclues par defaut ;
 - External Dataset Lab disponible ;
 - External xG Integration Lab disponible ;
+- Scientific Benchmark et Model Governance disponibles ;
 - rapport central local disponible ;
 - aucune strategie robuste positive validee ;
 - ML actuel ne bat pas le marche no-vig sur test 2024+ ;

@@ -1,0 +1,1973 @@
+{
+  "registry_version": "V6.7",
+  "generated_at": "2026-05-25T20:44:30",
+  "models": [
+    {
+      "name": "Favoris H2H - Forme 5 matchs - form5 defavorable",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Forme 5 matchs"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1038,
+        "roi": 0.1,
+        "profit": 0.97,
+        "winrate": 58.2,
+        "max_drawdown": 34.82,
+        "average_odds": 1.74
+      },
+      "test_metrics": {
+        "picks": 1264,
+        "roi": 2.0,
+        "profit": 25.67,
+        "winrate": 59.3,
+        "max_drawdown": 26.53,
+        "average_odds": 1.74
+      },
+      "robustness_score": 79,
+      "status": "observation forte a confirmer",
+      "decision": "observation seulement",
+      "reason": "signal positif mais pas encore assez gouverne pour activation",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "robuste positif"
+    },
+    {
+      "name": "Favoris H2H - Elo relatif au favori - elo_diff fort positif",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Elo relatif au favori"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 2032,
+        "roi": 2.3,
+        "profit": 46.54,
+        "winrate": 65.8,
+        "max_drawdown": 22.84,
+        "average_odds": 1.59
+      },
+      "test_metrics": {
+        "picks": 2947,
+        "roi": 1.6,
+        "profit": 46.49,
+        "winrate": 65.9,
+        "max_drawdown": 47.4,
+        "average_odds": 1.57
+      },
+      "robustness_score": 79,
+      "status": "observation forte a confirmer",
+      "decision": "observation seulement",
+      "reason": "signal positif mais pas encore assez gouverne pour activation",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "robuste positif"
+    },
+    {
+      "name": "Stabilite annuelle - H2H exterieur favori",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "h2h_away_favorite"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1122,
+        "roi": -2.9,
+        "profit": -32.41,
+        "winrate": 58.8,
+        "max_drawdown": 37.07,
+        "average_odds": 1.69
+      },
+      "test_metrics": {
+        "picks": 1496,
+        "roi": 3.2,
+        "profit": 47.89,
+        "winrate": 62.2,
+        "max_drawdown": 29.53,
+        "average_odds": 1.68
+      },
+      "robustness_score": 78,
+      "status": "observation forte a confirmer",
+      "decision": "observation seulement",
+      "reason": "signal positif mais pas encore assez gouverne pour activation",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "stable positif"
+    },
+    {
+      "name": "Stabilite annuelle - Favoris H2H cote 1.60-1.80",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "h2h_favorites_odds_1_60_1_80"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1582,
+        "roi": 0.7,
+        "profit": 11.31,
+        "winrate": 59.4,
+        "max_drawdown": 22.34,
+        "average_odds": 1.7
+      },
+      "test_metrics": {
+        "picks": 1938,
+        "roi": 0.7,
+        "profit": 13.87,
+        "winrate": 59.3,
+        "max_drawdown": 37.1,
+        "average_odds": 1.7
+      },
+      "robustness_score": 59,
+      "status": "fragile / surveillance",
+      "decision": "watchlist",
+      "reason": "signal fragile ou stabilite insuffisante",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "stable positif"
+    },
+    {
+      "name": "Favoris H2H - Tranches de cotes - cote < 1.40",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Tranches de cotes"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 735,
+        "roi": 6.3,
+        "profit": 46.45,
+        "winrate": 83.4,
+        "max_drawdown": 8.49,
+        "average_odds": 1.28
+      },
+      "test_metrics": {
+        "picks": 998,
+        "roi": 0.3,
+        "profit": 2.91,
+        "winrate": 79.2,
+        "max_drawdown": 23.26,
+        "average_odds": 1.27
+      },
+      "robustness_score": 59,
+      "status": "fragile / surveillance",
+      "decision": "watchlist",
+      "reason": "signal fragile ou stabilite insuffisante",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "observation seulement"
+    },
+    {
+      "name": "Favoris H2H - Tranches de cotes - 1.60 <= cote < 1.80",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Tranches de cotes"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1582,
+        "roi": 0.7,
+        "profit": 11.31,
+        "winrate": 59.4,
+        "max_drawdown": 22.34,
+        "average_odds": 1.7
+      },
+      "test_metrics": {
+        "picks": 1938,
+        "roi": 0.7,
+        "profit": 13.87,
+        "winrate": 59.3,
+        "max_drawdown": 37.1,
+        "average_odds": 1.7
+      },
+      "robustness_score": 59,
+      "status": "fragile / surveillance",
+      "decision": "watchlist",
+      "reason": "signal fragile ou stabilite insuffisante",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "observation seulement"
+    },
+    {
+      "name": "Favoris H2H - Forme 3 matchs - form3 favorable",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Forme 3 matchs"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 3366,
+        "roi": 2.6,
+        "profit": 88.19,
+        "winrate": 64.3,
+        "max_drawdown": 28.85,
+        "average_odds": 1.64
+      },
+      "test_metrics": {
+        "picks": 4255,
+        "roi": 0.3,
+        "profit": 13.02,
+        "winrate": 63.1,
+        "max_drawdown": 54.01,
+        "average_odds": 1.63
+      },
+      "robustness_score": 59,
+      "status": "fragile / surveillance",
+      "decision": "watchlist",
+      "reason": "signal fragile ou stabilite insuffisante",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "observation seulement"
+    },
+    {
+      "name": "Stabilite annuelle - H2H favori Elo fort positif",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "h2h_favorite_strong_elo"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 2032,
+        "roi": 2.3,
+        "profit": 46.54,
+        "winrate": 65.8,
+        "max_drawdown": 22.84,
+        "average_odds": 1.59
+      },
+      "test_metrics": {
+        "picks": 2947,
+        "roi": 1.6,
+        "profit": 46.49,
+        "winrate": 65.9,
+        "max_drawdown": 47.4,
+        "average_odds": 1.57
+      },
+      "robustness_score": 57,
+      "status": "fragile / surveillance",
+      "decision": "watchlist",
+      "reason": "signal fragile ou stabilite insuffisante",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "degradation recente"
+    },
+    {
+      "name": "Favoris H2H - Annees test - annee 2024",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Annees test"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": null,
+        "average_odds": 0.0
+      },
+      "test_metrics": {
+        "picks": 4801,
+        "roi": 0.3,
+        "profit": 12.94,
+        "winrate": 61.6,
+        "max_drawdown": 66.68,
+        "average_odds": 1.66
+      },
+      "robustness_score": 54,
+      "status": "fragile / surveillance",
+      "decision": "watchlist",
+      "reason": "signal fragile ou stabilite insuffisante",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "observation seulement"
+    },
+    {
+      "name": "Favoris H2H - Domicile / exterieur - exterieur favori",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Domicile / exterieur"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1122,
+        "roi": -2.9,
+        "profit": -32.41,
+        "winrate": 58.8,
+        "max_drawdown": 37.07,
+        "average_odds": 1.69
+      },
+      "test_metrics": {
+        "picks": 1496,
+        "roi": 3.2,
+        "profit": 47.89,
+        "winrate": 62.2,
+        "max_drawdown": 29.53,
+        "average_odds": 1.68
+      },
+      "robustness_score": 48,
+      "status": "fragile / surveillance",
+      "decision": "watchlist",
+      "reason": "signal fragile ou stabilite insuffisante",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "fragile"
+    },
+    {
+      "name": "Favoris H2H - Competition - I1",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Competition"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 203,
+        "roi": -1.9,
+        "profit": -3.78,
+        "winrate": 60.6,
+        "max_drawdown": 16.21,
+        "average_odds": 1.65
+      },
+      "test_metrics": {
+        "picks": 309,
+        "roi": 4.0,
+        "profit": 12.44,
+        "winrate": 64.4,
+        "max_drawdown": 15.6,
+        "average_odds": 1.64
+      },
+      "robustness_score": 41,
+      "status": "fragile / surveillance",
+      "decision": "watchlist",
+      "reason": "signal fragile ou stabilite insuffisante",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "fragile"
+    },
+    {
+      "name": "Favoris H2H - Forme 5 matchs - form5 indisponible",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Forme 5 matchs"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": null,
+        "average_odds": 0.0
+      },
+      "test_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": null,
+        "average_odds": 0.0
+      },
+      "robustness_score": 8,
+      "status": "fragile / test absent",
+      "decision": "observation seulement",
+      "reason": "test 2024+ absent ou non lisible",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "echantillon faible"
+    },
+    {
+      "name": "Favoris H2H - Forme 3 matchs - form3 indisponible",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Forme 3 matchs"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": null,
+        "average_odds": 0.0
+      },
+      "test_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": null,
+        "average_odds": 0.0
+      },
+      "robustness_score": 8,
+      "status": "fragile / test absent",
+      "decision": "observation seulement",
+      "reason": "test 2024+ absent ou non lisible",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "echantillon faible"
+    },
+    {
+      "name": "Favoris H2H - Annees test - annee 2025",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Annees test"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": null,
+        "average_odds": 0.0
+      },
+      "test_metrics": {
+        "picks": 1661,
+        "roi": -1.0,
+        "profit": -16.31,
+        "winrate": 61.7,
+        "max_drawdown": 40.63,
+        "average_odds": 1.64
+      },
+      "robustness_score": 5,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "negatif a eviter"
+    },
+    {
+      "name": "Totals seulement",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 21788,
+        "roi": -2.6,
+        "profit": -570.92,
+        "winrate": 50.0,
+        "max_drawdown": 574.56,
+        "average_odds": 2.02
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    },
+    {
+      "name": "Totals low/mid",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 17587,
+        "roi": -2.2,
+        "profit": -383.27,
+        "winrate": 53.2,
+        "max_drawdown": 392.85,
+        "average_odds": 1.87
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    },
+    {
+      "name": "Totals low",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 3137,
+        "roi": -2.0,
+        "profit": -61.35,
+        "winrate": 64.6,
+        "max_drawdown": 77.8,
+        "average_odds": 1.52
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    },
+    {
+      "name": "Stabilite annuelle - Watchlist draw high",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "draw_high_watchlist"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 797,
+        "roi": 8.8,
+        "profit": 69.79,
+        "winrate": 35.4,
+        "max_drawdown": 23.14,
+        "average_odds": 3.07
+      },
+      "test_metrics": {
+        "picks": 985,
+        "roi": -1.3,
+        "profit": -12.59,
+        "winrate": 32.4,
+        "max_drawdown": 39.36,
+        "average_odds": 3.06
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "degradation recente"
+    },
+    {
+      "name": "Stabilite annuelle - Totals seulement",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "totals_only"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 15544,
+        "roi": -2.5,
+        "profit": -390.45,
+        "winrate": 50.0,
+        "max_drawdown": 393.85,
+        "average_odds": 2.02
+      },
+      "test_metrics": {
+        "picks": 21788,
+        "roi": -2.6,
+        "profit": -570.92,
+        "winrate": 50.0,
+        "max_drawdown": 574.56,
+        "average_odds": 2.02
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "negatif robuste"
+    },
+    {
+      "name": "Stabilite annuelle - Totals low/mid",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "totals_low_mid"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 12555,
+        "roi": -1.3,
+        "profit": -158.73,
+        "winrate": 53.3,
+        "max_drawdown": 166.97,
+        "average_odds": 1.88
+      },
+      "test_metrics": {
+        "picks": 17587,
+        "roi": -2.2,
+        "profit": -383.27,
+        "winrate": 53.2,
+        "max_drawdown": 392.85,
+        "average_odds": 1.87
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "negatif robuste"
+    },
+    {
+      "name": "Stabilite annuelle - Totals low",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "totals_low"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1985,
+        "roi": 1.3,
+        "profit": 26.18,
+        "winrate": 65.9,
+        "max_drawdown": 20.66,
+        "average_odds": 1.54
+      },
+      "test_metrics": {
+        "picks": 3137,
+        "roi": -2.0,
+        "profit": -61.35,
+        "winrate": 64.6,
+        "max_drawdown": 77.8,
+        "average_odds": 1.52
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "negatif robuste"
+    },
+    {
+      "name": "Stabilite annuelle - H2H domicile favori",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "h2h_home_favorite"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 4022,
+        "roi": 3.6,
+        "profit": 143.78,
+        "winrate": 63.8,
+        "max_drawdown": 36.59,
+        "average_odds": 1.66
+      },
+      "test_metrics": {
+        "picks": 4966,
+        "roi": -1.0,
+        "profit": -51.26,
+        "winrate": 61.5,
+        "max_drawdown": 77.39,
+        "average_odds": 1.65
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "degradation recente"
+    },
+    {
+      "name": "Stabilite annuelle - Favoris seulement",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "favorites_only"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 13345,
+        "roi": 0.9,
+        "profit": 122.21,
+        "winrate": 59.6,
+        "max_drawdown": 62.49,
+        "average_odds": 1.72
+      },
+      "test_metrics": {
+        "picks": 18212,
+        "roi": -1.0,
+        "profit": -182.78,
+        "winrate": 58.6,
+        "max_drawdown": 206.58,
+        "average_odds": 1.71
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "negatif robuste"
+    },
+    {
+      "name": "Stabilite annuelle - Favoris H2H tous",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "h2h_favorites_all"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 5144,
+        "roi": 2.2,
+        "profit": 111.37,
+        "winrate": 62.7,
+        "max_drawdown": 36.22,
+        "average_odds": 1.66
+      },
+      "test_metrics": {
+        "picks": 6462,
+        "roi": -0.1,
+        "profit": -3.37,
+        "winrate": 61.7,
+        "max_drawdown": 72.97,
+        "average_odds": 1.66
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "degradation recente"
+    },
+    {
+      "name": "Stabilite annuelle - Baseline marche brut",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "stability_annual",
+        "baseline_all"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 52957,
+        "roi": -2.6,
+        "profit": -1358.47,
+        "winrate": 38.2,
+        "max_drawdown": 1382.47,
+        "average_odds": 3.17
+      },
+      "test_metrics": {
+        "picks": 66140,
+        "roi": -2.5,
+        "profit": -1651.09,
+        "winrate": 38.8,
+        "max_drawdown": 1686.57,
+        "average_odds": 3.11
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "negatif robuste"
+    },
+    {
+      "name": "Pricing marge faible",
+      "type": "market",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "market_margin",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 492342,
+        "roi": -1.4,
+        "profit": -7078.75,
+        "winrate": 38.0,
+        "max_drawdown": 7134.18,
+        "average_odds": 3.25
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Analyse pricing globale; ne remplace pas un split test dedie."
+    },
+    {
+      "name": "Pricing marge elevee",
+      "type": "market",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "market_margin",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 66,
+        "roi": -16.3,
+        "profit": -10.77,
+        "winrate": 48.5,
+        "max_drawdown": 12.23,
+        "average_odds": 1.76
+      },
+      "robustness_score": 0,
+      "status": "echantillon faible",
+      "decision": "observation seulement",
+      "reason": "sample test inferieur a 300",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Analyse pricing globale; ne remplace pas un split test dedie."
+    },
+    {
+      "name": "Oracle strict (compat)",
+      "type": "rule",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": null,
+        "average_odds": 0.0
+      },
+      "robustness_score": 0,
+      "status": "fragile / test absent",
+      "decision": "observation seulement",
+      "reason": "test 2024+ absent ou non lisible",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    },
+    {
+      "name": "Oracle strict",
+      "type": "rule",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": null,
+        "average_odds": 0.0
+      },
+      "robustness_score": 0,
+      "status": "fragile / test absent",
+      "decision": "observation seulement",
+      "reason": "test 2024+ absent ou non lisible",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    },
+    {
+      "name": "Oracle relaxe",
+      "type": "rule",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 38054,
+        "roi": -2.3,
+        "profit": -874.49,
+        "winrate": 49.6,
+        "max_drawdown": 892.52,
+        "average_odds": 2.06
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    },
+    {
+      "name": "Oracle equilibre",
+      "type": "rule",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 27811,
+        "roi": -1.7,
+        "profit": -475.03,
+        "winrate": 54.0,
+        "max_drawdown": 497.58,
+        "average_odds": 1.86
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    },
+    {
+      "name": "ML total - Modele avec rolling pre-match - Regression logistique locale",
+      "type": "ml",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Modele avec rolling pre-match",
+        "total",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 690,
+        "roi": 2.27,
+        "profit": 15.67,
+        "winrate": 62.8,
+        "max_drawdown": 25.53,
+        "average_odds": 1.633
+      },
+      "test_metrics": {
+        "picks": 983,
+        "roi": -1.46,
+        "profit": -14.37,
+        "winrate": 60.3,
+        "max_drawdown": 36.64,
+        "average_odds": 1.636
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Seuil validation: 0.01; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
+    },
+    {
+      "name": "ML total - Baseline sans rolling - Regression logistique locale",
+      "type": "ml",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "total",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 681,
+        "roi": 1.43,
+        "profit": 9.72,
+        "winrate": 62.1,
+        "max_drawdown": 26.38,
+        "average_odds": 1.634
+      },
+      "test_metrics": {
+        "picks": 970,
+        "roi": -1.44,
+        "profit": -14.0,
+        "winrate": 60.4,
+        "max_drawdown": 42.15,
+        "average_odds": 1.633
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Seuil validation: 0.01; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
+    },
+    {
+      "name": "ML h2h - Modele avec rolling pre-match - Regression logistique locale",
+      "type": "ml",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Modele avec rolling pre-match",
+        "h2h",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 455,
+        "roi": 4.92,
+        "profit": 22.37,
+        "winrate": 57.6,
+        "max_drawdown": 14.82,
+        "average_odds": 1.942
+      },
+      "test_metrics": {
+        "picks": 703,
+        "roi": -6.31,
+        "profit": -44.38,
+        "winrate": 54.1,
+        "max_drawdown": 47.75,
+        "average_odds": 1.823
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Seuil validation: 0.03; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
+    },
+    {
+      "name": "ML h2h - Baseline sans rolling - Regression logistique locale",
+      "type": "ml",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "h2h",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 2911,
+        "roi": 0.34,
+        "profit": 9.77,
+        "winrate": 46.3,
+        "max_drawdown": 69.79,
+        "average_odds": 3.077
+      },
+      "test_metrics": {
+        "picks": 3949,
+        "roi": -6.48,
+        "profit": -255.74,
+        "winrate": 44.9,
+        "max_drawdown": 277.72,
+        "average_odds": 3.081
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Seuil validation: 0.02; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
+    },
+    {
+      "name": "ML global - Modele avec rolling pre-match - Regression logistique locale",
+      "type": "ml",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Modele avec rolling pre-match",
+        "global",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 6,
+        "roi": 165.83,
+        "profit": 9.95,
+        "winrate": 33.3,
+        "max_drawdown": 2.0,
+        "average_odds": 7.717
+      },
+      "test_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": 0.0,
+        "average_odds": 0.0
+      },
+      "robustness_score": 0,
+      "status": "fragile / test absent",
+      "decision": "observation seulement",
+      "reason": "test 2024+ absent ou non lisible",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Seuil validation: 0.05; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable (echantillon edge test faible)"
+    },
+    {
+      "name": "ML global - Baseline sans rolling - Regression logistique locale",
+      "type": "ml",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "global",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 6,
+        "roi": 165.83,
+        "profit": 9.95,
+        "winrate": 33.3,
+        "max_drawdown": 2.0,
+        "average_odds": 7.717
+      },
+      "test_metrics": {
+        "picks": 0,
+        "roi": 0.0,
+        "profit": 0.0,
+        "winrate": 0.0,
+        "max_drawdown": 0.0,
+        "average_odds": 0.0
+      },
+      "robustness_score": 0,
+      "status": "fragile / test absent",
+      "decision": "observation seulement",
+      "reason": "test 2024+ absent ou non lisible",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Seuil validation: 0.05; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable (echantillon edge test faible)"
+    },
+    {
+      "name": "Favoris seulement",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 18212,
+        "roi": -1.0,
+        "profit": -182.78,
+        "winrate": 58.6,
+        "max_drawdown": 206.58,
+        "average_odds": 1.71
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    },
+    {
+      "name": "Favoris H2H seulement",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 6462,
+        "roi": -0.1,
+        "profit": -3.37,
+        "winrate": 61.7,
+        "max_drawdown": 72.97,
+        "average_odds": 1.66
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    },
+    {
+      "name": "Favoris H2H - tous",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "h2h_favorite",
+        "elo/form si disponible"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 5144,
+        "roi": 2.2,
+        "profit": 111.37,
+        "winrate": 62.7,
+        "max_drawdown": 36.22,
+        "average_odds": 1.66
+      },
+      "test_metrics": {
+        "picks": 6462,
+        "roi": -0.1,
+        "profit": -3.37,
+        "winrate": 61.7,
+        "max_drawdown": 72.97,
+        "average_odds": 1.66
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Tranches de cotes - 1.80 <= cote < 2.00",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Tranches de cotes"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1764,
+        "roi": 2.4,
+        "profit": 42.4,
+        "winrate": 54.1,
+        "max_drawdown": 30.14,
+        "average_odds": 1.89
+      },
+      "test_metrics": {
+        "picks": 2161,
+        "roi": -0.4,
+        "profit": -9.36,
+        "winrate": 52.7,
+        "max_drawdown": 47.12,
+        "average_odds": 1.89
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Tranches de cotes - 1.40 <= cote < 1.60",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Tranches de cotes"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1063,
+        "roi": 1.1,
+        "profit": 11.21,
+        "winrate": 67.5,
+        "max_drawdown": 15.58,
+        "average_odds": 1.5
+      },
+      "test_metrics": {
+        "picks": 1365,
+        "roi": -0.8,
+        "profit": -10.79,
+        "winrate": 66.4,
+        "max_drawdown": 28.81,
+        "average_odds": 1.5
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Forme 5 matchs - form5 neutre",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Forme 5 matchs"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 369,
+        "roi": 1.6,
+        "profit": 5.92,
+        "winrate": 59.1,
+        "max_drawdown": 15.39,
+        "average_odds": 1.73
+      },
+      "test_metrics": {
+        "picks": 495,
+        "roi": -1.9,
+        "profit": -9.27,
+        "winrate": 58.4,
+        "max_drawdown": 20.87,
+        "average_odds": 1.7
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Forme 5 matchs - form5 favorable",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Forme 5 matchs"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 3737,
+        "roi": 2.8,
+        "profit": 104.48,
+        "winrate": 64.3,
+        "max_drawdown": 27.7,
+        "average_odds": 1.64
+      },
+      "test_metrics": {
+        "picks": 4703,
+        "roi": -0.4,
+        "profit": -19.77,
+        "winrate": 62.6,
+        "max_drawdown": 54.4,
+        "average_odds": 1.63
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Forme 3 matchs - form3 neutre",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Forme 3 matchs"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 579,
+        "roi": 2.5,
+        "profit": 14.57,
+        "winrate": 61.3,
+        "max_drawdown": 12.83,
+        "average_odds": 1.7
+      },
+      "test_metrics": {
+        "picks": 786,
+        "roi": -0.7,
+        "profit": -5.46,
+        "winrate": 60.1,
+        "max_drawdown": 21.47,
+        "average_odds": 1.69
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Forme 3 matchs - form3 defavorable",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Forme 3 matchs"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1199,
+        "roi": 0.7,
+        "profit": 8.61,
+        "winrate": 59.0,
+        "max_drawdown": 29.19,
+        "average_odds": 1.73
+      },
+      "test_metrics": {
+        "picks": 1421,
+        "roi": -0.8,
+        "profit": -10.93,
+        "winrate": 58.1,
+        "max_drawdown": 47.11,
+        "average_odds": 1.73
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Elo relatif au favori - elo_diff modere positif",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Elo relatif au favori"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 332,
+        "roi": 3.3,
+        "profit": 10.92,
+        "winrate": 56.6,
+        "max_drawdown": 14.61,
+        "average_odds": 1.83
+      },
+      "test_metrics": {
+        "picks": 553,
+        "roi": -6.0,
+        "profit": -33.13,
+        "winrate": 52.6,
+        "max_drawdown": 46.94,
+        "average_odds": 1.8
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Elo relatif au favori - elo_diff faible ou contradictoire",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Elo relatif au favori"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 2780,
+        "roi": 1.9,
+        "profit": 53.91,
+        "winrate": 61.1,
+        "max_drawdown": 30.55,
+        "average_odds": 1.7
+      },
+      "test_metrics": {
+        "picks": 2962,
+        "roi": -0.6,
+        "profit": -16.73,
+        "winrate": 59.1,
+        "max_drawdown": 54.66,
+        "average_odds": 1.71
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Domicile / exterieur - domicile favori",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Domicile / exterieur"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 4022,
+        "roi": 3.6,
+        "profit": 143.78,
+        "winrate": 63.8,
+        "max_drawdown": 36.59,
+        "average_odds": 1.66
+      },
+      "test_metrics": {
+        "picks": 4966,
+        "roi": -1.0,
+        "profit": -51.26,
+        "winrate": 61.5,
+        "max_drawdown": 77.39,
+        "average_odds": 1.65
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Competition - E2",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Competition"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 224,
+        "roi": 1.9,
+        "profit": 4.18,
+        "winrate": 60.7,
+        "max_drawdown": 8.38,
+        "average_odds": 1.7
+      },
+      "test_metrics": {
+        "picks": 355,
+        "roi": -0.7,
+        "profit": -2.62,
+        "winrate": 58.6,
+        "max_drawdown": 17.6,
+        "average_odds": 1.71
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Competition - E1",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Competition"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 204,
+        "roi": 3.5,
+        "profit": 7.18,
+        "winrate": 60.8,
+        "max_drawdown": 17.83,
+        "average_odds": 1.72
+      },
+      "test_metrics": {
+        "picks": 330,
+        "roi": -3.8,
+        "profit": -12.45,
+        "winrate": 57.9,
+        "max_drawdown": 17.63,
+        "average_odds": 1.69
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "Favoris H2H - Competition - E0",
+      "type": "segment",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "favorite_report",
+        "Competition"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 238,
+        "roi": 2.8,
+        "profit": 6.77,
+        "winrate": 65.5,
+        "max_drawdown": 10.15,
+        "average_odds": 1.6
+      },
+      "test_metrics": {
+        "picks": 331,
+        "roi": -0.4,
+        "profit": -1.27,
+        "winrate": 65.0,
+        "max_drawdown": 22.95,
+        "average_odds": 1.57
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "non confirme sur test"
+    },
+    {
+      "name": "External xG Lab - non teste",
+      "type": "external_lab",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "non teste",
+      "features_used": [
+        "external_xg_lab",
+        "join_plan_preview"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "moyen",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "robustness_score": 0,
+      "status": "fragile / test absent",
+      "decision": "observation seulement",
+      "reason": "test 2024+ absent ou non lisible",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Aucun dataset xG reel fourni; laboratoire seulement."
+    },
+    {
+      "name": "Baseline marché brut",
+      "type": "market",
+      "version": "V6.7",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "odds",
+        "market_type",
+        "segments_historiques"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 0,
+        "roi": null,
+        "profit": null,
+        "winrate": null,
+        "max_drawdown": null,
+        "average_odds": null
+      },
+      "test_metrics": {
+        "picks": 66140,
+        "roi": -2.5,
+        "profit": -1651.09,
+        "winrate": 38.8,
+        "max_drawdown": 1686.57,
+        "average_odds": 3.11
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T20:44:30",
+      "notes": "Backtest modern; aucune activation automatique."
+    }
+  ]
+}

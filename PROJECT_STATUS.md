@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V6.6 External xG Integration Lab.
+V6.7 Scientific Benchmark & Model Governance.
 
-Le projet reste une release candidate locale prudente. V6.6 ajoute seulement un laboratoire d'integration xG externe, sans source branchee au bot et sans influence sur les picks.
+Le projet reste une release candidate locale prudente. V6.7 ajoute une couche de benchmark scientifique et de gouvernance modele. Aucun signal n'est branche aux picks Telegram.
 
 ## Etat general
 
@@ -12,6 +12,7 @@ Le projet reste une release candidate locale prudente. V6.6 ajoute seulement un 
 - Volume connu : environ 528066 records regles.
 - Rapports locaux disponibles : backtest, favoris, stabilite, pricing, ML, External Dataset Lab, dashboard central.
 - Lab xG externe disponible pour profiler un dataset fourni manuellement.
+- Benchmark scientifique et registre modele disponibles.
 - Aucun signal robuste positif n'est valide a ce stade.
 - Aucun changement local V6.x ne doit rendre Telegram plus agressif.
 
@@ -21,6 +22,8 @@ Le projet reste une release candidate locale prudente. V6.6 ajoute seulement un 
 - `xgabora_dataset_import.py` : import historique local et enrichissement terrain depuis CSV.
 - `feature_builder.py` : feature matrix, rolling pre-match avg5, marquage des post-match features.
 - `model_trainer.py` : regression logistique locale, sklearn optionnel, comparaison au marche no-vig.
+- `benchmark_governance.py` : consolidation marche/regles/segments/ML/lab xG et scoring prudent.
+- `decision_policy.py` : politique testable de classification et promotion.
 - `backtest_evaluator.py` : split temporel, rapports modern/recent/favoris/stabilite/pricing.
 - `external_dataset_probe.py` : profilage local de datasets externes sans telechargement.
 - `external_join_plan.py` : jointure theorique date/home/away sans ecriture.
@@ -31,6 +34,7 @@ Le projet reste une release candidate locale prudente. V6.6 ajoute seulement un 
 - `dashboard_builder.py` : dashboard HTML local et `summary.json`.
 - `project_audit.py` : audit release candidate local.
 - `COMMANDS.md` : fiche de commandes pour developpeur.
+- `model_registry.json` : metadonnees agregees des strategies/modeles evalues.
 
 ## Resultats connus
 
@@ -41,6 +45,7 @@ Le projet reste une release candidate locale prudente. V6.6 ajoute seulement un 
 - Les edges ML positifs en validation ont ete invalides sur test dans les essais V6.1/V6.2.
 - Les rolling pre-match ajoutent du contexte mais ne suffisent pas encore a battre le marche.
 - V6.6 ne valide aucune strategie : il prepare seulement le test d'un dataset xG externe.
+- V6.7 ne valide aucune strategie : elle formalise la gouvernance, les refus et les conditions de promotion.
 
 ## Ce qui est valide
 
@@ -54,6 +59,8 @@ Le projet reste une release candidate locale prudente. V6.6 ajoute seulement un 
 - Lab externe sans API, scraping ni telechargement automatique.
 - Lab xG externe sans API, scraping ni telechargement automatique.
 - Preview xG limite a `reports/`, non utilisable comme dataset d'entrainement production.
+- Scoring de robustesse prudent, avec invalidation si test 2024+ contredit la validation.
+- Registre modele sans secrets, sans predictions individuelles et sans gros dataset.
 
 ## Ce qui est invalide ou non confirme
 
@@ -64,6 +71,8 @@ Le projet reste une release candidate locale prudente. V6.6 ajoute seulement un 
 - Augmenter l'agressivite Telegram.
 - Utiliser un xG final post-match pour predire le meme match.
 - Considerer un preview de jointure comme dataset final.
+- Promouvoir une strategie validation-positive mais test-negative.
+- Confondre `production_allowed` avec pari automatique.
 
 ## Ce qu'il ne faut pas faire
 
@@ -73,12 +82,26 @@ Le projet reste une release candidate locale prudente. V6.6 ajoute seulement un 
 - Ne pas utiliser Railway maintenant.
 - Ne pas transformer un rapport local en mecanisme de picks.
 - Ne pas brancher un dataset xG externe aux picks Telegram.
+- Ne pas utiliser l'accuracy brute comme critere principal du ML.
+
+## Difference avec un bot de pronostics classique
+
+- Pas de picks forces.
+- Pas de promesses de profit.
+- Backtest temporel train/validation/test.
+- Anti-fuite de donnees explicite.
+- Pricing no-vig pour comparer au marche.
+- Calibration probabiliste avant toute lecture de ROI.
+- ML evalue contre le marche, pas contre une intuition.
+- External data lab avant integration.
+- Gouvernance modele avant activation.
 
 ## Prochaine vraie priorite
 
-1. Telecharger manuellement un dataset externe xG/FBref/Kaggle dans `external_data/`.
-2. Profiler la source avec `external_xg_lab.py --profile`.
-3. Evaluer la jointure avec `external_xg_lab.py --evaluate-join`.
-4. Transformer le xG final en rolling features pre-match si la source vaut le coup.
-5. Relancer train/validation/test.
-6. Maintenir Railway et Telegram en attente tant qu'aucune strategie robuste positive n'est validee.
+1. Generer `benchmark_governance.py` sur les features modernes pour figer un registre de reference.
+2. Telecharger manuellement un dataset externe xG/FBref/Kaggle dans `external_data/`.
+3. Profiler la source avec `external_xg_lab.py --profile`.
+4. Evaluer la jointure avec `external_xg_lab.py --evaluate-join`.
+5. Transformer le xG final en rolling features pre-match si la source vaut le coup.
+6. Relancer train/validation/test puis benchmark gouvernance.
+7. Maintenir Railway et Telegram en attente tant qu'aucune strategie robuste positive n'est validee.

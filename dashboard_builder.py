@@ -19,6 +19,7 @@ REPORT_FILES = {
     "ml_total": "ml_total.txt",
     "external_profile": "external_profile.txt",
     "external_recommend": "external_recommend.txt",
+    "benchmark_governance": "benchmark_governance.txt",
 }
 
 
@@ -80,6 +81,7 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     modern = texts["backtest_modern"]
     favorite = texts["favorite"]
     ml_global = texts["ml_global"]
+    registry = read_model_registry(report_dir)
 
     records_count = _first_float(r"- Records regles: ([0-9]+)", pricing)
     if records_count is None:
@@ -116,9 +118,26 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "pricing_high_margin_roi": pricing_high_roi,
         "ml_global_brier_test": ml_brier,
         "ml_market_brier_test": ml_market_brier,
+        "model_registry_count": len(registry),
+        "best_robustness_score": max((entry.get("robustness_score", 0) for entry in registry), default=None),
         "conclusion": conclusion,
         "warnings": warnings,
     }
+
+
+def read_model_registry(report_dir: Path) -> List[Dict[str, Any]]:
+    candidates = [report_dir / "model_registry.json", Path("model_registry.json")]
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        models = data.get("models") if isinstance(data, dict) else None
+        if isinstance(models, list):
+            return [item for item in models if isinstance(item, dict)]
+    return []
 
 
 def _card(title: str, body: str) -> str:
@@ -128,6 +147,7 @@ def _card(title: str, body: str) -> str:
 def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     texts = {key: read_text(report_dir, filename) for key, filename in REPORT_FILES.items()}
     summary = build_summary(report_dir)
+    registry = read_model_registry(report_dir)
     parts = [
         "<!doctype html>",
         "<html lang='fr'><head><meta charset='utf-8'>",
@@ -145,6 +165,7 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         ("baseline_roi_test", "ROI baseline test"),
         ("pricing_low_margin_roi", "ROI marge faible"),
         ("ml_global_brier_test", "Brier ML global"),
+        ("best_robustness_score", "Score robustesse max"),
     ]:
         value = summary.get(key)
         parts.append(f"<div class='metric'><strong>{html.escape(label)}</strong><br>{html.escape(str(value) if value is not None else 'n/a')}</div>")
@@ -173,6 +194,17 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     parts.append(_card("ML", "\n".join(ml_lines)))
     external_lines = _lines_matching(texts["external_profile"] + "\n" + texts["external_recommend"], ["Score utilite", "xg:", "odds:", "leak_risk", "verdict", "Recommandation"], 20)
     parts.append(_card("External Dataset Lab", "\n".join(external_lines)))
+    governance_lines = []
+    if texts["benchmark_governance"]:
+        governance_lines.extend(_lines_matching(texts["benchmark_governance"], ["Top gouvernance", "score=", "Conclusion", "Sections indisponibles", "Modeles/strategies"], 24))
+    if registry:
+        governance_lines.append("--- model_registry.json ---")
+        for entry in registry[:12]:
+            governance_lines.append(
+                f"{entry.get('name')}: score={entry.get('robustness_score')}, statut={entry.get('status')}, "
+                f"decision={entry.get('decision')}, raison={entry.get('reason', '')}"
+            )
+    parts.append(_card("Gouvernance des modeles", "\n".join(governance_lines)))
     conclusion = "\n".join([
         summary["conclusion"],
         "Observations seulement: aucune sortie de ce rapport ne modifie Telegram, Railway ou la DB.",
