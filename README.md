@@ -42,6 +42,8 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 - `external_dataset_probe.py` : profilage de CSV/dossiers externes.
 - `external_join_plan.py` : plan de jointure theorique date/home/away sans ecriture.
 - `external_xg_lab.py` : laboratoire xG externe, jointure controlee et preview local.
+- `external_xg_features.py` : transformation du xG final externe en rolling features pre-match.
+- `xg_model_lab.py` : evaluation locale descriptive des rolling xG.
 - `team_name_normalizer.py` : normalisation prudente et suggestions de mapping d'equipes.
 - `external_adapters/epl_fbref_lab.py` : adaptateur laboratoire EPL/FBref local.
 - `report_runner.py` : orchestration des rapports locaux.
@@ -211,6 +213,36 @@ Le preview ne sert pas a entrainer le bot. Il sert uniquement a verifier les col
 
 Les details sont dans `docs/external_xg_integration_plan.md`.
 
+## External xG Rolling Features Lab
+
+La phase V6.8 transforme un dataset xG externe post-match en features rolling pre-match. Le xG final du match courant reste interdit comme feature directe : seules les moyennes calculees sur les matchs precedents sont exportees.
+
+Generation du CSV laboratoire :
+
+```bash
+python external_xg_features.py --external external_data/epl_fbref_2024_2025/pl_24-25_matches_clean.csv --xgabora data/features_modern.csv --output reports/epl_xg_rolling_features.csv
+```
+
+Colonnes principales ajoutees :
+
+- `home_xg_for_avg3`, `home_xg_for_avg5`
+- `home_xg_against_avg3`, `home_xg_against_avg5`
+- `away_xg_for_avg3`, `away_xg_for_avg5`
+- `away_xg_against_avg3`, `away_xg_against_avg5`
+- `xg_diff_avg3`, `xg_diff_avg5`
+- tendances 3 vs 5 et nombre de matchs disponibles
+
+Evaluation descriptive :
+
+```bash
+python xg_model_lab.py --features reports/epl_xg_rolling_features.csv
+python benchmark_governance.py --features data/features_modern.csv --xg-lab reports/epl_xg_rolling_features.csv --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
+```
+
+Le dataset EPL 2024-2025 couvre une seule ligue et une seule saison. Meme avec une bonne jointure, il reste laboratoire seulement : l'echantillon test peut etre faible, les resultats ne generalisent pas automatiquement, et xgabora reste la base principale car il contient les cotes et le volume historique.
+
+Le rapport xG se lit comme une analyse prudente : si `n < 300`, le signal reste echantillon faible ; si le ROI test est negatif, le signal est invalide ; si le Brier/log loss ne battent pas le marche no-vig, le xG n'ameliore pas la probabilite.
+
 ## Scientific Benchmark
 
 La phase V6.7 consolide les resultats disponibles dans un benchmark scientifique local. Elle compare le marche, les regles Oracle, les segments, les modeles ML et le futur lab xG avec une meme logique de prudence.
@@ -338,6 +370,7 @@ Etat V6.5 Release Candidate locale :
 - post-match features exclues par defaut ;
 - External Dataset Lab disponible ;
 - External xG Integration Lab disponible ;
+- External xG Rolling Features Lab disponible ;
 - Scientific Benchmark et Model Governance disponibles ;
 - rapport central local disponible ;
 - aucune strategie robuste positive validee ;

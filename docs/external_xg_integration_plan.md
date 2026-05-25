@@ -28,6 +28,21 @@ La bonne direction consiste a convertir les stats externes en moyennes historiqu
 
 Pour un match donne, ces colonnes doivent utiliser uniquement les matchs precedents de chaque equipe. Le match courant et tous les matchs futurs doivent etre exclus.
 
+La phase V6.8 implemente cette direction avec `external_xg_features.py`. Le script exporte dans `reports/` des colonnes comme :
+
+- `home_xg_for_avg3`
+- `home_xg_for_avg5`
+- `home_xg_against_avg3`
+- `home_xg_against_avg5`
+- `away_xg_for_avg3`
+- `away_xg_for_avg5`
+- `away_xg_against_avg3`
+- `away_xg_against_avg5`
+- `xg_diff_avg3`
+- `xg_diff_avg5`
+
+Les colonnes directes `home_xg` et `away_xg` du match courant ne sont pas exportees comme features predictives.
+
 ## Eviter la fuite de donnees
 
 Regles minimales :
@@ -85,3 +100,29 @@ python external_xg_lab.py --build-preview --xgabora data/features_modern.csv --e
 ```
 
 Ces commandes restent locales. Elles ne telechargent rien et ne generent aucun pick.
+
+## Commandes rolling xG V6.8
+
+Dataset EPL 2024-2025 teste localement :
+
+- dossier : `external_data/epl_fbref_2024_2025`
+- fichier : `pl_24-25_matches_clean.csv`
+- volume : 380 matchs
+- periode : 2024-08-16 -> 2025-05-25
+- jointure observee : environ 89.47%
+- matchs joints avec xG + odds xgabora : environ 340
+
+Generer les rolling features :
+
+```bash
+python external_xg_features.py --external external_data/epl_fbref_2024_2025/pl_24-25_matches_clean.csv --xgabora data/features_modern.csv --output reports/epl_xg_rolling_features.csv
+```
+
+Evaluer le laboratoire :
+
+```bash
+python xg_model_lab.py --features reports/epl_xg_rolling_features.csv
+python benchmark_governance.py --features data/features_modern.csv --xg-lab reports/epl_xg_rolling_features.csv --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
+```
+
+Si l'echantillon test est inferieur a 300 ou si le ROI test est negatif, le signal reste observation seulement ou invalide. Une seule saison EPL ne suffit pas a generaliser a tout le bot.

@@ -20,6 +20,7 @@ REPORT_FILES = {
     "external_profile": "external_profile.txt",
     "external_recommend": "external_recommend.txt",
     "benchmark_governance": "benchmark_governance.txt",
+    "xg_model_lab": "xg_model_lab.txt",
 }
 
 
@@ -194,6 +195,18 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     parts.append(_card("ML", "\n".join(ml_lines)))
     external_lines = _lines_matching(texts["external_profile"] + "\n" + texts["external_recommend"], ["Score utilite", "xg:", "odds:", "leak_risk", "verdict", "Recommandation"], 20)
     parts.append(_card("External Dataset Lab", "\n".join(external_lines)))
+    xg_lines = []
+    if texts["xg_model_lab"]:
+        xg_lines.extend(_lines_matching(texts["xg_model_lab"], ["Lignes avec rolling", "Matchs uniques", "Split interne", "Marche no-vig", "Modele", "Edge test", "Conclusion", "Erreur non bloquante"], 30))
+    summary_path = Path("reports") / "external_xg_features_summary.json"
+    if summary_path.exists():
+        try:
+            xg_summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            xg_lines.append("--- external_xg_features_summary.json ---")
+            xg_lines.append(f"taux de jointure={xg_summary.get('join_rate')}%, lignes enrichies={xg_summary.get('enriched_rows')}, avg5={xg_summary.get('avg5_rows')}")
+        except Exception:
+            pass
+    parts.append(_card("External xG Rolling Lab", "\n".join(xg_lines) + "\nRappel: aucun signal xG n'est branche aux picks."))
     governance_lines = []
     if texts["benchmark_governance"]:
         governance_lines.extend(_lines_matching(texts["benchmark_governance"], ["Top gouvernance", "score=", "Conclusion", "Sections indisponibles", "Modeles/strategies"], 24))

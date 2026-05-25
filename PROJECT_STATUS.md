@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V6.7 Scientific Benchmark & Model Governance.
+V6.8 External xG Rolling Features Lab.
 
-Le projet reste une release candidate locale prudente. V6.7 ajoute une couche de benchmark scientifique et de gouvernance modele. Aucun signal n'est branche aux picks Telegram.
+Le projet reste une release candidate locale prudente. V6.8 ajoute un pipeline laboratoire qui transforme le xG externe post-match en rolling features pre-match. Aucun signal n'est branche aux picks Telegram.
 
 ## Etat general
 
@@ -12,6 +12,7 @@ Le projet reste une release candidate locale prudente. V6.7 ajoute une couche de
 - Volume connu : environ 528066 records regles.
 - Rapports locaux disponibles : backtest, favoris, stabilite, pricing, ML, External Dataset Lab, dashboard central.
 - Lab xG externe disponible pour profiler un dataset fourni manuellement.
+- Rolling xG externe disponible en laboratoire local.
 - Benchmark scientifique et registre modele disponibles.
 - Aucun signal robuste positif n'est valide a ce stade.
 - Aucun changement local V6.x ne doit rendre Telegram plus agressif.
@@ -28,6 +29,8 @@ Le projet reste une release candidate locale prudente. V6.7 ajoute une couche de
 - `external_dataset_probe.py` : profilage local de datasets externes sans telechargement.
 - `external_join_plan.py` : jointure theorique date/home/away sans ecriture.
 - `external_xg_lab.py` : profilage xG, jointure theorique, evaluation et preview dans `reports/`.
+- `external_xg_features.py` : generation de rolling xG pre-match depuis un dataset externe.
+- `xg_model_lab.py` : evaluation descriptive des rolling xG contre le marche no-vig.
 - `team_name_normalizer.py` : normalisation prudente des noms d'equipes et suggestions de mapping manuel.
 - `external_adapters/epl_fbref_lab.py` : adaptateur laboratoire EPL/FBref local.
 - `report_runner.py` : execution reproductible des rapports locaux.
@@ -46,6 +49,8 @@ Le projet reste une release candidate locale prudente. V6.7 ajoute une couche de
 - Les rolling pre-match ajoutent du contexte mais ne suffisent pas encore a battre le marche.
 - V6.6 ne valide aucune strategie : il prepare seulement le test d'un dataset xG externe.
 - V6.7 ne valide aucune strategie : elle formalise la gouvernance, les refus et les conditions de promotion.
+- V6.8 ne valide aucune strategie : elle teste seulement si le xG rolling peut ameliorer les probabilites en laboratoire.
+- Dataset EPL/FBref-Kaggle 2024-2025 teste localement : 380 matchs, 2024-08-16 -> 2025-05-25, jointure environ 89.47%, 340 matchs joints avec xG + cotes xgabora.
 
 ## Ce qui est valide
 
@@ -59,6 +64,7 @@ Le projet reste une release candidate locale prudente. V6.7 ajoute une couche de
 - Lab externe sans API, scraping ni telechargement automatique.
 - Lab xG externe sans API, scraping ni telechargement automatique.
 - Preview xG limite a `reports/`, non utilisable comme dataset d'entrainement production.
+- Rolling xG calcule uniquement avec matchs strictement anterieurs.
 - Scoring de robustesse prudent, avec invalidation si test 2024+ contredit la validation.
 - Registre modele sans secrets, sans predictions individuelles et sans gros dataset.
 
@@ -70,6 +76,7 @@ Le projet reste une release candidate locale prudente. V6.7 ajoute une couche de
 - Redeployer Railway sans signal robuste.
 - Augmenter l'agressivite Telegram.
 - Utiliser un xG final post-match pour predire le meme match.
+- Exporter `home_xg` ou `away_xg` directs comme features predictives.
 - Considerer un preview de jointure comme dataset final.
 - Promouvoir une strategie validation-positive mais test-negative.
 - Confondre `production_allowed` avec pari automatique.
@@ -98,10 +105,8 @@ Le projet reste une release candidate locale prudente. V6.7 ajoute une couche de
 
 ## Prochaine vraie priorite
 
-1. Generer `benchmark_governance.py` sur les features modernes pour figer un registre de reference.
-2. Telecharger manuellement un dataset externe xG/FBref/Kaggle dans `external_data/`.
-3. Profiler la source avec `external_xg_lab.py --profile`.
-4. Evaluer la jointure avec `external_xg_lab.py --evaluate-join`.
-5. Transformer le xG final en rolling features pre-match si la source vaut le coup.
-6. Relancer train/validation/test puis benchmark gouvernance.
-7. Maintenir Railway et Telegram en attente tant qu'aucune strategie robuste positive n'est validee.
+1. Lire le rapport `xg_model_lab.py` sur le CSV rolling xG.
+2. Verifier si les rolling xG battent le marche no-vig sur test interne 2025.
+3. Si le signal reste faible, chercher un dataset xG multi-saisons pour augmenter le volume.
+4. Relancer train/validation/test puis benchmark gouvernance.
+5. Maintenir Railway et Telegram en attente tant qu'aucune strategie robuste positive n'est validee.

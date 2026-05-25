@@ -142,7 +142,29 @@ python external_xg_lab.py --build-preview --xgabora data/features_modern.csv --e
 
 Le preview ne sert pas a entrainer le bot. Le xG final doit etre transforme en rolling features pre-match avant tout test predictif.
 
-## 10. Scientific Benchmark & Model Governance
+## 10. External xG Rolling Features Lab
+
+Generer les rolling xG pre-match depuis le dataset externe fourni manuellement :
+
+```bash
+python external_xg_features.py --external external_data/epl_fbref_2024_2025/pl_24-25_matches_clean.csv --xgabora data/features_modern.csv --output reports/epl_xg_rolling_features.csv
+```
+
+Evaluer le CSV enrichi :
+
+```bash
+python xg_model_lab.py --features reports/epl_xg_rolling_features.csv
+```
+
+Relancer la gouvernance avec le lab xG :
+
+```bash
+python benchmark_governance.py --features data/features_modern.csv --xg-lab reports/epl_xg_rolling_features.csv --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
+```
+
+Le fichier produit reste dans `reports/`. Il ne doit pas etre deplace dans `data/` ni utilise comme source de picks.
+
+## 11. Scientific Benchmark & Model Governance
 
 Benchmark complet si `data/features_modern.csv` est disponible :
 
@@ -158,13 +180,13 @@ Sorties :
 
 Le benchmark attribue un score prudent et une decision : observation, watchlist, candidat, invalide ou a bloquer. Rien n'est branche aux picks Telegram.
 
-## 11. Git workflow
+## 12. Git workflow
 
 ```bash
 git status --short
 git diff
-git add README.md PROJECT_STATUS.md COMMANDS.md project_audit.py benchmark_governance.py decision_policy.py test_benchmark_governance.py test_decision_policy.py docs/model_promotion_policy.md model_registry.json
-git commit -m "Add scientific benchmark governance V6.7"
+git add README.md PROJECT_STATUS.md COMMANDS.md project_audit.py external_xg_features.py xg_model_lab.py benchmark_governance.py dashboard_builder.py report_runner.py test_external_xg_features.py test_xg_model_lab.py docs/external_xg_integration_plan.md model_registry.json
+git commit -m "Add external xG rolling features lab V6.8"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -173,7 +195,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 12. Ce qu'il ne faut pas faire
+## 13. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.
@@ -184,3 +206,4 @@ git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.js
 - Ne pas scraper FBref, Understat ou Kaggle automatiquement.
 - Ne pas utiliser un preview xG comme dataset d'entrainement production.
 - Ne pas promouvoir une strategie sans test 2024+ positif et gouvernance OK.
+- Ne pas utiliser `home_xg` ou `away_xg` directs du match courant comme features predictives.

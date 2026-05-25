@@ -21,7 +21,10 @@ ALIASES = {
     "newcastle united": "newcastle",
     "nottm forest": "nottingham forest",
     "nott m forest": "nottingham forest",
+    "nott ham forest": "nottingham forest",
     "nottingham forest": "nottingham forest",
+    "ipswich town": "ipswich",
+    "leicester city": "leicester",
     "brighton hove": "brighton hove albion",
     "brighton and hove albion": "brighton hove albion",
 }

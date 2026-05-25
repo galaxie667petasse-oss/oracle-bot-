@@ -33,6 +33,7 @@ FULL_EXTRA_COMMANDS = [
     ReportCommand("ML total", "ml_total.txt", ["model_trainer.py", "--features", "data/features_modern.csv", "--market", "total"], timeout=1200),
     ReportCommand("External dataset profile", "external_profile.txt", ["external_dataset_probe.py", "--profile-csv", "data/features_modern.csv"]),
     ReportCommand("External dataset recommendation", "external_recommend.txt", ["external_dataset_probe.py", "--recommend", "data/features_modern.csv"]),
+    ReportCommand("External xG rolling lab", "xg_model_lab.txt", ["xg_model_lab.py", "--features", "reports/epl_xg_rolling_features.csv"], timeout=1200),
     ReportCommand(
         "Benchmark governance",
         "benchmark_governance.txt",
@@ -40,6 +41,8 @@ FULL_EXTRA_COMMANDS = [
             "benchmark_governance.py",
             "--features",
             "data/features_modern.csv",
+            "--xg-lab",
+            "reports/epl_xg_rolling_features.csv",
             "--summary-json",
             "{report_dir}/benchmark_summary.json",
             "--html",

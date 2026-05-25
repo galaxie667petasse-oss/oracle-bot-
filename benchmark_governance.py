@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from decision_policy import classify_strategy, robustness_score
 
 
-GOVERNANCE_VERSION = "V6.7"
+GOVERNANCE_VERSION = "V6.8"
 DEFAULT_FEATURES = "data/features_modern.csv"
 DEFAULT_REGISTRY = "model_registry.json"
 
@@ -234,7 +234,28 @@ def _external_lab_entry() -> Dict[str, Any]:
     return _registry_entry("External xG Lab - non teste", "external_lab", metrics, notes="Aucun dataset xG reel fourni; laboratoire seulement.")
 
 
-def _build_sections(features_path: str, db: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+def _xg_rolling_lab_entry(report: Dict[str, Any]) -> Dict[str, Any]:
+    metrics = dict(report.get("governance_metrics") or {})
+    metrics.setdefault("test", {"picks": 0, "roi": None})
+    metrics.setdefault("validation", {"picks": 0, "roi": None})
+    metrics["post_match_features_allowed"] = False
+    metrics["leak_risk"] = "controlled_rolling"
+    metrics["features_used"] = ["external_xg_rolling_avg3_avg5", "market_no_vig"]
+    metrics["test_period"] = "2025-01-01 -> 2025-05-25"
+    notes = (
+        f"lignes rolling={report.get('rows_with_rolling_xg', 0)}, "
+        f"matchs uniques={report.get('unique_matches_with_rolling_xg', 0)}, "
+        f"{report.get('conclusion') or report.get('error') or 'observation seulement'}"
+    )
+    return _registry_entry(
+        "epl_fbref_2024_2025_rolling_xg_lab",
+        "external_lab",
+        metrics,
+        notes=notes,
+    )
+
+
+def _build_sections(features_path: str, db: Optional[Dict[str, Any]] = None, xg_lab_path: str = "") -> List[Dict[str, Any]]:
     if db is None:
         db = _load_db()
     from backtest_evaluator import build_favorite_report, build_pricing_report, build_stability_report, evaluate_backtest
@@ -262,6 +283,14 @@ def _build_sections(features_path: str, db: Optional[Dict[str, Any]] = None) -> 
             {"name": "ML H2H", "ok": False, "error": message, "data": None},
             {"name": "ML total", "ok": False, "error": message, "data": None},
         ])
+    if xg_lab_path:
+        xg_file = Path(xg_lab_path)
+        if xg_file.exists():
+            from xg_model_lab import build_xg_model_report
+
+            sections.append(_section("External xG rolling lab", lambda: build_xg_model_report(str(xg_file))))
+        else:
+            sections.append({"name": "External xG rolling lab", "ok": False, "error": f"Fichier xG lab absent: {xg_lab_path}", "data": None})
     return sections
 
 
@@ -286,12 +315,14 @@ def collect_registry_entries(sections: Iterable[Dict[str, Any]]) -> List[Dict[st
             entries.extend(_ml_entries(data, "h2h"))
         elif name == "ML total":
             entries.extend(_ml_entries(data, "total"))
+        elif name == "External xG rolling lab":
+            entries.append(_xg_rolling_lab_entry(data))
     entries.append(_external_lab_entry())
     return sorted(entries, key=lambda item: (item.get("robustness_score", 0), item.get("name", "")), reverse=True)
 
 
-def build_benchmark(features_path: str = DEFAULT_FEATURES, db: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    sections = _build_sections(features_path, db=db)
+def build_benchmark(features_path: str = DEFAULT_FEATURES, db: Optional[Dict[str, Any]] = None, xg_lab_path: str = "") -> Dict[str, Any]:
+    sections = _build_sections(features_path, db=db, xg_lab_path=xg_lab_path)
     entries = collect_registry_entries(sections)
     available = sum(1 for section in sections if section.get("ok"))
     failed = [section for section in sections if not section.get("ok")]
@@ -301,6 +332,8 @@ def build_benchmark(features_path: str = DEFAULT_FEATURES, db: Optional[Dict[str
         "generated_at": now_iso(),
         "version": GOVERNANCE_VERSION,
         "features_path": features_path,
+        "xg_lab_path": xg_lab_path or None,
+        "xg_lab_available": any(section.get("name") == "External xG rolling lab" and section.get("ok") for section in sections),
         "sections_available": available,
         "sections_failed": [{"name": section["name"], "error": section.get("error", "")} for section in failed],
         "models_tested": len(entries),
@@ -404,12 +437,13 @@ def parse_args(argv=None):
     parser.add_argument("--summary-json", default="", help="Chemin du resume JSON")
     parser.add_argument("--html", default="", help="Chemin du rapport HTML")
     parser.add_argument("--registry", default=DEFAULT_REGISTRY, help="Chemin du model registry versionne")
+    parser.add_argument("--xg-lab", default="", help="CSV rolling xG externe produit dans reports/")
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    benchmark = build_benchmark(args.features)
+    benchmark = build_benchmark(args.features, xg_lab_path=args.xg_lab)
     registry_path = write_registry(benchmark["registry"], args.registry)
     if args.summary_json:
         summary_path = write_summary(benchmark, args.summary_json)
