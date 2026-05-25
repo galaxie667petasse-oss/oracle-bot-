@@ -1,6 +1,6 @@
 {
   "registry_version": "V6.8",
-  "generated_at": "2026-05-25T22:27:48",
+  "generated_at": "2026-05-25T22:52:25",
   "models": [
     {
       "name": "Favoris H2H - Forme 5 matchs - form5 defavorable",
@@ -35,7 +35,7 @@
       "status": "observation forte a confirmer",
       "decision": "observation seulement",
       "reason": "signal positif mais pas encore assez gouverne pour activation",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "robuste positif"
     },
     {
@@ -71,7 +71,7 @@
       "status": "observation forte a confirmer",
       "decision": "observation seulement",
       "reason": "signal positif mais pas encore assez gouverne pour activation",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "robuste positif"
     },
     {
@@ -107,7 +107,7 @@
       "status": "observation forte a confirmer",
       "decision": "observation seulement",
       "reason": "signal positif mais pas encore assez gouverne pour activation",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "stable positif"
     },
     {
@@ -143,7 +143,7 @@
       "status": "fragile / surveillance",
       "decision": "watchlist",
       "reason": "signal fragile ou stabilite insuffisante",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "stable positif"
     },
     {
@@ -179,7 +179,7 @@
       "status": "fragile / surveillance",
       "decision": "watchlist",
       "reason": "signal fragile ou stabilite insuffisante",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "observation seulement"
     },
     {
@@ -215,7 +215,7 @@
       "status": "fragile / surveillance",
       "decision": "watchlist",
       "reason": "signal fragile ou stabilite insuffisante",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "observation seulement"
     },
     {
@@ -251,7 +251,7 @@
       "status": "fragile / surveillance",
       "decision": "watchlist",
       "reason": "signal fragile ou stabilite insuffisante",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "observation seulement"
     },
     {
@@ -287,7 +287,7 @@
       "status": "fragile / surveillance",
       "decision": "watchlist",
       "reason": "signal fragile ou stabilite insuffisante",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "degradation recente"
     },
     {
@@ -323,7 +323,7 @@
       "status": "fragile / surveillance",
       "decision": "watchlist",
       "reason": "signal fragile ou stabilite insuffisante",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "observation seulement"
     },
     {
@@ -359,7 +359,7 @@
       "status": "fragile / surveillance",
       "decision": "watchlist",
       "reason": "signal fragile ou stabilite insuffisante",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "fragile"
     },
     {
@@ -395,7 +395,7 @@
       "status": "fragile / surveillance",
       "decision": "watchlist",
       "reason": "signal fragile ou stabilite insuffisante",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "fragile"
     },
     {
@@ -431,7 +431,7 @@
       "status": "fragile / test absent",
       "decision": "observation seulement",
       "reason": "test 2024+ absent ou non lisible",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "echantillon faible"
     },
     {
@@ -467,7 +467,7 @@
       "status": "fragile / test absent",
       "decision": "observation seulement",
       "reason": "test 2024+ absent ou non lisible",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "echantillon faible"
     },
     {
@@ -503,7 +503,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "negatif a eviter"
     },
     {
@@ -520,27 +520,27 @@
       "post_match_features_allowed": false,
       "leak_risk": "controlled_rolling",
       "validation_metrics": {
-        "picks": 0,
-        "roi": 0.0,
-        "profit": 0.0,
-        "winrate": 0.0,
-        "max_drawdown": 0.0,
-        "average_odds": 0.0
+        "picks": 86,
+        "roi": 26.7,
+        "profit": 22.96,
+        "winrate": 25.58,
+        "max_drawdown": 10.28,
+        "average_odds": 6.153
       },
       "test_metrics": {
-        "picks": 0,
-        "roi": 0.0,
-        "profit": 0.0,
-        "winrate": 0.0,
-        "max_drawdown": 0.0,
-        "average_odds": 0.0
+        "picks": 215,
+        "roi": -0.21,
+        "profit": -0.45,
+        "winrate": 18.6,
+        "max_drawdown": 27.04,
+        "average_odds": 6.445
       },
       "robustness_score": 0,
-      "status": "fragile / test absent",
+      "status": "echantillon faible",
       "decision": "observation seulement",
-      "reason": "test 2024+ absent ou non lisible",
-      "created_at": "2026-05-25T22:27:48",
-      "notes": "lignes rolling=1750, matchs uniques=350, sklearn indisponible: regression logistique xG ignoree; rapport descriptif seulement."
+      "reason": "sample test inferieur a 300",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "lignes rolling=1750, matchs uniques=350, xG n'ameliore pas clairement le modele ou le marche sur test. Signal edge invalide si ROI test negatif."
     },
     {
       "name": "Totals seulement",
@@ -576,7 +576,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     },
     {
@@ -613,7 +613,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     },
     {
@@ -650,7 +650,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     },
     {
@@ -686,7 +686,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "degradation recente"
     },
     {
@@ -722,7 +722,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "negatif robuste"
     },
     {
@@ -758,7 +758,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "negatif robuste"
     },
     {
@@ -794,7 +794,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "negatif robuste"
     },
     {
@@ -830,7 +830,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "degradation recente"
     },
     {
@@ -866,7 +866,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "negatif robuste"
     },
     {
@@ -902,7 +902,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "degradation recente"
     },
     {
@@ -938,7 +938,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "negatif robuste"
     },
     {
@@ -974,7 +974,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Analyse pricing globale; ne remplace pas un split test dedie."
     },
     {
@@ -1010,7 +1010,7 @@
       "status": "echantillon faible",
       "decision": "observation seulement",
       "reason": "sample test inferieur a 300",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Analyse pricing globale; ne remplace pas un split test dedie."
     },
     {
@@ -1047,7 +1047,7 @@
       "status": "fragile / test absent",
       "decision": "observation seulement",
       "reason": "test 2024+ absent ou non lisible",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     },
     {
@@ -1084,7 +1084,7 @@
       "status": "fragile / test absent",
       "decision": "observation seulement",
       "reason": "test 2024+ absent ou non lisible",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     },
     {
@@ -1121,7 +1121,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     },
     {
@@ -1158,11 +1158,11 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     },
     {
-      "name": "ML total - Modele avec rolling pre-match - Regression logistique locale",
+      "name": "ML total - Modele avec rolling pre-match - Regression logistique",
       "type": "ml",
       "version": "V6.8",
       "train_period": "2015-01-01 -> 2022-12-31",
@@ -1177,30 +1177,106 @@
       "post_match_features_allowed": false,
       "leak_risk": "faible",
       "validation_metrics": {
-        "picks": 690,
-        "roi": 2.27,
-        "profit": 15.67,
-        "winrate": 62.8,
-        "max_drawdown": 25.53,
-        "average_odds": 1.633
+        "picks": 284,
+        "roi": -4.48,
+        "profit": -12.72,
+        "winrate": 63.4,
+        "max_drawdown": 18.96,
+        "average_odds": 1.514
       },
       "test_metrics": {
-        "picks": 983,
-        "roi": -1.46,
-        "profit": -14.37,
-        "winrate": 60.3,
-        "max_drawdown": 36.64,
-        "average_odds": 1.636
+        "picks": 531,
+        "roi": -3.89,
+        "profit": -20.66,
+        "winrate": 64.0,
+        "max_drawdown": 30.83,
+        "average_odds": 1.509
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele prometteur mais non jouable"
+    },
+    {
+      "name": "ML total - Modele avec rolling pre-match - Random forest leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Modele avec rolling pre-match",
+        "total",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 3777,
+        "roi": -3.61,
+        "profit": -136.42,
+        "winrate": 45.7,
+        "max_drawdown": 170.18,
+        "average_odds": 2.214
+      },
+      "test_metrics": {
+        "picks": 5992,
+        "roi": -4.32,
+        "profit": -258.78,
+        "winrate": 45.1,
+        "max_drawdown": 285.94,
+        "average_odds": 2.235
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML total - Modele avec rolling pre-match - Gradient boosting leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Modele avec rolling pre-match",
+        "total",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 208,
+        "roi": 3.9,
+        "profit": 8.12,
+        "winrate": 51.4,
+        "max_drawdown": 14.57,
+        "average_odds": 2.207
+      },
+      "test_metrics": {
+        "picks": 329,
+        "roi": -5.29,
+        "profit": -17.41,
+        "winrate": 45.9,
+        "max_drawdown": 40.38,
+        "average_odds": 2.406
       },
       "robustness_score": 0,
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
-      "notes": "Seuil validation: 0.01; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.03; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
     },
     {
-      "name": "ML total - Baseline sans rolling - Regression logistique locale",
+      "name": "ML total - Baseline sans rolling - Regression logistique",
       "type": "ml",
       "version": "V6.8",
       "train_period": "2015-01-01 -> 2022-12-31",
@@ -1215,30 +1291,106 @@
       "post_match_features_allowed": false,
       "leak_risk": "faible",
       "validation_metrics": {
-        "picks": 681,
-        "roi": 1.43,
-        "profit": 9.72,
-        "winrate": 62.1,
-        "max_drawdown": 26.38,
-        "average_odds": 1.634
+        "picks": 305,
+        "roi": -4.74,
+        "profit": -14.47,
+        "winrate": 63.3,
+        "max_drawdown": 17.79,
+        "average_odds": 1.511
       },
       "test_metrics": {
-        "picks": 970,
-        "roi": -1.44,
-        "profit": -14.0,
-        "winrate": 60.4,
-        "max_drawdown": 42.15,
-        "average_odds": 1.633
+        "picks": 547,
+        "roi": -4.26,
+        "profit": -23.3,
+        "winrate": 64.0,
+        "max_drawdown": 32.15,
+        "average_odds": 1.503
       },
       "robustness_score": 0,
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
-      "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
-      "notes": "Seuil validation: 0.01; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele prometteur mais non jouable"
     },
     {
-      "name": "ML h2h - Modele avec rolling pre-match - Regression logistique locale",
+      "name": "ML total - Baseline sans rolling - Random forest leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "total",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 3194,
+        "roi": -1.83,
+        "profit": -58.45,
+        "winrate": 46.8,
+        "max_drawdown": 81.02,
+        "average_odds": 2.21
+      },
+      "test_metrics": {
+        "picks": 5254,
+        "roi": -5.46,
+        "profit": -286.62,
+        "winrate": 44.5,
+        "max_drawdown": 307.04,
+        "average_odds": 2.244
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML total - Baseline sans rolling - Gradient boosting leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "total",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 2839,
+        "roi": -2.77,
+        "profit": -78.74,
+        "winrate": 51.2,
+        "max_drawdown": 134.62,
+        "average_odds": 1.981
+      },
+      "test_metrics": {
+        "picks": 4471,
+        "roi": -1.22,
+        "profit": -54.42,
+        "winrate": 52.0,
+        "max_drawdown": 105.1,
+        "average_odds": 1.992
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML h2h - Modele avec rolling pre-match - Regression logistique",
       "type": "ml",
       "version": "V6.8",
       "train_period": "2015-01-01 -> 2022-12-31",
@@ -1253,68 +1405,220 @@
       "post_match_features_allowed": false,
       "leak_risk": "faible",
       "validation_metrics": {
-        "picks": 455,
-        "roi": 4.92,
-        "profit": 22.37,
-        "winrate": 57.6,
-        "max_drawdown": 14.82,
-        "average_odds": 1.942
+        "picks": 1397,
+        "roi": 4.14,
+        "profit": 57.9,
+        "winrate": 66.6,
+        "max_drawdown": 15.8,
+        "average_odds": 1.608
       },
       "test_metrics": {
-        "picks": 703,
-        "roi": -6.31,
-        "profit": -44.38,
-        "winrate": 54.1,
-        "max_drawdown": 47.75,
-        "average_odds": 1.823
+        "picks": 1994,
+        "roi": -2.88,
+        "profit": -57.51,
+        "winrate": 63.0,
+        "max_drawdown": 71.6,
+        "average_odds": 1.572
       },
       "robustness_score": 0,
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
-      "notes": "Seuil validation: 0.03; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
-    },
-    {
-      "name": "ML h2h - Baseline sans rolling - Regression logistique locale",
-      "type": "ml",
-      "version": "V6.8",
-      "train_period": "2015-01-01 -> 2022-12-31",
-      "validation_period": "2023-01-01 -> 2023-12-31",
-      "test_period": "2024-01-01 -> fin",
-      "features_used": [
-        "Baseline sans rolling",
-        "h2h",
-        "model_probability",
-        "no_vig_probability"
-      ],
-      "post_match_features_allowed": false,
-      "leak_risk": "faible",
-      "validation_metrics": {
-        "picks": 2911,
-        "roi": 0.34,
-        "profit": 9.77,
-        "winrate": 46.3,
-        "max_drawdown": 69.79,
-        "average_odds": 3.077
-      },
-      "test_metrics": {
-        "picks": 3949,
-        "roi": -6.48,
-        "profit": -255.74,
-        "winrate": 44.9,
-        "max_drawdown": 277.72,
-        "average_odds": 3.081
-      },
-      "robustness_score": 0,
-      "status": "invalide ou a eviter",
-      "decision": "a bloquer",
-      "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Seuil validation: 0.02; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
     },
     {
-      "name": "ML global - Modele avec rolling pre-match - Regression logistique locale",
+      "name": "ML h2h - Modele avec rolling pre-match - Random forest leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Modele avec rolling pre-match",
+        "h2h",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 8055,
+        "roi": -5.99,
+        "profit": -482.45,
+        "winrate": 31.1,
+        "max_drawdown": 495.08,
+        "average_odds": 4.84
+      },
+      "test_metrics": {
+        "picks": 10512,
+        "roi": -5.74,
+        "profit": -603.4,
+        "winrate": 31.4,
+        "max_drawdown": 672.46,
+        "average_odds": 4.626
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML h2h - Modele avec rolling pre-match - Gradient boosting leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Modele avec rolling pre-match",
+        "h2h",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 5660,
+        "roi": -9.01,
+        "profit": -509.71,
+        "winrate": 29.2,
+        "max_drawdown": 517.31,
+        "average_odds": 5.045
+      },
+      "test_metrics": {
+        "picks": 7470,
+        "roi": -5.12,
+        "profit": -382.44,
+        "winrate": 30.7,
+        "max_drawdown": 507.47,
+        "average_odds": 4.836
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML h2h - Baseline sans rolling - Regression logistique",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "h2h",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 1368,
+        "roi": 2.65,
+        "profit": 36.21,
+        "winrate": 66.2,
+        "max_drawdown": 17.71,
+        "average_odds": 1.592
+      },
+      "test_metrics": {
+        "picks": 1959,
+        "roi": -3.11,
+        "profit": -60.96,
+        "winrate": 63.2,
+        "max_drawdown": 70.39,
+        "average_odds": 1.564
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.02; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
+    },
+    {
+      "name": "ML h2h - Baseline sans rolling - Random forest leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "h2h",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 7431,
+        "roi": -5.52,
+        "profit": -410.05,
+        "winrate": 35.7,
+        "max_drawdown": 424.38,
+        "average_odds": 4.508
+      },
+      "test_metrics": {
+        "picks": 9827,
+        "roi": -4.79,
+        "profit": -470.39,
+        "winrate": 36.0,
+        "max_drawdown": 519.94,
+        "average_odds": 4.286
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML h2h - Baseline sans rolling - Gradient boosting leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "h2h",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 5552,
+        "roi": -8.18,
+        "profit": -454.07,
+        "winrate": 29.8,
+        "max_drawdown": 474.29,
+        "average_odds": 5.013
+      },
+      "test_metrics": {
+        "picks": 7508,
+        "roi": -5.08,
+        "profit": -381.17,
+        "winrate": 30.7,
+        "max_drawdown": 512.94,
+        "average_odds": 4.788
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML global - Modele avec rolling pre-match - Regression logistique",
       "type": "ml",
       "version": "V6.8",
       "train_period": "2015-01-01 -> 2022-12-31",
@@ -1329,30 +1633,106 @@
       "post_match_features_allowed": false,
       "leak_risk": "faible",
       "validation_metrics": {
-        "picks": 6,
-        "roi": 165.83,
-        "profit": 9.95,
-        "winrate": 33.3,
-        "max_drawdown": 2.0,
-        "average_odds": 7.717
+        "picks": 359,
+        "roi": 4.05,
+        "profit": 14.54,
+        "winrate": 68.8,
+        "max_drawdown": 6.77,
+        "average_odds": 1.562
       },
       "test_metrics": {
-        "picks": 0,
-        "roi": 0.0,
-        "profit": 0.0,
-        "winrate": 0.0,
-        "max_drawdown": 0.0,
-        "average_odds": 0.0
+        "picks": 678,
+        "roi": -4.39,
+        "profit": -29.76,
+        "winrate": 65.5,
+        "max_drawdown": 36.68,
+        "average_odds": 1.467
       },
       "robustness_score": 0,
-      "status": "fragile / test absent",
-      "decision": "observation seulement",
-      "reason": "test 2024+ absent ou non lisible",
-      "created_at": "2026-05-25T22:27:48",
-      "notes": "Seuil validation: 0.05; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable (echantillon edge test faible)"
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.02; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
     },
     {
-      "name": "ML global - Baseline sans rolling - Regression logistique locale",
+      "name": "ML global - Modele avec rolling pre-match - Random forest leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Modele avec rolling pre-match",
+        "global",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 13413,
+        "roi": -6.23,
+        "profit": -836.23,
+        "winrate": 33.9,
+        "max_drawdown": 866.49,
+        "average_odds": 4.161
+      },
+      "test_metrics": {
+        "picks": 18330,
+        "roi": -5.11,
+        "profit": -937.13,
+        "winrate": 34.3,
+        "max_drawdown": 1005.4,
+        "average_odds": 3.99
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML global - Modele avec rolling pre-match - Gradient boosting leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Modele avec rolling pre-match",
+        "global",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 4894,
+        "roi": -5.77,
+        "profit": -282.43,
+        "winrate": 29.1,
+        "max_drawdown": 301.73,
+        "average_odds": 5.164
+      },
+      "test_metrics": {
+        "picks": 7242,
+        "roi": -4.75,
+        "profit": -344.23,
+        "winrate": 30.9,
+        "max_drawdown": 402.47,
+        "average_odds": 4.85
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML global - Baseline sans rolling - Regression logistique",
       "type": "ml",
       "version": "V6.8",
       "train_period": "2015-01-01 -> 2022-12-31",
@@ -1367,27 +1747,103 @@
       "post_match_features_allowed": false,
       "leak_risk": "faible",
       "validation_metrics": {
-        "picks": 6,
-        "roi": 165.83,
-        "profit": 9.95,
-        "winrate": 33.3,
-        "max_drawdown": 2.0,
-        "average_odds": 7.717
+        "picks": 417,
+        "roi": 2.17,
+        "profit": 9.05,
+        "winrate": 67.6,
+        "max_drawdown": 13.39,
+        "average_odds": 1.555
       },
       "test_metrics": {
-        "picks": 0,
-        "roi": 0.0,
-        "profit": 0.0,
-        "winrate": 0.0,
-        "max_drawdown": 0.0,
-        "average_odds": 0.0
+        "picks": 829,
+        "roi": -5.4,
+        "profit": -44.73,
+        "winrate": 64.9,
+        "max_drawdown": 48.96,
+        "average_odds": 1.466
       },
       "robustness_score": 0,
-      "status": "fragile / test absent",
-      "decision": "observation seulement",
-      "reason": "test 2024+ absent ou non lisible",
-      "created_at": "2026-05-25T22:27:48",
-      "notes": "Seuil validation: 0.05; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable (echantillon edge test faible)"
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "validation positive mais test 2024+ negatif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.02; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable"
+    },
+    {
+      "name": "ML global - Baseline sans rolling - Random forest leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "global",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 13288,
+        "roi": -6.58,
+        "profit": -873.9,
+        "winrate": 34.9,
+        "max_drawdown": 905.04,
+        "average_odds": 4.1
+      },
+      "test_metrics": {
+        "picks": 18648,
+        "roi": -4.87,
+        "profit": -907.41,
+        "winrate": 36.0,
+        "max_drawdown": 968.48,
+        "average_odds": 3.864
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
+    },
+    {
+      "name": "ML global - Baseline sans rolling - Gradient boosting leger",
+      "type": "ml",
+      "version": "V6.8",
+      "train_period": "2015-01-01 -> 2022-12-31",
+      "validation_period": "2023-01-01 -> 2023-12-31",
+      "test_period": "2024-01-01 -> fin",
+      "features_used": [
+        "Baseline sans rolling",
+        "global",
+        "model_probability",
+        "no_vig_probability"
+      ],
+      "post_match_features_allowed": false,
+      "leak_risk": "faible",
+      "validation_metrics": {
+        "picks": 4789,
+        "roi": -5.99,
+        "profit": -286.66,
+        "winrate": 29.0,
+        "max_drawdown": 299.76,
+        "average_odds": 5.196
+      },
+      "test_metrics": {
+        "picks": 7116,
+        "roi": -6.75,
+        "profit": -480.49,
+        "winrate": 30.4,
+        "max_drawdown": 532.6,
+        "average_odds": 4.838
+      },
+      "robustness_score": 0,
+      "status": "invalide ou a eviter",
+      "decision": "a bloquer",
+      "reason": "ROI test 2024+ non positif",
+      "created_at": "2026-05-25T22:52:25",
+      "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable"
     },
     {
       "name": "Favoris seulement",
@@ -1423,7 +1879,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     },
     {
@@ -1460,7 +1916,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     },
     {
@@ -1497,7 +1953,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1533,7 +1989,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1569,7 +2025,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1605,7 +2061,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1641,7 +2097,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1677,7 +2133,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1713,7 +2169,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1749,7 +2205,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1785,7 +2241,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1821,7 +2277,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1857,7 +2313,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1893,7 +2349,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1929,7 +2385,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "validation positive mais test 2024+ negatif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "non confirme sur test"
     },
     {
@@ -1965,7 +2421,7 @@
       "status": "fragile / test absent",
       "decision": "observation seulement",
       "reason": "test 2024+ absent ou non lisible",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Aucun dataset xG reel fourni; laboratoire seulement."
     },
     {
@@ -2002,7 +2458,7 @@
       "status": "invalide ou a eviter",
       "decision": "a bloquer",
       "reason": "ROI test 2024+ non positif",
-      "created_at": "2026-05-25T22:27:48",
+      "created_at": "2026-05-25T22:52:25",
       "notes": "Backtest modern; aucune activation automatique."
     }
   ]
