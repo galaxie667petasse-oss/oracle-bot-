@@ -68,6 +68,13 @@ def test_release_candidate_docs_exist_and_have_sections():
         "ml",
         "rapports",
         "external dataset lab",
+        "external xg integration lab",
+        "external xg rolling",
+        "scientific benchmark",
+        "model governance",
+        "model registry",
+        "promotion policy",
+        "decision policy",
         "telegram",
         "railway plus tard",
         "securite",
@@ -78,7 +85,7 @@ def test_release_candidate_docs_exist_and_have_sections():
         assert section in readme
 
     status = (root / "PROJECT_STATUS.md").read_text(encoding="utf-8").lower()
-    assert "v6.6 external xg integration lab" in status
+    assert "v6.8 external xg rolling" in status
     assert "aucune strategie robuste positive" in status
 
 

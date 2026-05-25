@@ -16,11 +16,16 @@ ESSENTIAL_FILES = [
     "pricing.py",
     "feature_builder.py",
     "model_trainer.py",
+    "benchmark_governance.py",
+    "decision_policy.py",
+    "external_xg_features.py",
+    "xg_model_lab.py",
     "backtest_evaluator.py",
     "external_xg_lab.py",
     "team_name_normalizer.py",
     "report_runner.py",
     "dashboard_builder.py",
+    "model_registry.json",
 ]
 
 SENSITIVE_PATTERNS = [
@@ -43,12 +48,20 @@ MAIN_TESTS = [
     "test_xgabora_dataset_import.py",
     "test_external_xg_lab.py",
     "test_team_name_normalizer.py",
+    "test_benchmark_governance.py",
+    "test_decision_policy.py",
+    "test_external_xg_features.py",
+    "test_xg_model_lab.py",
 ]
 
 IMPORT_MODULES = [
     "pricing",
     "feature_builder",
     "model_trainer",
+    "benchmark_governance",
+    "decision_policy",
+    "external_xg_features",
+    "xg_model_lab",
     "backtest_evaluator",
     "report_runner",
     "dashboard_builder",
@@ -61,6 +74,10 @@ IMPORT_MODULES = [
 OFFLINE_COMMAND_FILES = [
     "feature_builder.py",
     "model_trainer.py",
+    "benchmark_governance.py",
+    "decision_policy.py",
+    "external_xg_features.py",
+    "xg_model_lab.py",
     "backtest_evaluator.py",
     "report_runner.py",
     "dashboard_builder.py",
@@ -269,10 +286,10 @@ def check_docs(root: Path, result: AuditResult) -> None:
     else:
         result.add_ok("README.md contient les sections principales de stabilisation.")
 
-    if "v6.6" not in status or "aucune strategie robuste positive" not in status:
-        result.add_warning("PROJECT_STATUS.md doit mentionner V6.6 et l'absence de strategie robuste positive.")
+    if "v6.8" not in status or "aucune strategie robuste positive" not in status:
+        result.add_warning("PROJECT_STATUS.md doit mentionner V6.8 et l'absence de strategie robuste positive.")
     else:
-        result.add_ok("PROJECT_STATUS.md resume l'etat prudent V6.6.")
+        result.add_ok("PROJECT_STATUS.md resume l'etat prudent V6.8.")
 
 
 def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = True) -> AuditResult:
