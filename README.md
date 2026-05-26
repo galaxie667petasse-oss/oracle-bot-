@@ -45,6 +45,8 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 - `external_xg_lab.py` : laboratoire xG externe, jointure controlee et preview local.
 - `external_xg_features.py` : transformation du xG final externe en rolling features pre-match.
 - `xg_model_lab.py` : evaluation locale descriptive des rolling xG.
+- `xg_dataset_quality.py` : quality gate local pour auditer un CSV xG externe avant modeling.
+- `understat_xg_pipeline.py` : orchestration locale Understat xG depuis un CSV deja telecharge.
 - `understat_probe.py` : probe optionnel Understat multi-saisons via `soccerdata`.
 - `clv_analysis.py` : mesure descriptive de Closing Line Value si des cotes closing sont disponibles.
 - `calibration_report.py` : reliability curves, Brier, log loss, ECE et MCE.
@@ -64,8 +66,9 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 4. Lancer pricing, backtest, favorite-report et stability-report.
 5. Lancer le ML leger uniquement comme mesure de probabilite.
 6. Lancer la couche V7.0 Statistical Proof Foundation.
-7. Generer le rapport central local.
-8. Lire les conclusions avant toute decision Railway ou Telegram.
+7. Lancer le quality gate V7.2 si un CSV Understat multi-saisons existe localement.
+8. Generer le rapport central local.
+9. Lire les conclusions avant toute decision Railway ou Telegram.
 
 Commandes courtes :
 
@@ -285,6 +288,26 @@ python xg_model_lab.py --features reports/understat_xg_rolling_features.csv
 
 xgabora reste la base betting principale parce qu'elle contient les cotes et le volume historique. Understat sert seulement d'enrichissement xG laboratoire. Aucun signal Understat ne doit etre active sans rolling pre-match, benchmark gouvernance et validation humaine.
 
+## V7.2 Understat xG Full Pipeline Quality Gate
+
+V7.2 ajoute un controle qualite complet autour de l'export Understat EPL 2020-2025. L'ancien export de 1520 lignes etait incomplet : `soccerdata` interpretait la saison courte `2021` de facon ambigue, ce qui pouvait pointer vers `20-21` au lieu de produire `2021-2022`. Le nouvel export utilise des saisons explicites `2020-2021`, `2021-2022`, `2022-2023`, `2023-2024`, `2024-2025` et atteint 1900 lignes attendues pour cinq saisons EPL.
+
+Le xG final reste une statistique post-match. V7.2 ne l'utilise jamais directement pour predire le meme match : il doit d'abord passer par des rolling features anti-fuite calculees uniquement avec les matchs precedents. Un Brier legerement meilleur ne suffit pas. Si le ROI test est negatif, l'edge est invalide. Si la CLV est absente, toute promotion reste bloquee. Telegram et Railway restent en attente.
+
+Commandes locales V7.2 :
+
+```bash
+python understat_probe.py --league EPL --seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output external_data/understat_probe/epl_2020_2025_matches.csv
+python understat_probe.py --profile external_data/understat_probe/epl_2020_2025_matches.csv
+python xg_dataset_quality.py --external external_data/understat_probe/epl_2020_2025_matches.csv --league EPL --expected-seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output reports/understat_epl_2020_2025_quality.json --html reports/understat_epl_2020_2025_quality.html
+python understat_xg_pipeline.py --external external_data/understat_probe/epl_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix understat_epl_2020_2025
+python xg_model_lab.py --features reports/understat_epl_2020_2025_rolling_features.csv --output reports/understat_epl_2020_2025_xg_model.json --html reports/understat_epl_2020_2025_xg_model.html
+python benchmark_governance.py --features data/features_modern.csv --xg-lab reports/understat_epl_2020_2025_rolling_features.csv --xg-quality reports/understat_epl_2020_2025_quality.json --xg-model reports/understat_epl_2020_2025_xg_model.json --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
+python report_runner.py --xg-understat
+```
+
+Tous les rapports V7.2 restent dans `reports/`. Les donnees Understat restent dans `external_data/`. Rien ne modifie `oracle_db.json`, `data/MATCHES.csv` ou `data/features_modern.csv`.
+
 ## Statistical Proof Foundation
 
 La phase V7.0 ajoute la couche de preuve statistique. Elle ne cree aucun pick, ne modifie pas Telegram, ne modifie pas Railway et ne touche pas a `oracle_db.json`.
@@ -466,7 +489,7 @@ python project_audit.py
 
 ## Etat actuel : aucune strategie robuste positive
 
-Etat V7.0 Statistical Proof Foundation :
+Etat V7.2 Understat xG Full Pipeline Quality Gate :
 
 - memoire moderne 2015-2025 ;
 - environ 528066 records regles ;
@@ -477,6 +500,7 @@ Etat V7.0 Statistical Proof Foundation :
 - External xG Integration Lab disponible ;
 - External xG Rolling Features Lab disponible ;
 - Understat Multi-Season Data Probe disponible ;
+- Understat xG Full Pipeline Quality Gate disponible ;
 - CLV, calibration et validation statistique disponibles ;
 - Scientific Benchmark et Model Governance disponibles ;
 - rapport central local disponible ;
@@ -488,8 +512,8 @@ Etat V7.0 Statistical Proof Foundation :
 
 Priorite suivante :
 
-1. Corriger et lancer manuellement Understat multi-saisons apres dry-run.
-2. Produire un export xG Understat dans `external_data/understat_probe/`.
-3. Generer des rolling xG pre-match puis relancer xG lab.
+1. Auditer l'export Understat 1900 lignes avec `xg_dataset_quality.py`.
+2. Lancer `understat_xg_pipeline.py --skip-benchmark` pour verifier rolling features et modele.
+3. Lire le Brier/log loss xG contre le marche et le ROI edge test.
 4. Produire les rapports CLV, calibration et statistical validation.
 5. Ne penser a Railway ou Telegram qu'apres CLV positive, preuve statistique robuste et revue humaine.

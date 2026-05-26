@@ -64,6 +64,7 @@ def main():
         assert any("CLV report" in warning for warning in benchmark["summary"]["warnings"])
         assert any("Calibration report" in warning for warning in benchmark["summary"]["warnings"])
         assert any("Statistical validation" in warning for warning in benchmark["summary"]["warnings"])
+        assert any("XG quality report" in warning for warning in benchmark["summary"]["warnings"])
         assert benchmark["registry"]
         assert all(entry.get("governance_status") != "production_allowed" for entry in benchmark["registry"])
         assert all("clv_mean" in entry for entry in benchmark["registry"])
@@ -100,6 +101,100 @@ def main():
         )
         assert benchmark_with_reports["summary"]["clv_report_available"] is False
         assert benchmark_with_reports["summary"]["robust_candidates"] == 0
+
+        quality_path = root / "reports" / "xg_quality.json"
+        model_path = root / "reports" / "xg_model.json"
+        quality_path.write_text(json.dumps({
+            "status": "ok",
+            "verdict": "fragile",
+            "rows": 760,
+            "xg_coverage": 90.0,
+            "missing_seasons": ["2021-2022"],
+            "total_expected_matches": 1900,
+            "total_actual_matches": 1520,
+            "lab_only": True,
+            "can_influence_picks": False,
+        }, ensure_ascii=False), encoding="utf-8")
+        model_path.write_text(json.dumps({
+            "verdict": {
+                "promotion_allowed": False,
+                "selected_test": {"picks": 1200, "roi": -0.1},
+                "governance_note": "observation technique seulement",
+                "rejection_reasons": ["ROI test negatif"],
+                "xg_improves_brier": True,
+                "xg_improves_log_loss": True,
+                "edge_test_positive": False,
+                "sample_test_sufficient": True,
+            },
+            "comparison": {
+                "with_xg": {"brier": 0.20, "log_loss": 0.60},
+                "market": {"brier": 0.21, "log_loss": 0.61},
+                "delta_brier_xg_vs_market": -0.01,
+                "delta_log_loss_xg_vs_market": -0.01,
+            },
+            "market_baseline": {"test": {"brier": 0.21, "log_loss": 0.61}},
+            "models": [{}, {"selected_validation": {"picks": 1000, "roi": 1.0}}],
+            "split_config": {"test_from": "2024-01-01"},
+        }, ensure_ascii=False), encoding="utf-8")
+        benchmark_with_xg = benchmark_governance.build_benchmark(
+            str(root / "features_absent.csv"),
+            db=synthetic_db(),
+            xg_quality_path=str(quality_path),
+            xg_model_path=str(model_path),
+        )
+        assert benchmark_with_xg["summary"]["xg_quality_available"] is True
+        assert benchmark_with_xg["summary"]["xg_model_available"] is True
+        assert benchmark_with_xg["summary"]["robust_candidates"] == 0
+        xg_entries = [entry for entry in benchmark_with_xg["registry"] if entry.get("name") == "understat_epl_2020_2025_rolling_xg_lab"]
+        assert xg_entries
+        assert xg_entries[0]["lab_only"] is True
+        assert xg_entries[0]["can_influence_picks"] is False
+        assert xg_entries[0]["quality_verdict"] == "fragile"
+        assert xg_entries[0]["promotion_allowed"] is False
+        assert any("quality gate" in reason.lower() for reason in xg_entries[0]["rejection_reasons"])
+
+        quality_path.write_text(json.dumps({
+            "status": "ok",
+            "verdict": "exploitable_rolling_xg",
+            "rows": 1900,
+            "xg_coverage": 100.0,
+            "missing_seasons": [],
+            "total_expected_matches": 1900,
+            "total_actual_matches": 1900,
+            "lab_only": True,
+            "can_influence_picks": False,
+        }, ensure_ascii=False), encoding="utf-8")
+        model_path.write_text(json.dumps({
+            "verdict": {
+                "promotion_allowed": False,
+                "selected_test": {"picks": 1500, "roi": 1.2},
+                "governance_note": "CLV absent, observation seulement",
+                "rejection_reasons": ["CLV absent"],
+                "xg_improves_brier": True,
+                "xg_improves_log_loss": True,
+                "edge_test_positive": True,
+                "sample_test_sufficient": True,
+            },
+            "comparison": {
+                "with_xg": {"brier": 0.20, "log_loss": 0.60},
+                "market": {"brier": 0.21, "log_loss": 0.61},
+                "delta_brier_xg_vs_market": -0.01,
+                "delta_log_loss_xg_vs_market": -0.01,
+            },
+            "market_baseline": {"test": {"brier": 0.21, "log_loss": 0.61}},
+            "models": [{}, {"selected_validation": {"picks": 1000, "roi": 1.0}}],
+            "split_config": {"test_from": "2024-01-01"},
+        }, ensure_ascii=False), encoding="utf-8")
+        xg_clv_absent = benchmark_governance.build_benchmark(
+            str(root / "features_absent.csv"),
+            db=synthetic_db(),
+            xg_quality_path=str(quality_path),
+            xg_model_path=str(model_path),
+        )
+        xg_entry = next(entry for entry in xg_clv_absent["registry"] if entry.get("name") == "understat_epl_2020_2025_rolling_xg_lab")
+        assert xg_entry["quality_verdict"] == "exploitable_rolling_xg"
+        assert xg_entry["promotion_allowed"] is False
+        assert xg_clv_absent["summary"]["robust_candidates"] == 0
 
         summary_path = root / "reports" / "benchmark_summary.json"
         html_path = root / "reports" / "benchmark_governance.html"

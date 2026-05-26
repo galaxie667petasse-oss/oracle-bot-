@@ -24,6 +24,7 @@ REPORT_FILES = {
     "clv": "clv_report.txt",
     "calibration": "calibration_report.txt",
     "statistical_validation": "statistical_validation.txt",
+    "understat_xg_pipeline": "understat_xg_pipeline.txt",
 }
 
 
@@ -53,6 +54,23 @@ def read_json(report_dir: Path, filename: str) -> Dict[str, Any]:
     except Exception:
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def read_json_candidates(report_dir: Path, filenames: List[str]) -> Dict[str, Any]:
+    candidates = []
+    for filename in filenames:
+        candidates.append(report_dir / filename)
+        candidates.append(Path("reports") / filename)
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(data, dict):
+            return data
+    return {}
 
 
 def _first(pattern: str, text: str, flags: int = re.MULTILINE) -> Optional[str]:
@@ -101,6 +119,11 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     calibration_json = read_json(report_dir, "calibration_report.json")
     statistical_json = read_json(report_dir, "statistical_validation.json")
     benchmark_json = read_json(report_dir, "benchmark_summary.json")
+    understat_quality = read_json_candidates(report_dir, ["understat_epl_2020_2025_quality.json"])
+    understat_model = read_json_candidates(report_dir, ["understat_epl_2020_2025_xg_model.json"])
+    understat_pipeline = read_json_candidates(report_dir, ["understat_epl_2020_2025_pipeline_summary.json"])
+    pipeline_final = understat_pipeline.get("final_status") or {}
+    pipeline_model = pipeline_final.get("xg_model") or {}
 
     records_count = _first_float(r"- Records regles: ([0-9]+)", pricing)
     if records_count is None:
@@ -155,6 +178,22 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "signals_rejected": sum(1 for entry in registry if entry.get("governance_status") == "rejected" or entry.get("status") == "rejected"),
         "main_rejection_reason": (registry[0].get("reason") if registry else None),
         "strategies_surviving_multiple_testing": benchmark_json.get("strategies_surviving_multiple_testing"),
+        "understat_quality_verdict": understat_quality.get("verdict") or pipeline_final.get("quality_verdict"),
+        "understat_seasons_detected": understat_quality.get("seasons_detected") or [],
+        "understat_missing_seasons": understat_quality.get("missing_seasons") or [],
+        "understat_total_expected_matches": understat_quality.get("total_expected_matches"),
+        "understat_total_actual_matches": understat_quality.get("total_actual_matches"),
+        "understat_xg_coverage": understat_quality.get("xg_coverage"),
+        "understat_join_rate": pipeline_final.get("join_rate"),
+        "understat_rolling_avg3": pipeline_final.get("rolling_avg3_rows"),
+        "understat_rolling_avg5": pipeline_final.get("rolling_avg5_rows"),
+        "understat_market_brier": pipeline_model.get("market_brier_test") or (((understat_model.get("market_baseline") or {}).get("test") or {}).get("brier")),
+        "understat_market_log_loss": pipeline_model.get("market_log_loss_test") or (((understat_model.get("market_baseline") or {}).get("test") or {}).get("log_loss")),
+        "understat_xg_brier": pipeline_model.get("xg_brier_test") or (((understat_model.get("comparison") or {}).get("with_xg") or {}).get("brier")),
+        "understat_xg_log_loss": pipeline_model.get("xg_log_loss_test") or (((understat_model.get("comparison") or {}).get("with_xg") or {}).get("log_loss")),
+        "understat_roi_edge_test": pipeline_model.get("roi_edge_test") or (((understat_model.get("verdict") or {}).get("selected_test") or {}).get("roi")),
+        "understat_promotion_allowed": pipeline_model.get("promotion_allowed") if "promotion_allowed" in pipeline_model else (understat_model.get("verdict") or {}).get("promotion_allowed"),
+        "understat_rejection_reasons": pipeline_model.get("rejection_reasons") or ((understat_model.get("verdict") or {}).get("rejection_reasons") or []),
         "final_status": "aucun pick automatique",
         "conclusion": conclusion,
         "warnings": warnings,
@@ -205,6 +244,7 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         ("clv_status", "CLV"),
         ("calibration_ece", "ECE"),
         ("stat_bootstrap_p05", "Bootstrap p05"),
+        ("understat_quality_verdict", "Quality xG Understat"),
     ]:
         value = summary.get(key)
         parts.append(f"<div class='metric'><strong>{html.escape(label)}</strong><br>{html.escape(str(value) if value is not None else 'n/a')}</div>")
@@ -245,6 +285,24 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         except Exception:
             pass
     parts.append(_card("External xG Rolling Lab", "\n".join(xg_lines) + "\nRappel: aucun signal xG n'est branche aux picks."))
+    understat_lines = [
+        f"quality verdict: {summary.get('understat_quality_verdict')}",
+        f"saisons presentes: {', '.join(summary.get('understat_seasons_detected') or []) or 'n/a'}",
+        f"saisons manquantes: {', '.join(summary.get('understat_missing_seasons') or []) or 'aucune'}",
+        f"matchs attendus/reels: {summary.get('understat_total_expected_matches')} / {summary.get('understat_total_actual_matches')}",
+        f"xG coverage: {summary.get('understat_xg_coverage')}%",
+        f"join rate: {summary.get('understat_join_rate')}%",
+        f"rolling avg3/avg5: {summary.get('understat_rolling_avg3')} / {summary.get('understat_rolling_avg5')}",
+        f"Brier marche/xG: {summary.get('understat_market_brier')} / {summary.get('understat_xg_brier')}",
+        f"Log loss marche/xG: {summary.get('understat_market_log_loss')} / {summary.get('understat_xg_log_loss')}",
+        f"ROI edge test: {summary.get('understat_roi_edge_test')}",
+        f"promotion_allowed: {summary.get('understat_promotion_allowed')}",
+        f"raisons de rejet: {', '.join(summary.get('understat_rejection_reasons') or []) or 'n/a'}",
+        "Rappel: aucun pick automatique.",
+    ]
+    if texts["understat_xg_pipeline"]:
+        understat_lines.extend(_lines_matching(texts["understat_xg_pipeline"], ["Quality verdict", "Join rate", "Rolling", "Brier", "ROI edge", "Promotion", "Conclusion", "Erreur"], 24))
+    parts.append(_card("Understat xG Multi-Season Lab", "\n".join(understat_lines)))
     clv_lines = [
         f"statut: {summary.get('clv_status')}",
         f"CLV moyenne: {summary.get('clv_mean')}",
@@ -298,7 +356,7 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     conclusion = "\n".join([
         summary["conclusion"],
         "Observations seulement: aucune sortie de ce rapport ne modifie Telegram, Railway ou la DB.",
-        "Prochaines etapes: profiler un dataset externe xG/FBref/Kaggle local, puis tester toute jointure en train/validation/test.",
+        "Prochaines etapes: verifier le quality gate Understat xG, puis lire rolling/model/gouvernance sans activer de pick.",
     ])
     parts.append(_card("Conclusion prudente", conclusion))
     parts.append("</body></html>")

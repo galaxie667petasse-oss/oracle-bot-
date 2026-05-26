@@ -71,3 +71,20 @@ Kelly ne cree pas d'edge. Il ne fait que dimensionner une mise si l'edge existe 
 Meme `production_allowed` ne signifie pas pari automatique. Cela signifie seulement que le bot peut afficher un signal comme element de decision, avec explication, limites et prudence.
 
 Tant que le projet n'a aucun signal robuste active, Telegram et Railway restent hors scope.
+
+## V7.2 Understat xG quality gate
+
+Un signal xG Understat reste `lab_only` tant que toutes les conditions suivantes ne sont pas reunies :
+
+- quality verdict `exploitable_rolling_xg` ;
+- saisons attendues presentes et completeness suffisante ;
+- rolling features calculees sans utiliser le match courant ;
+- Brier et log loss avec xG non pires que le marche no-vig ;
+- ROI edge test strictement positif ;
+- sample edge test suffisant ;
+- CLV positive disponible ;
+- bootstrap ROI p05 strictement positif ;
+- correction multiple testing reussie ;
+- aucune degradation recente et aucun seuil choisi sur test.
+
+Le nouvel export EPL 2020-2025 a vocation a corriger l'ancien export 1520 lignes incomplet, mais un dataset propre ne suffit pas a promouvoir un signal. Meme si le xG ameliore legerement la probabilite, il reste observation si le ROI test est negatif ou si la CLV est absente.

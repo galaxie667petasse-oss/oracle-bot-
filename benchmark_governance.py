@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from decision_policy import classify_strategy, robustness_score
 
 
-GOVERNANCE_VERSION = "V7.0"
+GOVERNANCE_VERSION = "V7.2"
 DEFAULT_FEATURES = "data/features_modern.csv"
 DEFAULT_REGISTRY = "model_registry.json"
 
@@ -88,6 +88,7 @@ def _optional_report_section(name: str, path: str) -> Dict[str, Any]:
 
 
 def _update_entry_decision(entry: Dict[str, Any]) -> None:
+    existing_reasons = list(entry.get("rejection_reasons") or [])
     metrics = {
         "test": {
             "picks": entry.get("sample_test"),
@@ -122,7 +123,7 @@ def _update_entry_decision(entry: Dict[str, Any]) -> None:
     entry["status"] = decision["status"]
     entry["decision"] = decision["decision"]
     entry["reason"] = decision["reason"]
-    entry["rejection_reasons"] = decision.get("rejection_reasons", [])
+    entry["rejection_reasons"] = list(dict.fromkeys(existing_reasons + list(decision.get("rejection_reasons", []))))
     entry["warnings"] = _registry_metric_warnings(entry)
 
 
@@ -397,6 +398,77 @@ def _xg_rolling_lab_entry(report: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+def _xg_quality_model_entry(quality: Dict[str, Any], model: Dict[str, Any]) -> Dict[str, Any]:
+    verdict = model.get("verdict") or {}
+    comparison = model.get("comparison") or {}
+    selected_test = verdict.get("selected_test") or {}
+    with_xg = comparison.get("with_xg") or {}
+    market = comparison.get("market") or ((model.get("market_baseline") or {}).get("test") or {})
+    metrics = {
+        "validation": (((model.get("models") or [{}, {}])[-1] if model.get("models") else {}).get("selected_validation") or {}),
+        "test": selected_test,
+        "probability_metrics": {
+            "brier": with_xg.get("brier"),
+            "log_loss": with_xg.get("log_loss"),
+            "brier_test": with_xg.get("brier"),
+            "market_brier_test": market.get("brier"),
+            "log_loss_test": with_xg.get("log_loss"),
+            "market_log_loss_test": market.get("log_loss"),
+        },
+        "post_match_features_allowed": False,
+        "leak_risk": "controlled_rolling",
+        "features_used": ["understat_rolling_xg", "market_no_vig"],
+        "test_period": (model.get("split_config") or {}).get("test_from", "2024-01-01") + " -> fin",
+        "sample_test": selected_test.get("picks"),
+    }
+    quality_verdict = quality.get("verdict")
+    promotion_allowed = bool(verdict.get("promotion_allowed"))
+    notes = (
+        f"quality={quality_verdict}; "
+        f"xg_model={verdict.get('governance_note') or model.get('conclusion') or 'observation seulement'}; "
+        "lab_only=true; can_influence_picks=false"
+    )
+    entry = _registry_entry("understat_epl_2020_2025_rolling_xg_lab", "external_xg_lab", metrics, notes=notes)
+    rejection_reasons = list(entry.get("rejection_reasons") or [])
+    if quality_verdict != "exploitable_rolling_xg":
+        rejection_reasons.append("quality gate xG non exploitable")
+    if not promotion_allowed:
+        rejection_reasons.append("xG model promotion_allowed=false")
+    if verdict.get("rejection_reasons"):
+        rejection_reasons.extend(verdict.get("rejection_reasons") or [])
+    entry.update({
+        "lab_only": True,
+        "can_influence_picks": False,
+        "quality_verdict": quality_verdict,
+        "xg_model_verdict": verdict.get("governance_note"),
+        "xg_model_promotion_allowed": promotion_allowed,
+        "promotion_allowed": False,
+        "rejection_reasons": list(dict.fromkeys(rejection_reasons)),
+        "quality_context": {
+            "rows": quality.get("rows"),
+            "xg_coverage": quality.get("xg_coverage"),
+            "missing_seasons": quality.get("missing_seasons"),
+            "total_expected_matches": quality.get("total_expected_matches"),
+            "total_actual_matches": quality.get("total_actual_matches"),
+        },
+        "xg_model_context": {
+            "xg_improves_brier": verdict.get("xg_improves_brier"),
+            "xg_improves_log_loss": verdict.get("xg_improves_log_loss"),
+            "edge_test_positive": verdict.get("edge_test_positive"),
+            "sample_test_sufficient": verdict.get("sample_test_sufficient"),
+            "delta_brier_xg_vs_market": comparison.get("delta_brier_xg_vs_market"),
+            "delta_log_loss_xg_vs_market": comparison.get("delta_log_loss_xg_vs_market"),
+        },
+    })
+    if quality_verdict != "exploitable_rolling_xg" or not promotion_allowed:
+        entry["robustness_score"] = min(entry.get("robustness_score", 0), 59)
+        entry["governance_status"] = "observation" if entry["robustness_score"] < 40 else "watchlist"
+        entry["status"] = entry["governance_status"]
+        entry["decision"] = entry["governance_status"]
+        entry["reason"] = entry["rejection_reasons"][0] if entry["rejection_reasons"] else "xG lab observation seulement"
+    return entry
+
+
 def _build_sections(
     features_path: str,
     db: Optional[Dict[str, Any]] = None,
@@ -404,6 +476,8 @@ def _build_sections(
     clv_report_path: str = "",
     calibration_report_path: str = "",
     statistical_report_path: str = "",
+    xg_quality_path: str = "",
+    xg_model_path: str = "",
 ) -> List[Dict[str, Any]]:
     if db is None:
         db = _load_db()
@@ -444,17 +518,22 @@ def _build_sections(
         _optional_report_section("CLV report", clv_report_path),
         _optional_report_section("Calibration report", calibration_report_path),
         _optional_report_section("Statistical validation", statistical_report_path),
+        _optional_report_section("XG quality report", xg_quality_path),
+        _optional_report_section("XG model report", xg_model_path),
     ])
     return sections
 
 
 def collect_registry_entries(sections: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     entries: List[Dict[str, Any]] = []
+    section_data: Dict[str, Dict[str, Any]] = {}
     for section in sections:
         if not section.get("ok"):
             continue
         name = section["name"]
         data = section.get("data") or {}
+        if isinstance(data, dict):
+            section_data[name] = data
         if name == "Backtest modern":
             entries.extend(_backtest_entries(data))
         elif name == "Favorite report":
@@ -471,6 +550,11 @@ def collect_registry_entries(sections: Iterable[Dict[str, Any]]) -> List[Dict[st
             entries.extend(_ml_entries(data, "total"))
         elif name == "External xG rolling lab":
             entries.append(_xg_rolling_lab_entry(data))
+    if section_data.get("XG quality report") or section_data.get("XG model report"):
+        entries.append(_xg_quality_model_entry(
+            section_data.get("XG quality report") or {},
+            section_data.get("XG model report") or {},
+        ))
     entries.append(_external_lab_entry())
     return sorted(entries, key=lambda item: (item.get("robustness_score", 0), item.get("name", "")), reverse=True)
 
@@ -482,6 +566,8 @@ def build_benchmark(
     clv_report_path: str = "",
     calibration_report_path: str = "",
     statistical_report_path: str = "",
+    xg_quality_path: str = "",
+    xg_model_path: str = "",
 ) -> Dict[str, Any]:
     sections = _build_sections(
         features_path,
@@ -490,6 +576,8 @@ def build_benchmark(
         clv_report_path=clv_report_path,
         calibration_report_path=calibration_report_path,
         statistical_report_path=statistical_report_path,
+        xg_quality_path=xg_quality_path,
+        xg_model_path=xg_model_path,
     )
     entries = collect_registry_entries(sections)
     entries = enrich_registry_entries(entries, sections)
@@ -519,7 +607,11 @@ def build_benchmark(
         "version": GOVERNANCE_VERSION,
         "features_path": features_path,
         "xg_lab_path": xg_lab_path or None,
+        "xg_quality_path": xg_quality_path or None,
+        "xg_model_path": xg_model_path or None,
         "xg_lab_available": any(section.get("name") == "External xG rolling lab" and section.get("ok") for section in sections),
+        "xg_quality_available": any(section.get("name") == "XG quality report" and section.get("ok") for section in sections),
+        "xg_model_available": any(section.get("name") == "XG model report" and section.get("ok") for section in sections),
         "clv_report_available": bool((report_data.get("CLV report") or {}).get("status") == "disponible"),
         "calibration_report_available": bool((report_data.get("Calibration report") or {}).get("status") == "disponible"),
         "statistical_report_available": bool((report_data.get("Statistical validation") or {}).get("status") == "disponible"),
@@ -535,7 +627,7 @@ def build_benchmark(
         "warnings": [
             f"{section['name']}: {section.get('error', '')}"
             for section in failed
-            if section.get("name") in {"CLV report", "Calibration report", "Statistical validation"}
+            if section.get("name") in {"CLV report", "Calibration report", "Statistical validation", "XG quality report", "XG model report"}
         ],
         "conclusion": "Aucune strategie robuste positive ne doit etre activee automatiquement." if not robust else "Candidats robustes observes, validation humaine requise avant tout affichage decisionnel.",
     }
@@ -566,6 +658,10 @@ def write_summary(benchmark: Dict[str, Any], path: str) -> Path:
             "ece": entry.get("ece"),
             "bootstrap_roi_p05": entry.get("bootstrap_roi_p05"),
             "p_value_adjusted": entry.get("p_value_adjusted"),
+            "quality_verdict": entry.get("quality_verdict"),
+            "xg_model_verdict": entry.get("xg_model_verdict"),
+            "lab_only": entry.get("lab_only"),
+            "promotion_allowed": entry.get("promotion_allowed"),
             "status": entry["status"],
             "decision": entry["decision"],
             "reason": entry["reason"],
@@ -612,6 +708,8 @@ def write_html(benchmark: Dict[str, Any], path: str) -> Path:
         f"<li>Strategies avec calibration disponible: {benchmark['summary'].get('strategies_with_calibration_available')}</li>",
         f"<li>Strategies interessantes avant correction: {benchmark['summary'].get('strategies_statistically_interesting_before_correction')}</li>",
         f"<li>Strategies survivant correction: {benchmark['summary'].get('strategies_surviving_multiple_testing')}</li>",
+        f"<li>Quality gate xG disponible: {benchmark['summary'].get('xg_quality_available')}</li>",
+        f"<li>Modele xG disponible: {benchmark['summary'].get('xg_model_available')}</li>",
         "</ul>",
         "<section class='warn'><h2>Sections indisponibles</h2><ul>",
         failed_html,
@@ -640,6 +738,8 @@ def print_report(benchmark: Dict[str, Any]) -> None:
     print(f"- Strategies avec calibration disponible: {summary.get('strategies_with_calibration_available')}")
     print(f"- Strategies interessantes avant correction: {summary.get('strategies_statistically_interesting_before_correction')}")
     print(f"- Strategies survivant correction multiple testing: {summary.get('strategies_surviving_multiple_testing')}")
+    print(f"- Quality gate xG disponible: {summary.get('xg_quality_available')}")
+    print(f"- Modele xG disponible: {summary.get('xg_model_available')}")
     print(f"- Meilleur score robustesse: {summary['best_robustness_score']}/100")
     print(f"- Candidats robustes: {summary['robust_candidates']}")
     print("- Top gouvernance:")
@@ -659,6 +759,8 @@ def parse_args(argv=None):
     parser.add_argument("--clv-report", default="", help="JSON CLV deja genere")
     parser.add_argument("--calibration-report", default="", help="JSON calibration deja genere")
     parser.add_argument("--statistical-report", default="", help="JSON validation statistique deja genere")
+    parser.add_argument("--xg-quality", default="", help="JSON quality gate xG Understat")
+    parser.add_argument("--xg-model", default="", help="JSON modele xG Understat")
     return parser.parse_args(argv)
 
 
@@ -670,6 +772,8 @@ def main(argv=None) -> int:
         clv_report_path=args.clv_report,
         calibration_report_path=args.calibration_report,
         statistical_report_path=args.statistical_report,
+        xg_quality_path=args.xg_quality,
+        xg_model_path=args.xg_model,
     )
     registry_path = write_registry(benchmark["registry"], args.registry)
     if args.summary_json:

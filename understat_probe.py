@@ -2,6 +2,7 @@ import argparse
 import csv
 import importlib.util
 import math
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -55,7 +56,7 @@ def normalize_column(name: Any) -> str:
 
 
 def parse_float(value: Any) -> Optional[float]:
-    text = str(value or "").strip().replace(",", ".")
+    text = "" if value is None else str(value).strip().replace(",", ".")
     if text.lower() in MISSING:
         return None
     try:
@@ -103,14 +104,93 @@ def check_soccerdata_available(module_name: str = "soccerdata") -> Dict[str, Any
     }
 
 
-def parse_seasons(value: str) -> List[int]:
-    seasons = []
+def _season_label(start_year: int) -> str:
+    return f"{start_year}-{start_year + 1}"
+
+
+def _season_soccerdata_code(start_year: int) -> str:
+    return f"{start_year % 100:02d}-{(start_year + 1) % 100:02d}"
+
+
+def _validate_next_season(start_year: int, end_year: int, raw: str) -> None:
+    if end_year != start_year + 1:
+        raise ValueError(f"Saison invalide: {raw}. Format attendu: annee de debut puis annee suivante.")
+
+
+def _century_for_short_year(year: int) -> int:
+    return 1900 + year if year >= 80 else 2000 + year
+
+
+def normalize_requested_season(value: Any) -> Dict[str, Any]:
+    raw = str(value or "").strip()
+    if not raw:
+        raise ValueError("Saison vide.")
+    text = raw.replace("/", "-")
+    if re.fullmatch(r"\d{4}", text):
+        start = int(text)
+    elif re.fullmatch(r"\d{4}-\d{4}", text):
+        start = int(text[:4])
+        end = int(text[-4:])
+        _validate_next_season(start, end, raw)
+    elif re.fullmatch(r"\d{4}-\d{2}", text):
+        start = int(text[:4])
+        end = (start // 100) * 100 + int(text[-2:])
+        if end < start:
+            end += 100
+        _validate_next_season(start, end, raw)
+    elif re.fullmatch(r"\d{2}-\d{2}", text):
+        start_short = int(text[:2])
+        end_short = int(text[-2:])
+        start = _century_for_short_year(start_short)
+        end = _century_for_short_year(end_short)
+        if end < start:
+            end += 100
+        _validate_next_season(start, end, raw)
+    else:
+        raise ValueError(f"Saison non reconnue: {raw}. Formats acceptes: 2020, 2020-2021, 20-21.")
+    return {
+        "requested": raw,
+        "start_year": start,
+        "label": _season_label(start),
+        "soccerdata": _season_soccerdata_code(start),
+    }
+
+
+def parse_seasons(value: str) -> List[Dict[str, Any]]:
+    seasons: List[Dict[str, Any]] = []
+    seen = set()
     for item in str(value or "").split(","):
         item = item.strip()
         if not item:
             continue
-        seasons.append(int(item))
+        normalized = normalize_requested_season(item)
+        if normalized["label"] in seen:
+            raise ValueError(f"Saison doublon apres normalisation: {normalized['label']}.")
+        seen.add(normalized["label"])
+        seasons.append(normalized)
     return seasons
+
+
+def compact_soccerdata_season_to_label(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    normalized = text.replace("/", "-")
+    compact = "".join(ch for ch in text if ch.isdigit())
+    if re.fullmatch(r"\d{4}", compact):
+        start_short = int(compact[:2])
+        end_short = int(compact[2:])
+        start = _century_for_short_year(start_short)
+        end = _century_for_short_year(end_short)
+        if end < start:
+            end += 100
+        if end == start + 1:
+            return _season_label(start)
+    try:
+        return normalize_requested_season(normalized)["label"]
+    except Exception:
+        pass
+    return text
 
 
 def parse_leagues(value: str) -> Tuple[List[str], List[str]]:
@@ -189,10 +269,11 @@ def standardize_records(records: Sequence[Dict[str, Any]], default_league: str =
     for row in records:
         home_goals = _value(row, mapping.get("home_goals", ""))
         away_goals = _value(row, mapping.get("away_goals", ""))
+        raw_season = _value(row, mapping.get("season", "")) or default_season
         item = {
             "date": parse_date(_value(row, mapping.get("date", ""))),
             "league": str(_value(row, mapping.get("league", "")) or default_league),
-            "season": str(_value(row, mapping.get("season", "")) or default_season),
+            "season": compact_soccerdata_season_to_label(raw_season),
             "home_team": str(_value(row, mapping.get("home_team", ""))).strip(),
             "away_team": str(_value(row, mapping.get("away_team", ""))).strip(),
             "home_goals": "" if parse_int(home_goals) is None else parse_int(home_goals),
@@ -212,6 +293,7 @@ def standardize_records(records: Sequence[Dict[str, Any]], default_league: str =
     }
     deduped = deduplicate_and_sort(out)
     meta["duplicates_removed"] = len(out) - len(deduped)
+    meta["exported_seasons"] = sorted({str(row.get("season") or "") for row in deduped if str(row.get("season") or "").strip()})
     return deduped, meta
 
 
@@ -241,13 +323,22 @@ def write_csv(rows: Sequence[Dict[str, Any]], output: Any) -> Path:
     return target
 
 
+def expected_match_count(league_labels: Sequence[str], season_count: int) -> Optional[int]:
+    if season_count <= 0:
+        return None
+    normalized = {str(label or "").strip().lower() for label in league_labels}
+    if normalized and normalized <= {"epl", "premier league", "england"}:
+        return 380 * season_count * len(normalized)
+    return None
+
+
 def records_from_dataframe(dataframe: Any) -> List[Dict[str, Any]]:
     reset = dataframe.reset_index()
     reset.columns = [str(column[-1] if isinstance(column, tuple) else column) for column in reset.columns]
     return reset.to_dict("records")
 
 
-def fetch_understat_records(league_values: Sequence[str], seasons: Sequence[int], cache_dir: Any = "") -> List[Dict[str, Any]]:
+def fetch_understat_records(league_values: Sequence[str], seasons: Sequence[str], cache_dir: Any = "") -> List[Dict[str, Any]]:
     import soccerdata as sd
 
     kwargs = {"leagues": list(league_values), "seasons": list(seasons)}
@@ -281,7 +372,7 @@ def profile_csv(path: Any) -> Dict[str, Any]:
         columns = reader.fieldnames or []
     date_values = [parse_date(row.get("date")) for row in rows]
     date_values = [value for value in date_values if value]
-    seasons = sorted({str(row.get("season") or "") for row in rows if str(row.get("season") or "").strip()})
+    seasons = sorted({compact_soccerdata_season_to_label(row.get("season")) for row in rows if str(row.get("season") or "").strip()})
     leagues = sorted({str(row.get("league") or "") for row in rows if str(row.get("league") or "").strip()})
     teams = sorted({
         str(row.get("home_team") or "").strip()
@@ -299,7 +390,7 @@ def profile_csv(path: Any) -> Dict[str, Any]:
         missing[column] = sum(1 for row in rows if str(row.get(column) or "").strip().lower() in MISSING)
     by_season: Dict[str, int] = {}
     for row in rows:
-        season = str(row.get("season") or "inconnue")
+        season = compact_soccerdata_season_to_label(row.get("season")) or "inconnue"
         by_season[season] = by_season.get(season, 0) + 1
     xg_rate = round(len(xg_rows) / len(rows) * 100.0, 2) if rows else 0.0
     missing_required = not date_values or missing.get("home_team", 0) == len(rows) or missing.get("away_team", 0) == len(rows)
@@ -362,12 +453,30 @@ def print_profile(profile: Dict[str, Any]) -> None:
     print("- Rappel: xG final doit devenir rolling pre-match avant tout modele.")
 
 
-def print_fetch_summary(rows: Sequence[Dict[str, Any]], meta: Dict[str, Any], output: Path) -> None:
+def print_fetch_summary(
+    rows: Sequence[Dict[str, Any]],
+    meta: Dict[str, Any],
+    output: Path,
+    requested_seasons: Sequence[str] = (),
+    soccerdata_seasons: Sequence[str] = (),
+    expected_matches: Optional[int] = None,
+) -> None:
     print("Export Understat local termine")
     print(f"- Fichier ecrit: {output}")
     print(f"- Lignes exportees: {len(rows)}")
+    if requested_seasons:
+        print(f"- Saisons demandees: {', '.join(requested_seasons)}")
+    if soccerdata_seasons:
+        print(f"- Saisons normalisees soccerdata: {', '.join(soccerdata_seasons)}")
+    exported = meta.get("exported_seasons") or []
+    print(f"- Saisons reellement exportees: {', '.join(exported) if exported else 'non detectees'}")
     print(f"- xG detecte: {'oui' if meta.get('xg_available') else 'non'}")
     print(f"- Doublons retires: {meta.get('duplicates_removed', 0)}")
+    if expected_matches is not None and len(rows) != expected_matches:
+        print(f"- Attention: volume inattendu pour EPL: {len(rows)} lignes exportees vs {expected_matches} attendues ({expected_matches // 380} saisons x 380 matchs).")
+        missing = sorted(set(requested_seasons) - set(exported))
+        if missing:
+            print(f"- Saisons attendues absentes du CSV: {', '.join(missing)}")
     if meta.get("unrecognized_columns"):
         print("- Colonnes non reconnues:")
         for column in meta["unrecognized_columns"][:30]:
@@ -382,7 +491,7 @@ def parse_args(argv=None):
     parser.add_argument("--check", action="store_true", help="Verifie si soccerdata est installe")
     parser.add_argument("--profile", default="", help="Profile un CSV Understat local deja exporte")
     parser.add_argument("--league", default="", help="Ligue ou liste separee par virgules: EPL, La Liga, Bundesliga, Serie A, Ligue 1")
-    parser.add_argument("--seasons", default="", help="Saisons separees par virgules, ex: 2020,2021,2022")
+    parser.add_argument("--seasons", default="", help="Saisons separees par virgules, ex: 2020, 2020-2021 ou 20-21")
     parser.add_argument("--output", default="", help="Sortie CSV dans external_data/understat_probe/")
     parser.add_argument("--dry-run", action="store_true", help="Affiche ce qui serait recupere sans lancer soccerdata")
     parser.add_argument("--cache-dir", default="external_data/soccerdata_cache", help="Cache local soccerdata si supporte")
@@ -403,11 +512,13 @@ def main(argv=None, soccerdata_module: str = "soccerdata") -> int:
         return 1
     try:
         league_labels, league_values = parse_leagues(args.league)
-        seasons = parse_seasons(args.seasons)
-        if len(seasons) > 5:
-            print(f"Attention: {len(seasons)} saisons demandees. Recuperation large; verifiez que c'est volontaire.")
-        if len(seasons) > args.limit_seasons:
-            print(f"Erreur: {len(seasons)} saisons depassent --limit-seasons={args.limit_seasons}.")
+        season_specs = parse_seasons(args.seasons)
+        requested_seasons = [season["label"] for season in season_specs]
+        soccerdata_seasons = [season["soccerdata"] for season in season_specs]
+        if len(season_specs) > 5:
+            print(f"Attention: {len(season_specs)} saisons demandees. Recuperation large; verifiez que c'est volontaire.")
+        if len(season_specs) > args.limit_seasons:
+            print(f"Erreur: {len(season_specs)} saisons depassent --limit-seasons={args.limit_seasons}.")
             return 1
         if len(league_values) > 1:
             print("Attention: plusieurs ligues demandees. Le volume et les noms d'equipes peuvent compliquer la jointure.")
@@ -415,7 +526,8 @@ def main(argv=None, soccerdata_module: str = "soccerdata") -> int:
         print("Probe Understat multi-saisons")
         print(f"- Ligues demandees: {', '.join(league_labels)}")
         print(f"- Ligues soccerdata: {', '.join(league_values)}")
-        print(f"- Saisons: {', '.join(str(season) for season in seasons)}")
+        print(f"- Saisons demandees: {', '.join(requested_seasons)}")
+        print(f"- Saisons normalisees soccerdata: {', '.join(soccerdata_seasons)}")
         cache_dir = as_path(args.cache_dir)
         print(f"- Cache: {cache_dir}")
         print(f"- Sortie: {output}")
@@ -428,15 +540,16 @@ def main(argv=None, soccerdata_module: str = "soccerdata") -> int:
             print("- Aucun fichier cree.")
             return 0
         try:
-            raw_records = fetch_understat_records(league_values, seasons, cache_dir)
+            raw_records = fetch_understat_records(league_values, soccerdata_seasons, cache_dir)
         except Exception as exc:
             print(f"soccerdata est installe mais la recuperation a echoue : {exc}")
             return 1
         default_league = league_labels[0] if len(league_labels) == 1 else ""
-        default_season = str(seasons[0]) if len(seasons) == 1 else ""
+        default_season = requested_seasons[0] if len(season_specs) == 1 else ""
         rows, meta = standardize_records(raw_records, default_league=default_league, default_season=default_season)
         written = write_csv(rows, str(output))
-        print_fetch_summary(rows, meta, written)
+        expected_matches = expected_match_count(league_labels, len(season_specs))
+        print_fetch_summary(rows, meta, written, requested_seasons=requested_seasons, soccerdata_seasons=soccerdata_seasons, expected_matches=expected_matches)
         return 0
     except Exception as exc:
         print(f"Erreur: {exc}")

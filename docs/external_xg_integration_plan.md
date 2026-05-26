@@ -207,3 +207,32 @@ python report_runner.py --statistical
 ```
 
 Railway et Telegram doivent attendre. Une source xG multi-saisons peut ameliorer la comprehension du match, mais elle ne remplace pas la preuve CLV/statistique et ne cree aucun pick automatique.
+
+## V7.2 Understat xG Full Pipeline Quality Gate
+
+V7.2 transforme l'export Understat corrige en pipeline qualite complet. L'ancien export de 1520 lignes ne couvrait que quatre saisons EPL completes, car la saison courte `2021` etait interpretee de facon ambigue par `soccerdata`. Les exports doivent maintenant utiliser des saisons explicites :
+
+```bash
+python understat_probe.py --league EPL --seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output external_data/understat_probe/epl_2020_2025_matches.csv
+```
+
+Le nouvel export attendu contient 1900 lignes pour EPL, soit cinq saisons de 380 matchs. Le quality gate verifie ensuite saisons attendues, saisons manquantes, completeness, doublons date/home/away, xG coverage, scores manquants, colonnes post-match et risque de fuite :
+
+```bash
+python xg_dataset_quality.py --external external_data/understat_probe/epl_2020_2025_matches.csv --league EPL --expected-seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output reports/understat_epl_2020_2025_quality.json --html reports/understat_epl_2020_2025_quality.html
+```
+
+Le pipeline local ne telecharge rien. Il part d'un CSV Understat deja present, genere les rolling features dans `reports/`, lance le modele xG si possible et garde la gouvernance en mode laboratoire :
+
+```bash
+python understat_xg_pipeline.py --external external_data/understat_probe/epl_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix understat_epl_2020_2025
+```
+
+Lecture prudente :
+
+- xG final = post-match, donc interdit comme feature directe du match courant ;
+- rolling xG anti-fuite obligatoire ;
+- Brier/log loss legerement meilleurs = observation technique, pas edge jouable ;
+- ROI test negatif invalide l'edge ;
+- CLV absente bloque toute promotion ;
+- Telegram et Railway restent en attente.

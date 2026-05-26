@@ -246,7 +246,53 @@ Lecture prudente :
 - Kelly ne cree pas d'edge et reste limite a la simulation.
 - Telegram et Railway attendent une validation complete.
 
-## 13. Scientific Benchmark & Model Governance
+## 13. V7.2 Understat xG Full Pipeline Quality Gate
+
+Export Understat propre, avec saisons explicites pour eviter l'ambiguite `2021` :
+
+```bash
+python understat_probe.py --league EPL --seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output external_data/understat_probe/epl_2020_2025_matches.csv
+```
+
+Profil :
+
+```bash
+python understat_probe.py --profile external_data/understat_probe/epl_2020_2025_matches.csv
+```
+
+Quality gate :
+
+```bash
+python xg_dataset_quality.py --external external_data/understat_probe/epl_2020_2025_matches.csv --league EPL --expected-seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output reports/understat_epl_2020_2025_quality.json --html reports/understat_epl_2020_2025_quality.html
+```
+
+Pipeline :
+
+```bash
+python understat_xg_pipeline.py --external external_data/understat_probe/epl_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix understat_epl_2020_2025
+```
+
+Modele seul :
+
+```bash
+python xg_model_lab.py --features reports/understat_epl_2020_2025_rolling_features.csv --output reports/understat_epl_2020_2025_xg_model.json --html reports/understat_epl_2020_2025_xg_model.html
+```
+
+Benchmark :
+
+```bash
+python benchmark_governance.py --features data/features_modern.csv --xg-lab reports/understat_epl_2020_2025_rolling_features.csv --xg-quality reports/understat_epl_2020_2025_quality.json --xg-model reports/understat_epl_2020_2025_xg_model.json --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
+```
+
+Report runner :
+
+```bash
+python report_runner.py --xg-understat
+```
+
+Le nouvel export 1900 lignes remplace l'ancien export 1520 lignes pour le laboratoire EPL 2020-2025. Le xG reste post-match et doit passer par rolling anti-fuite. Sans CLV positive et ROI test positif, aucune promotion n'est autorisee.
+
+## 14. Scientific Benchmark & Model Governance
 
 Benchmark complet si `data/features_modern.csv` est disponible :
 
@@ -262,7 +308,7 @@ Sorties :
 
 Le benchmark attribue un score prudent et une decision : rejected, watchlist, observation, candidate, active_shadow_only, active_decision_support ou production_allowed. Meme `production_allowed` ne signifie jamais pari automatique. Rien n'est branche aux picks Telegram.
 
-## 14. Git workflow
+## 15. Git workflow
 
 ```bash
 git status --short
@@ -277,7 +323,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 15. Ce qu'il ne faut pas faire
+## 16. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

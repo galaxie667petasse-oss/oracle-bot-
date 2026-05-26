@@ -22,6 +22,25 @@ def main():
     assert "python -m pip install soccerdata" in status["message"]
     assert isinstance(understat_probe.as_path("external_data\\understat_probe\\x.csv"), Path)
     assert isinstance(understat_probe.as_path("external_data/understat_probe/x.csv"), Path)
+    seasons = understat_probe.parse_seasons("2020,2021,2022,2023,2024")
+    assert [season["label"] for season in seasons] == [
+        "2020-2021",
+        "2021-2022",
+        "2022-2023",
+        "2023-2024",
+        "2024-2025",
+    ]
+    assert [season["soccerdata"] for season in seasons] == ["20-21", "21-22", "22-23", "23-24", "24-25"]
+    assert len({season["soccerdata"] for season in seasons}) == 5
+    assert understat_probe.parse_seasons("2020-2021")[0]["soccerdata"] == "20-21"
+    assert understat_probe.parse_seasons("20-21")[0]["label"] == "2020-2021"
+    try:
+        understat_probe.parse_seasons("2020,20-21")
+        raise AssertionError("doublon saison non bloque")
+    except ValueError as exc:
+        assert "doublon" in str(exc).lower()
+    assert understat_probe.compact_soccerdata_season_to_label("2021") == "2020-2021"
+    assert understat_probe.compact_soccerdata_season_to_label("2122") == "2021-2022"
 
     raw = [
         {
@@ -48,6 +67,22 @@ def main():
     assert meta["xg_available"] is True
     assert "extra_col" in meta["unrecognized_columns"]
     assert meta["duplicates_removed"] == 0
+
+    zero_raw = [{
+        "date": "2024-08-17",
+        "league": "EPL",
+        "season": "2024",
+        "home_team": "Ipswich",
+        "away_team": "Liverpool",
+        "home_goals": 0,
+        "away_goals": 2,
+        "home_xg": 0.0,
+        "away_xg": 1.8,
+    }]
+    zero_rows, _zero_meta = understat_probe.standardize_records(zero_raw)
+    assert zero_rows[0]["home_goals"] == 0
+    assert zero_rows[0]["home_xg"] == 0.0
+    assert zero_rows[0]["result"] == "A"
 
     duplicated, duplicate_meta = understat_probe.standardize_records(raw + raw)
     assert len(duplicated) == 1
@@ -121,7 +156,7 @@ def main():
         previous = sys.modules.get("soccerdata")
         sys.modules["soccerdata"] = fake_module
         try:
-            fetched = understat_probe.fetch_understat_records(["ENG-Premier League"], [2024], cache_dir=root / "external_data" / "understat_probe" / "cache")
+            fetched = understat_probe.fetch_understat_records(["ENG-Premier League"], ["20-21", "21-22"], cache_dir=root / "external_data" / "understat_probe" / "cache")
         finally:
             if previous is None:
                 sys.modules.pop("soccerdata", None)
@@ -129,6 +164,7 @@ def main():
                 sys.modules["soccerdata"] = previous
         assert fetched[0]["home_team"] == "A"
         assert isinstance(captured["data_dir"], Path)
+        assert captured["seasons"] == ["20-21", "21-22"]
 
         output = root / "external_data" / "understat_probe" / "sample.csv"
         understat_probe.write_csv(mapped, str(output))

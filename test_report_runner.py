@@ -1,9 +1,10 @@
 import os
+import json
 import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, command_set, run_report
+from report_runner import ReportCommand, command_set, run_report, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -79,6 +80,33 @@ Score utilite Oracle:
   - leak_risk: eleve
   - verdict: utiliser comme enrichissement
 """)
+        write_report(report_dir / "understat_xg_pipeline.txt", """
+Understat xG Full Pipeline Quality Gate
+- Quality verdict: exploitable_rolling_xg
+- Join rate: 97.5%
+- Rolling avg3/avg5: 7190 / 7050
+- Brier marche/xG: 0.213 / 0.210
+- ROI edge test: -0.1
+- Promotion allowed: False
+- Conclusion: laboratoire seulement
+""")
+        (report_dir / "understat_epl_2020_2025_quality.json").write_text(json.dumps({
+            "verdict": "exploitable_rolling_xg",
+            "seasons_detected": ["2020-2021", "2021-2022", "2022-2023", "2023-2024", "2024-2025"],
+            "missing_seasons": [],
+            "total_expected_matches": 1900,
+            "total_actual_matches": 1900,
+            "xg_coverage": 100.0,
+        }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "understat_epl_2020_2025_xg_model.json").write_text(json.dumps({
+            "market_baseline": {"test": {"brier": 0.213, "log_loss": 0.615}},
+            "comparison": {"with_xg": {"brier": 0.210, "log_loss": 0.607}},
+            "verdict": {
+                "selected_test": {"roi": -0.1},
+                "promotion_allowed": False,
+                "rejection_reasons": ["ROI test negatif", "CLV absent"],
+            },
+        }, ensure_ascii=False), encoding="utf-8")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -94,9 +122,22 @@ Score utilite Oracle:
         assert summary["ml_global_brier_test"] == 0.213805
         assert any(command.name == "CLV analysis" for command in command_set("statistical"))
         assert any(command.name == "Benchmark governance" for command in command_set("full"))
+        assert any(command.name == "Understat xG Full Pipeline Quality Gate" for command in command_set("xg-understat"))
+        dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
+        assert "--dry-run" in dry_commands[0].args
+        assert "--skip-benchmark" in dry_commands[0].args
         assert "CLV / Closing Line Value" in html
         assert "Validation statistique" in html
+        assert "Understat xG Multi-Season Lab" in html
         assert "aucun pick automatique" in html.lower()
+
+        absent_manifest = run_report(
+            xg_understat_commands(str(root / "absent.csv"), str(root / "features_absent.csv"), "absent_test", dry_run=True),
+            root / "reports" / "oracle_absent",
+            Path.cwd(),
+        )
+        assert absent_manifest["failed"] == 1
+        assert db_path.read_text(encoding="utf-8") == before_db
 
     print("test_report_runner ok")
 

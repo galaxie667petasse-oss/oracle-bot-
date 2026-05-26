@@ -107,6 +107,35 @@ STATISTICAL_COMMANDS = [
     ),
 ]
 
+DEFAULT_UNDERSTAT_XG = "external_data/understat_probe/epl_2020_2025_matches.csv"
+DEFAULT_UNDERSTAT_PREFIX = "understat_epl_2020_2025"
+
+
+def xg_understat_commands(
+    external_xg: str = DEFAULT_UNDERSTAT_XG,
+    xgabora: str = "data/features_modern.csv",
+    out_prefix: str = DEFAULT_UNDERSTAT_PREFIX,
+    skip_benchmark: bool = False,
+    skip_model: bool = False,
+    dry_run: bool = False,
+) -> List[ReportCommand]:
+    args = [
+        "understat_xg_pipeline.py",
+        "--external",
+        external_xg,
+        "--xgabora",
+        xgabora,
+        "--out-prefix",
+        out_prefix,
+    ]
+    if skip_benchmark:
+        args.append("--skip-benchmark")
+    if skip_model:
+        args.append("--skip-model")
+    if dry_run:
+        args.append("--dry-run")
+    return [ReportCommand("Understat xG Full Pipeline Quality Gate", "understat_xg_pipeline.txt", args, timeout=2400)]
+
 
 def timestamp() -> str:
     return datetime.now().strftime("%Y_%m_%d_%H%M%S")
@@ -128,6 +157,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return QUICK_COMMANDS + FULL_EXTRA_COMMANDS + STATISTICAL_COMMANDS
     if mode == "statistical":
         return list(STATISTICAL_COMMANDS)
+    if mode == "xg-understat":
+        return xg_understat_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -238,20 +269,38 @@ def parse_args(argv=None):
     mode.add_argument("--quick", action="store_true", help="Lance le rapport rapide")
     mode.add_argument("--full", action="store_true", help="Lance tous les rapports locaux")
     mode.add_argument("--statistical", action="store_true", help="Lance CLV, calibration, validation statistique et gouvernance")
+    mode.add_argument("--xg-understat", action="store_true", help="Lance le pipeline local Understat xG multi-saisons")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
+    parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
+    parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
+    parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
+    parser.add_argument("--skip-benchmark", action="store_true", help="Pour --xg-understat: ignore benchmark_governance")
+    parser.add_argument("--skip-model", action="store_true", help="Pour --xg-understat: ignore xg_model_lab")
+    parser.add_argument("--dry-run", action="store_true", help="Pour --xg-understat: affiche les etapes sans lancer le pipeline")
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> None:
     args = parse_args(argv)
-    mode = "full" if args.full else ("statistical" if args.statistical else "quick")
+    mode = "xg-understat" if args.xg_understat else ("full" if args.full else ("statistical" if args.statistical else "quick"))
     report_dir = resolve_report_dir(args.output)
     report_dir.mkdir(parents=True, exist_ok=True)
     print("Rapport central local Oracle Bot")
     print(f"- Mode: {mode}")
     print(f"- Dossier: {report_dir}")
     print("- Note: DATABASE_URL est vide pour ce processus; aucune memoire distante n'est utilisee.")
-    manifest = run_report(command_set(mode), report_dir, Path.cwd())
+    if mode == "xg-understat":
+        commands = xg_understat_commands(
+            external_xg=args.external_xg,
+            xgabora=args.xgabora,
+            out_prefix=args.out_prefix,
+            skip_benchmark=args.skip_benchmark,
+            skip_model=args.skip_model,
+            dry_run=args.dry_run,
+        )
+    else:
+        commands = command_set(mode)
+    manifest = run_report(commands, report_dir, Path.cwd())
     print("")
     print("Resume final")
     print(f"- Rapports OK: {manifest['ok']}")

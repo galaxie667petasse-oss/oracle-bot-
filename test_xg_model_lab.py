@@ -4,7 +4,6 @@ from pathlib import Path
 
 import benchmark_governance
 import xg_model_lab
-from decision_policy import classify_strategy
 
 
 def write_rows(path: Path) -> None:
@@ -30,16 +29,11 @@ def write_rows(path: Path) -> None:
     with path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
         writer.writeheader()
-        dates = [
-            "2024-10-01",
-            "2024-10-08",
-            "2024-10-15",
-            "2024-12-05",
-            "2024-12-12",
-            "2025-01-05",
-            "2025-01-12",
-            "2025-01-19",
-        ]
+        dates = (
+            [f"2021-09-{(idx % 28) + 1:02d}" for idx in range(40)]
+            + [f"2023-09-{(idx % 28) + 1:02d}" for idx in range(40)]
+            + [f"2024-09-{(idx % 28) + 1:02d}" for idx in range(40)]
+        )
         for index, date in enumerate(dates):
             win = index % 2 == 0
             row = {
@@ -50,9 +44,9 @@ def write_rows(path: Path) -> None:
                 "pari": "Victoire Home",
                 "result": "win" if win else "loss",
                 "target_win": "1" if win else "0",
-                "odds": "1.90",
-                "implied_probability": "0.526",
-                "no_vig_probability": "0.52",
+                "odds": "2.00",
+                "implied_probability": "0.50",
+                "no_vig_probability": "0.50",
                 "market_margin": "0.02",
                 "elo_diff": str(20 + index),
                 "elo_abs_diff": str(20 + index),
@@ -70,7 +64,16 @@ def synthetic_db():
     return {"scans": {"empty": {"picks": [], "candidates": []}}}
 
 
+def fake_train_predict(_fit_rows, predict_rows, features):
+    has_xg = "xg_diff_avg3" in features
+    if has_xg:
+        return [0.70 if row.get("result") == "win" else 0.30 for row in predict_rows]
+    return [0.52 for _row in predict_rows]
+
+
 def main():
+    original_train_predict = xg_model_lab.train_predict
+    original_sklearn_available = xg_model_lab.sklearn_available
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         feature_path = root / "reports" / "xg.csv"
@@ -83,23 +86,54 @@ def main():
         before_matches = matches_csv.read_text(encoding="utf-8")
         write_rows(feature_path)
 
+        xg_model_lab.train_predict = fake_train_predict
+        xg_model_lab.sklearn_available = lambda: True
         report = xg_model_lab.build_xg_model_report(str(feature_path))
-        assert report["rows_with_rolling_xg"] == 8
-        assert report["splits"]["test"] == 3
-        assert any("Echantillon test inferieur" in note for note in report.get("notes", []))
-        decision = classify_strategy(report.get("governance_metrics", {}))
-        assert decision["score"] <= 39 or decision["status"] in {"fragile / test absent", "echantillon faible"}
+        assert report["rows_with_rolling_xg"] == 120
+        assert report["splits"]["fit"] == 40
+        assert report["splits"]["validation"] == 40
+        assert report["splits"]["test"] == 40
+        assert report["split_unique_matches"]["test"] == 40
+        assert report["comparison"]["delta_brier_xg_vs_without_xg"] < 0
+        assert report["verdict"]["promotion_allowed"] is False
+        assert "CLV absente" in report["verdict"]["rejection_reasons"]
+        assert "sample edge test inferieur a 1000" in report["verdict"]["rejection_reasons"]
+
+        negative_verdict = xg_model_lab.build_verdict({
+            "comparison": {
+                "delta_brier_xg_vs_without_xg": -0.01,
+                "delta_log_loss_xg_vs_without_xg": -0.01,
+                "delta_brier_xg_vs_market": -0.01,
+                "delta_log_loss_xg_vs_market": -0.01,
+            }
+        }, {"selected_test": {"picks": 1200, "roi": -0.1}})
+        assert negative_verdict["xg_improves_brier"] is True
+        assert negative_verdict["edge_test_positive"] is False
+        assert negative_verdict["promotion_allowed"] is False
+        assert "observation technique" in negative_verdict["governance_note"]
+
+        json_path = root / "reports" / "xg_model.json"
+        html_path = root / "reports" / "xg_model.html"
+        xg_model_lab.write_json(report, str(json_path))
+        xg_model_lab.write_html(report, str(html_path))
+        assert json_path.exists()
+        assert html_path.exists()
+
+        xg_model_lab.sklearn_available = lambda: False
+        no_sklearn = xg_model_lab.build_xg_model_report(str(feature_path))
+        assert "sklearn indisponible" in no_sklearn["error"]
 
         benchmark = benchmark_governance.build_benchmark(str(root / "missing_features.csv"), db=synthetic_db(), xg_lab_path=str(feature_path))
         assert benchmark["summary"]["xg_lab_available"] is True
-        assert any(entry["name"] == "epl_fbref_2024_2025_rolling_xg_lab" for entry in benchmark["registry"])
-        xg_entry = next(entry for entry in benchmark["registry"] if entry["name"] == "epl_fbref_2024_2025_rolling_xg_lab")
-        assert xg_entry["robustness_score"] <= 39
+        assert any(entry["type"] == "external_lab" for entry in benchmark["registry"])
+        xg_entry = next(entry for entry in benchmark["registry"] if entry["type"] == "external_lab" and "rolling_xg" in entry["name"])
         assert xg_entry["decision"] != "candidate"
 
         assert oracle_db.read_text(encoding="utf-8") == before_db
         assert matches_csv.read_text(encoding="utf-8") == before_matches
 
+    xg_model_lab.train_predict = original_train_predict
+    xg_model_lab.sklearn_available = original_sklearn_available
     print("test_xg_model_lab ok")
 
 

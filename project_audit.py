@@ -20,6 +20,8 @@ ESSENTIAL_FILES = [
     "decision_policy.py",
     "external_xg_features.py",
     "xg_model_lab.py",
+    "xg_dataset_quality.py",
+    "understat_xg_pipeline.py",
     "understat_probe.py",
     "clv_analysis.py",
     "calibration_report.py",
@@ -56,6 +58,8 @@ MAIN_TESTS = [
     "test_decision_policy.py",
     "test_external_xg_features.py",
     "test_xg_model_lab.py",
+    "test_xg_dataset_quality.py",
+    "test_understat_xg_pipeline.py",
     "test_understat_probe.py",
     "test_clv_analysis.py",
     "test_calibration_report.py",
@@ -70,6 +74,8 @@ IMPORT_MODULES = [
     "decision_policy",
     "external_xg_features",
     "xg_model_lab",
+    "xg_dataset_quality",
+    "understat_xg_pipeline",
     "understat_probe",
     "clv_analysis",
     "calibration_report",
@@ -90,6 +96,8 @@ OFFLINE_COMMAND_FILES = [
     "decision_policy.py",
     "external_xg_features.py",
     "xg_model_lab.py",
+    "xg_dataset_quality.py",
+    "understat_xg_pipeline.py",
     "understat_probe.py",
     "clv_analysis.py",
     "calibration_report.py",
@@ -307,10 +315,10 @@ def check_docs(root: Path, result: AuditResult) -> None:
     else:
         result.add_ok("README.md contient les sections principales de stabilisation.")
 
-    if "v7.0" not in status or ("aucune strategie robuste" not in status and "aucun signal robuste" not in status):
-        result.add_warning("PROJECT_STATUS.md doit mentionner V7.0 et l'absence de strategie robuste activee.")
+    if ("v7.0" not in status and "v7.2" not in status) or ("aucune strategie robuste" not in status and "aucun signal robuste" not in status):
+        result.add_warning("PROJECT_STATUS.md doit mentionner V7.x et l'absence de strategie robuste activee.")
     else:
-        result.add_ok("PROJECT_STATUS.md resume l'etat prudent V7.0.")
+        result.add_ok("PROJECT_STATUS.md resume l'etat prudent V7.x.")
 
 
 def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = True) -> AuditResult:
@@ -326,7 +334,7 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     check_dependencies(root, result)
     check_docs(root, result)
     result.add_recommendation("Conserver le bot en mode analyse prudente tant qu'aucun signal robuste n'est valide en test 2024+.")
-    result.add_recommendation("Tester un dataset externe xG/FBref local avant toute decision Railway.")
+    result.add_recommendation("Executer le quality gate Understat xG multi-saisons avant toute conclusion modele.")
     result.add_recommendation("Ne jamais utiliser les features post-match pour predire le meme match en conditions live.")
     return result
 

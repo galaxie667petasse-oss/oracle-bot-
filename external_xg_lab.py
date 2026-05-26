@@ -61,7 +61,7 @@ def normalize_column(name: Any) -> str:
 
 
 def parse_float(value: Any) -> Optional[float]:
-    text = str(value or "").strip().replace(",", ".")
+    text = "" if value is None else str(value).strip().replace(",", ".")
     if text.lower() in MISSING:
         return None
     try:
