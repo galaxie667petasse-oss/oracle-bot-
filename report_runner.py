@@ -34,6 +34,53 @@ FULL_EXTRA_COMMANDS = [
     ReportCommand("External dataset profile", "external_profile.txt", ["external_dataset_probe.py", "--profile-csv", "data/features_modern.csv"]),
     ReportCommand("External dataset recommendation", "external_recommend.txt", ["external_dataset_probe.py", "--recommend", "data/features_modern.csv"]),
     ReportCommand("External xG rolling lab", "xg_model_lab.txt", ["xg_model_lab.py", "--features", "reports/epl_xg_rolling_features.csv"], timeout=1200),
+]
+
+STATISTICAL_COMMANDS = [
+    ReportCommand(
+        "CLV analysis",
+        "clv_report.txt",
+        [
+            "clv_analysis.py",
+            "--features",
+            "data/features_modern.csv",
+            "--output",
+            "{report_dir}/clv_report.json",
+            "--html",
+            "{report_dir}/clv_report.html",
+        ],
+        timeout=900,
+    ),
+    ReportCommand(
+        "Calibration report",
+        "calibration_report.txt",
+        [
+            "calibration_report.py",
+            "--features",
+            "data/features_modern.csv",
+            "--prob-column",
+            "no_vig_probability",
+            "--output",
+            "{report_dir}/calibration_report.json",
+            "--html",
+            "{report_dir}/calibration_report.html",
+        ],
+        timeout=900,
+    ),
+    ReportCommand(
+        "Statistical validation",
+        "statistical_validation.txt",
+        [
+            "statistical_validation.py",
+            "--features",
+            "data/features_modern.csv",
+            "--output",
+            "{report_dir}/statistical_validation.json",
+            "--html",
+            "{report_dir}/statistical_validation.html",
+        ],
+        timeout=1200,
+    ),
     ReportCommand(
         "Benchmark governance",
         "benchmark_governance.txt",
@@ -43,6 +90,12 @@ FULL_EXTRA_COMMANDS = [
             "data/features_modern.csv",
             "--xg-lab",
             "reports/epl_xg_rolling_features.csv",
+            "--clv-report",
+            "{report_dir}/clv_report.json",
+            "--calibration-report",
+            "{report_dir}/calibration_report.json",
+            "--statistical-report",
+            "{report_dir}/statistical_validation.json",
             "--summary-json",
             "{report_dir}/benchmark_summary.json",
             "--html",
@@ -72,7 +125,9 @@ def resolve_report_dir(output: Optional[str] = None) -> Path:
 
 def command_set(mode: str) -> List[ReportCommand]:
     if mode == "full":
-        return QUICK_COMMANDS + FULL_EXTRA_COMMANDS
+        return QUICK_COMMANDS + FULL_EXTRA_COMMANDS + STATISTICAL_COMMANDS
+    if mode == "statistical":
+        return list(STATISTICAL_COMMANDS)
     return list(QUICK_COMMANDS)
 
 
@@ -182,13 +237,14 @@ def parse_args(argv=None):
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--quick", action="store_true", help="Lance le rapport rapide")
     mode.add_argument("--full", action="store_true", help="Lance tous les rapports locaux")
+    mode.add_argument("--statistical", action="store_true", help="Lance CLV, calibration, validation statistique et gouvernance")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> None:
     args = parse_args(argv)
-    mode = "full" if args.full else "quick"
+    mode = "full" if args.full else ("statistical" if args.statistical else "quick")
     report_dir = resolve_report_dir(args.output)
     report_dir.mkdir(parents=True, exist_ok=True)
     print("Rapport central local Oracle Bot")

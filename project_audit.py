@@ -20,6 +20,10 @@ ESSENTIAL_FILES = [
     "decision_policy.py",
     "external_xg_features.py",
     "xg_model_lab.py",
+    "understat_probe.py",
+    "clv_analysis.py",
+    "calibration_report.py",
+    "statistical_validation.py",
     "backtest_evaluator.py",
     "external_xg_lab.py",
     "team_name_normalizer.py",
@@ -52,6 +56,10 @@ MAIN_TESTS = [
     "test_decision_policy.py",
     "test_external_xg_features.py",
     "test_xg_model_lab.py",
+    "test_understat_probe.py",
+    "test_clv_analysis.py",
+    "test_calibration_report.py",
+    "test_statistical_validation.py",
 ]
 
 IMPORT_MODULES = [
@@ -62,6 +70,10 @@ IMPORT_MODULES = [
     "decision_policy",
     "external_xg_features",
     "xg_model_lab",
+    "understat_probe",
+    "clv_analysis",
+    "calibration_report",
+    "statistical_validation",
     "backtest_evaluator",
     "report_runner",
     "dashboard_builder",
@@ -78,6 +90,10 @@ OFFLINE_COMMAND_FILES = [
     "decision_policy.py",
     "external_xg_features.py",
     "xg_model_lab.py",
+    "understat_probe.py",
+    "clv_analysis.py",
+    "calibration_report.py",
+    "statistical_validation.py",
     "backtest_evaluator.py",
     "report_runner.py",
     "dashboard_builder.py",
@@ -267,6 +283,11 @@ def check_dependencies(root: Path, result: AuditResult) -> None:
     else:
         result.add_ok("sklearn disponible: les modeles legers optionnels peuvent etre entraines localement.")
 
+    if importlib.util.find_spec("soccerdata") is None:
+        result.add_ok("soccerdata absent: optionnel pour understat_probe.py; installer avec python -m pip install soccerdata si besoin.")
+    else:
+        result.add_ok("soccerdata disponible: le probe Understat peut etre lance explicitement.")
+
 
 def check_docs(root: Path, result: AuditResult) -> None:
     readme = _read_text(root / "README.md").lower()
@@ -286,10 +307,10 @@ def check_docs(root: Path, result: AuditResult) -> None:
     else:
         result.add_ok("README.md contient les sections principales de stabilisation.")
 
-    if "v6.8" not in status or "aucune strategie robuste positive" not in status:
-        result.add_warning("PROJECT_STATUS.md doit mentionner V6.8 et l'absence de strategie robuste positive.")
+    if "v7.0" not in status or ("aucune strategie robuste" not in status and "aucun signal robuste" not in status):
+        result.add_warning("PROJECT_STATUS.md doit mentionner V7.0 et l'absence de strategie robuste activee.")
     else:
-        result.add_ok("PROJECT_STATUS.md resume l'etat prudent V6.8.")
+        result.add_ok("PROJECT_STATUS.md resume l'etat prudent V7.0.")
 
 
 def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = True) -> AuditResult:

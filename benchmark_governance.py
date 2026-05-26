@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from decision_policy import classify_strategy, robustness_score
 
 
-GOVERNANCE_VERSION = "V6.8"
+GOVERNANCE_VERSION = "V7.0"
 DEFAULT_FEATURES = "data/features_modern.csv"
 DEFAULT_REGISTRY = "model_registry.json"
 
@@ -36,12 +36,125 @@ def _short_metrics(stat: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _nested(metrics: Dict[str, Any], *names: str) -> Dict[str, Any]:
+    for name in names:
+        value = metrics.get(name)
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
+def _metric(metrics: Dict[str, Any], key: str, *containers: str) -> Optional[float]:
+    value = metrics.get(key)
+    if value is not None:
+        return _safe_float(value)
+    for container in containers:
+        data = metrics.get(container)
+        if isinstance(data, dict) and data.get(key) is not None:
+            return _safe_float(data.get(key))
+    return None
+
+
+def _registry_metric_warnings(entry: Dict[str, Any]) -> List[str]:
+    warnings = []
+    if entry.get("clv_mean") is None:
+        warnings.append("CLV indisponible: candidat robuste bloque.")
+    if entry.get("ece") is None or entry.get("brier") is None:
+        warnings.append("Calibration indisponible ou incomplete.")
+    if entry.get("bootstrap_roi_p05") is None or entry.get("p_value_adjusted") is None:
+        warnings.append("Validation statistique indisponible ou incomplete.")
+    return warnings
+
+
 def _section(name: str, builder: Callable[[], Any]) -> Dict[str, Any]:
     try:
         data = builder()
         return {"name": name, "ok": True, "error": "", "data": data}
     except Exception as exc:
         return {"name": name, "ok": False, "error": str(exc), "data": None}
+
+
+def _read_json_file(path: str) -> Dict[str, Any]:
+    target = Path(path)
+    if not target.exists():
+        raise FileNotFoundError(f"rapport absent: {path}")
+    return json.loads(target.read_text(encoding="utf-8"))
+
+
+def _optional_report_section(name: str, path: str) -> Dict[str, Any]:
+    if not path:
+        return {"name": name, "ok": False, "error": "rapport non fourni", "data": None}
+    return _section(name, lambda: _read_json_file(path))
+
+
+def _update_entry_decision(entry: Dict[str, Any]) -> None:
+    metrics = {
+        "test": {
+            "picks": entry.get("sample_test"),
+            "roi": entry.get("roi_test"),
+            "max_drawdown": entry.get("drawdown"),
+        },
+        "clv": {
+            "clv_mean": entry.get("clv_mean"),
+            "clv_positive_rate": entry.get("clv_positive_rate"),
+        },
+        "calibration": {
+            "brier": entry.get("brier"),
+            "log_loss": entry.get("log_loss"),
+            "ece": entry.get("ece"),
+            "mce": entry.get("mce"),
+        },
+        "statistics": {
+            "bootstrap_roi_p05": entry.get("bootstrap_roi_p05"),
+            "bootstrap_roi_median": entry.get("bootstrap_roi_median"),
+            "bootstrap_roi_p95": entry.get("bootstrap_roi_p95"),
+            "p_value": entry.get("p_value"),
+            "p_value_adjusted": entry.get("p_value_adjusted"),
+        },
+        "multiple_testing_passed": entry.get("multiple_testing_passed"),
+        "post_match_features_allowed": entry.get("post_match_features_allowed"),
+        "leak_risk": entry.get("leak_risk"),
+        "governance_note": entry.get("notes", ""),
+    }
+    decision = classify_strategy(metrics)
+    entry["robustness_score"] = decision["score"]
+    entry["governance_status"] = decision.get("governance_status", decision["status"])
+    entry["status"] = decision["status"]
+    entry["decision"] = decision["decision"]
+    entry["reason"] = decision["reason"]
+    entry["rejection_reasons"] = decision.get("rejection_reasons", [])
+    entry["warnings"] = _registry_metric_warnings(entry)
+
+
+def enrich_registry_entries(entries: List[Dict[str, Any]], report_sections: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    reports = {section.get("name"): section.get("data") for section in report_sections if section.get("ok") and isinstance(section.get("data"), dict)}
+    clv_report = reports.get("CLV report") or {}
+    calibration = reports.get("Calibration report") or {}
+    statistical = reports.get("Statistical validation") or {}
+    clv_by_strategy = ((clv_report.get("groups") or {}).get("by_strategy") or {}) if isinstance(clv_report, dict) else {}
+    stat_by_strategy = statistical.get("by_strategy") or {} if isinstance(statistical, dict) else {}
+    for entry in entries:
+        name = entry.get("name", "")
+        if name in clv_by_strategy:
+            stat = clv_by_strategy[name]
+            entry["clv_mean"] = stat.get("clv_mean")
+            entry["clv_positive_rate"] = stat.get("clv_positive_rate")
+        if name in stat_by_strategy:
+            stat = stat_by_strategy[name]
+            boot = stat.get("bootstrap_roi") or {}
+            entry["bootstrap_roi_p05"] = boot.get("p05")
+            entry["bootstrap_roi_median"] = boot.get("p50")
+            entry["bootstrap_roi_p95"] = boot.get("p95")
+            entry["p_value"] = stat.get("p_value")
+            entry["p_value_adjusted"] = stat.get("p_value_adjusted")
+            entry["multiple_testing_passed"] = stat.get("p_value_adjusted") is not None and stat.get("p_value_adjusted") < 0.05
+        if calibration.get("status") == "disponible" and entry.get("type") in {"ml", "market"}:
+            entry["brier"] = calibration.get("brier")
+            entry["log_loss"] = calibration.get("log_loss")
+            entry["ece"] = calibration.get("ece")
+            entry["mce"] = calibration.get("mce")
+        _update_entry_decision(entry)
+    return entries
 
 
 def _load_db():
@@ -62,7 +175,11 @@ def _registry_entry(
     metrics = dict(metrics)
     metrics["governance_note"] = notes
     decision = classify_strategy(metrics)
-    return {
+    test_metrics = _short_metrics(metrics.get("test") or {})
+    probability = _nested(metrics, "calibration", "calibration_metrics", "probability_metrics", "model_metrics")
+    statistics = _nested(metrics, "statistics", "statistical_validation")
+    clv = _nested(metrics, "clv", "clv_metrics")
+    entry = {
         "name": name,
         "type": kind,
         "version": version,
@@ -73,14 +190,39 @@ def _registry_entry(
         "post_match_features_allowed": bool(metrics.get("post_match_features_allowed", False)),
         "leak_risk": metrics.get("leak_risk", "faible"),
         "validation_metrics": _short_metrics(metrics.get("validation") or {}),
-        "test_metrics": _short_metrics(metrics.get("test") or {}),
+        "test_metrics": test_metrics,
+        "roi_test": _metric(metrics, "roi_test") if _metric(metrics, "roi_test") is not None else test_metrics.get("roi"),
+        "clv_mean": _metric(metrics, "clv_mean", "clv", "clv_metrics"),
+        "clv_positive_rate": _metric(metrics, "clv_positive_rate", "clv", "clv_metrics"),
+        "brier": _metric(metrics, "brier", "calibration", "calibration_metrics", "probability_metrics", "model_metrics"),
+        "log_loss": _metric(metrics, "log_loss", "calibration", "calibration_metrics", "probability_metrics", "model_metrics"),
+        "ece": _metric(metrics, "ece", "calibration", "calibration_metrics", "probability_metrics", "model_metrics"),
+        "mce": _metric(metrics, "mce", "calibration", "calibration_metrics", "probability_metrics", "model_metrics"),
+        "bootstrap_roi_p05": _metric(metrics, "bootstrap_roi_p05", "statistics", "statistical_validation"),
+        "bootstrap_roi_median": _metric(metrics, "bootstrap_roi_median", "statistics", "statistical_validation"),
+        "bootstrap_roi_p95": _metric(metrics, "bootstrap_roi_p95", "statistics", "statistical_validation"),
+        "p_value": _metric(metrics, "p_value", "statistics", "statistical_validation"),
+        "p_value_adjusted": _metric(metrics, "p_value_adjusted", "statistics", "statistical_validation"),
+        "multiple_testing_passed": metrics.get("multiple_testing_passed"),
+        "sample_test": metrics.get("sample_test") if metrics.get("sample_test") is not None else test_metrics.get("picks"),
+        "drawdown": _metric(metrics, "drawdown") if _metric(metrics, "drawdown") is not None else test_metrics.get("max_drawdown"),
         "robustness_score": decision["score"],
+        "governance_status": decision.get("governance_status", decision["status"]),
         "status": decision["status"],
         "decision": decision["decision"],
         "reason": decision["reason"],
+        "rejection_reasons": decision.get("rejection_reasons", []),
         "created_at": now_iso(),
         "notes": notes,
     }
+    if probability:
+        entry.setdefault("probability_context", probability)
+    if statistics:
+        entry.setdefault("statistical_context", statistics)
+    if clv:
+        entry.setdefault("clv_context", clv)
+    entry["warnings"] = _registry_metric_warnings(entry)
+    return entry
 
 
 def _strategy_type(key: str) -> str:
@@ -255,7 +397,14 @@ def _xg_rolling_lab_entry(report: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-def _build_sections(features_path: str, db: Optional[Dict[str, Any]] = None, xg_lab_path: str = "") -> List[Dict[str, Any]]:
+def _build_sections(
+    features_path: str,
+    db: Optional[Dict[str, Any]] = None,
+    xg_lab_path: str = "",
+    clv_report_path: str = "",
+    calibration_report_path: str = "",
+    statistical_report_path: str = "",
+) -> List[Dict[str, Any]]:
     if db is None:
         db = _load_db()
     from backtest_evaluator import build_favorite_report, build_pricing_report, build_stability_report, evaluate_backtest
@@ -291,6 +440,11 @@ def _build_sections(features_path: str, db: Optional[Dict[str, Any]] = None, xg_
             sections.append(_section("External xG rolling lab", lambda: build_xg_model_report(str(xg_file))))
         else:
             sections.append({"name": "External xG rolling lab", "ok": False, "error": f"Fichier xG lab absent: {xg_lab_path}", "data": None})
+    sections.extend([
+        _optional_report_section("CLV report", clv_report_path),
+        _optional_report_section("Calibration report", calibration_report_path),
+        _optional_report_section("Statistical validation", statistical_report_path),
+    ])
     return sections
 
 
@@ -321,24 +475,68 @@ def collect_registry_entries(sections: Iterable[Dict[str, Any]]) -> List[Dict[st
     return sorted(entries, key=lambda item: (item.get("robustness_score", 0), item.get("name", "")), reverse=True)
 
 
-def build_benchmark(features_path: str = DEFAULT_FEATURES, db: Optional[Dict[str, Any]] = None, xg_lab_path: str = "") -> Dict[str, Any]:
-    sections = _build_sections(features_path, db=db, xg_lab_path=xg_lab_path)
+def build_benchmark(
+    features_path: str = DEFAULT_FEATURES,
+    db: Optional[Dict[str, Any]] = None,
+    xg_lab_path: str = "",
+    clv_report_path: str = "",
+    calibration_report_path: str = "",
+    statistical_report_path: str = "",
+) -> Dict[str, Any]:
+    sections = _build_sections(
+        features_path,
+        db=db,
+        xg_lab_path=xg_lab_path,
+        clv_report_path=clv_report_path,
+        calibration_report_path=calibration_report_path,
+        statistical_report_path=statistical_report_path,
+    )
     entries = collect_registry_entries(sections)
+    entries = enrich_registry_entries(entries, sections)
     available = sum(1 for section in sections if section.get("ok"))
     failed = [section for section in sections if not section.get("ok")]
     best_score = max((entry.get("robustness_score", 0) for entry in entries), default=0)
-    robust = [entry for entry in entries if entry.get("robustness_score", 0) >= 80 and entry.get("test_metrics", {}).get("roi", 0) and entry["test_metrics"]["roi"] > 0]
+    robust = [
+        entry for entry in entries
+        if entry.get("robustness_score", 0) >= 80
+        and entry.get("governance_status") in {"candidate", "active_shadow_only", "active_decision_support", "production_allowed"}
+        and entry.get("clv_mean") is not None
+        and entry.get("clv_mean") > 0
+    ]
+    report_data = {section.get("name"): section.get("data") for section in sections if section.get("ok") and isinstance(section.get("data"), dict)}
+    statistical_data = report_data.get("Statistical validation") or {}
+    statistical_groups = statistical_data.get("by_strategy") or {}
+    statistically_interesting = sum(
+        1 for stat in statistical_groups.values()
+        if isinstance(stat, dict) and (stat.get("p_value") is not None and stat.get("p_value") < 0.05)
+    )
+    surviving_correction = sum(
+        1 for stat in statistical_groups.values()
+        if isinstance(stat, dict) and (stat.get("p_value_adjusted") is not None and stat.get("p_value_adjusted") < 0.05)
+    )
     summary = {
         "generated_at": now_iso(),
         "version": GOVERNANCE_VERSION,
         "features_path": features_path,
         "xg_lab_path": xg_lab_path or None,
         "xg_lab_available": any(section.get("name") == "External xG rolling lab" and section.get("ok") for section in sections),
+        "clv_report_available": bool((report_data.get("CLV report") or {}).get("status") == "disponible"),
+        "calibration_report_available": bool((report_data.get("Calibration report") or {}).get("status") == "disponible"),
+        "statistical_report_available": bool((report_data.get("Statistical validation") or {}).get("status") == "disponible"),
         "sections_available": available,
         "sections_failed": [{"name": section["name"], "error": section.get("error", "")} for section in failed],
         "models_tested": len(entries),
+        "strategies_with_clv_available": sum(1 for entry in entries if entry.get("clv_mean") is not None),
+        "strategies_with_calibration_available": sum(1 for entry in entries if entry.get("ece") is not None or entry.get("brier") is not None),
+        "strategies_statistically_interesting_before_correction": statistically_interesting,
+        "strategies_surviving_multiple_testing": surviving_correction,
         "best_robustness_score": best_score,
         "robust_candidates": len(robust),
+        "warnings": [
+            f"{section['name']}: {section.get('error', '')}"
+            for section in failed
+            if section.get("name") in {"CLV report", "Calibration report", "Statistical validation"}
+        ],
         "conclusion": "Aucune strategie robuste positive ne doit etre activee automatiquement." if not robust else "Candidats robustes observes, validation humaine requise avant tout affichage decisionnel.",
     }
     return {"summary": summary, "sections": sections, "registry": entries}
@@ -363,9 +561,15 @@ def write_summary(benchmark: Dict[str, Any], path: str) -> Path:
             "name": entry["name"],
             "type": entry["type"],
             "robustness_score": entry["robustness_score"],
+            "governance_status": entry.get("governance_status"),
+            "clv_mean": entry.get("clv_mean"),
+            "ece": entry.get("ece"),
+            "bootstrap_roi_p05": entry.get("bootstrap_roi_p05"),
+            "p_value_adjusted": entry.get("p_value_adjusted"),
             "status": entry["status"],
             "decision": entry["decision"],
             "reason": entry["reason"],
+            "rejection_reasons": entry.get("rejection_reasons", []),
         }
         for entry in benchmark["registry"][:12]
     ]
@@ -383,6 +587,10 @@ def write_html(benchmark: Dict[str, Any], path: str) -> Path:
             f"<td>{html.escape(entry['name'])}</td>"
             f"<td>{html.escape(entry['type'])}</td>"
             f"<td>{entry['robustness_score']}</td>"
+            f"<td>{html.escape(str(entry.get('clv_mean')))}</td>"
+            f"<td>{html.escape(str(entry.get('ece')))}</td>"
+            f"<td>{html.escape(str(entry.get('bootstrap_roi_p05')))}</td>"
+            f"<td>{html.escape(str(entry.get('p_value_adjusted')))}</td>"
             f"<td>{html.escape(entry['status'])}</td>"
             f"<td>{html.escape(entry['decision'])}</td>"
             f"<td>{html.escape(entry['reason'])}</td>"
@@ -399,11 +607,17 @@ def write_html(benchmark: Dict[str, Any], path: str) -> Path:
         "<h1>Scientific Benchmark & Model Governance</h1>",
         f"<p>Genere le {html.escape(benchmark['summary']['generated_at'])}. Rapport local descriptif: aucun pick automatique.</p>",
         f"<p><strong>Conclusion:</strong> {html.escape(benchmark['summary']['conclusion'])}</p>",
+        "<ul>",
+        f"<li>Strategies avec CLV disponible: {benchmark['summary'].get('strategies_with_clv_available')}</li>",
+        f"<li>Strategies avec calibration disponible: {benchmark['summary'].get('strategies_with_calibration_available')}</li>",
+        f"<li>Strategies interessantes avant correction: {benchmark['summary'].get('strategies_statistically_interesting_before_correction')}</li>",
+        f"<li>Strategies survivant correction: {benchmark['summary'].get('strategies_surviving_multiple_testing')}</li>",
+        "</ul>",
         "<section class='warn'><h2>Sections indisponibles</h2><ul>",
         failed_html,
         "</ul></section>",
         "<h2>Gouvernance des modeles</h2>",
-        "<table><thead><tr><th>Modele/strategie</th><th>Type</th><th>Score</th><th>Statut</th><th>Decision</th><th>Raison principale</th></tr></thead><tbody>",
+        "<table><thead><tr><th>Modele/strategie</th><th>Type</th><th>Score</th><th>CLV</th><th>ECE</th><th>Bootstrap p05</th><th>p ajustee</th><th>Statut</th><th>Decision</th><th>Raison principale</th></tr></thead><tbody>",
         *rows,
         "</tbody></table>",
         "<p>Regle: meme un statut production_allowed ne signifierait pas pari automatique; seulement un signal explicable d'aide a la decision.</p>",
@@ -422,11 +636,15 @@ def print_report(benchmark: Dict[str, Any]) -> None:
     for failed in summary["sections_failed"]:
         print(f"  - {failed['name']}: {failed['error']}")
     print(f"- Modeles/strategies evalues: {summary['models_tested']}")
+    print(f"- Strategies avec CLV disponible: {summary.get('strategies_with_clv_available')}")
+    print(f"- Strategies avec calibration disponible: {summary.get('strategies_with_calibration_available')}")
+    print(f"- Strategies interessantes avant correction: {summary.get('strategies_statistically_interesting_before_correction')}")
+    print(f"- Strategies survivant correction multiple testing: {summary.get('strategies_surviving_multiple_testing')}")
     print(f"- Meilleur score robustesse: {summary['best_robustness_score']}/100")
     print(f"- Candidats robustes: {summary['robust_candidates']}")
     print("- Top gouvernance:")
     for entry in benchmark["registry"][:12]:
-        print(f"  - {entry['name']}: score={entry['robustness_score']}, statut={entry['status']}, decision={entry['decision']}, raison={entry['reason']}")
+        print(f"  - {entry['name']}: score={entry['robustness_score']}, statut={entry['status']}, decision={entry['decision']}, CLV={entry.get('clv_mean')}, ECE={entry.get('ece')}, raison={entry['reason']}")
     print(f"- Conclusion: {summary['conclusion']}")
     print("- Rappel: aucune strategie n'est branchee aux picks Telegram ou Railway.")
 
@@ -438,12 +656,21 @@ def parse_args(argv=None):
     parser.add_argument("--html", default="", help="Chemin du rapport HTML")
     parser.add_argument("--registry", default=DEFAULT_REGISTRY, help="Chemin du model registry versionne")
     parser.add_argument("--xg-lab", default="", help="CSV rolling xG externe produit dans reports/")
+    parser.add_argument("--clv-report", default="", help="JSON CLV deja genere")
+    parser.add_argument("--calibration-report", default="", help="JSON calibration deja genere")
+    parser.add_argument("--statistical-report", default="", help="JSON validation statistique deja genere")
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    benchmark = build_benchmark(args.features, xg_lab_path=args.xg_lab)
+    benchmark = build_benchmark(
+        args.features,
+        xg_lab_path=args.xg_lab,
+        clv_report_path=args.clv_report,
+        calibration_report_path=args.calibration_report,
+        statistical_report_path=args.statistical_report,
+    )
     registry_path = write_registry(benchmark["registry"], args.registry)
     if args.summary_json:
         summary_path = write_summary(benchmark, args.summary_json)

@@ -2,29 +2,13 @@
 
 ## Objectif
 
-La gouvernance V6.7 empeche un modele, un segment ou une regle fragile de devenir un signal actif sans preuve temporelle. Elle s'applique au marche no-vig, aux regles Oracle, aux segments historiques, aux modeles ML et aux futurs enrichissements xG.
+La gouvernance V7.0 empeche un modele, un segment ou une regle fragile de devenir un signal actif sans preuve temporelle, CLV positive, calibration acceptable et validation statistique robuste.
 
 La politique ne cree aucun pick automatique. Elle decide seulement si un signal peut etre rejete, surveille, observe ou affiche comme aide prudente a la decision.
 
-## Conditions minimales
-
-Un modele ou segment ne peut passer de simple observation a agent actif que si :
-
-- le test 2024+ est positif ;
-- la validation est non negative ;
-- le sample test est idealement superieur ou egal a 1000, minimum 300 ;
-- aucune fuite post-match n'est utilisee ;
-- la calibration est acceptable ;
-- Brier score et log loss ne sont pas pires que le marche pour un modele probabiliste ;
-- la stabilite annuelle est acceptable ;
-- le drawdown reste raisonnable ;
-- il n'y a pas de degradation forte en 2025 ;
-- `project_audit.py` est OK ;
-- un rapport central local a ete genere.
-
 ## Niveaux de promotion
 
-1. `rejected` : signal invalide, negatif ou a bloquer.
+1. `rejected` : signal invalide, negatif ou bloque par un gate.
 2. `watchlist` : signal fragile a surveiller, sans usage decisionnel.
 3. `observation` : signal descriptif interessant, encore non activable.
 4. `candidate` : candidat robuste a verifier humainement.
@@ -32,30 +16,58 @@ Un modele ou segment ne peut passer de simple observation a agent actif que si :
 6. `active_decision_support` : peut etre affiche comme contexte prudent.
 7. `production_allowed` : autorise comme signal explicable, jamais comme pari automatique.
 
+## Conditions minimales
+
+Un modele ou segment ne peut passer candidat que si :
+
+- ROI test 2024+ strictement positif ;
+- CLV disponible et positive ;
+- validation non negative ;
+- sample test superieur ou egal a 1000 ;
+- aucune fuite post-match ;
+- Brier/log loss non pires que le marche si le signal est probabiliste ;
+- ECE et MCE acceptables ;
+- bootstrap ROI 5e percentile strictement positif ;
+- intervalle de confiance ROI ne contient pas 0 si disponible ;
+- p-value ajustee par multiple testing significative quand plusieurs strategies sont testees ;
+- absence de degradation recente 2025 ;
+- seuil non choisi sur le test.
+
 ## Regles de blocage
 
-- ROI test 2024+ negatif ou nul : pas de candidat robuste.
-- Validation positive mais test negatif : signal invalide.
-- Train positif mais validation/test negatifs : suspicion de surapprentissage.
-- Test absent : statut maximum fragile.
-- Sample test inferieur a 300 : statut maximum echantillon faible.
-- Fuite post-match : invalidation immediate.
-- 2025 negatif : penalite de degradation recente.
+- ROI test negatif ou nul : jamais candidat.
+- CLV absente ou negative : jamais candidat.
+- Validation positive mais test negatif : rejected.
+- Sample test inferieur a 300 : preuve insuffisante.
+- Sample test inferieur a 1000 : observation maximum.
+- Calibration ECE trop elevee : rejected ou watchlist maximum.
+- Bootstrap ROI p05 inferieur ou egal a 0 : rejected ou watchlist maximum.
+- Correction multiple testing echouee : rejected ou watchlist maximum.
+- Fuite post-match : rejected.
+- Seuil choisi sur test : rejected.
 
-## Modeles probabilistes
+## Pourquoi ROI court terme ne suffit pas
 
-Pour un modele ML, la calibration compte davantage que l'accuracy brute. Le modele doit etre compare au marche no-vig avec :
+Le marche football pre-match est efficient. Un ROI positif sur quelques centaines de picks peut venir du bruit, d'un segment choisi apres coup ou d'un calendrier favorable. Meme 1000 picks peuvent etre insuffisants si l'edge attendu est de 0.5% a 1%.
 
-- Brier score ;
-- log loss ;
-- calibration buckets ;
-- ROI des edges choisis sur validation puis mesures sur test ;
-- drawdown et volume.
+## Pourquoi CLV est prioritaire
 
-Un modele positif en validation mais negatif sur test 2024+ est invalide.
+La Closing Line Value mesure si le prix pris etait meilleur que le prix final du marche. Avoir pris 2.10 quand la closing line finit a 2.00 est positif. Avoir pris 1.90 quand elle finit a 2.00 est negatif. Sans CLV positive, le ROI court terme n'est pas une preuve robuste.
+
+## Multiple testing
+
+Tester 67 strategies augmente fortement la chance de faux positif. Les p-values non corrigees sont insuffisantes. La gouvernance V7.0 applique Benjamini-Hochberg quand plusieurs strategies disposent de p-values.
+
+## Bootstrap et Monte Carlo
+
+Le bootstrap ROI donne une distribution plausible du ROI sous re-echantillonnage. Si le percentile 5% est inferieur ou egal a 0, le signal reste observation. Monte Carlo sert a visualiser la dispersion et le drawdown, pas a promettre une rentabilite.
+
+## Kelly
+
+Kelly ne cree pas d'edge. Il ne fait que dimensionner une mise si l'edge existe deja. Dans ce projet, Kelly reste reserve a la simulation et ne peut pas promouvoir un signal.
 
 ## Telegram et production
 
-Meme `production_allowed` ne signifie pas pari automatique. Cela signifie seulement que le bot peut afficher le signal comme element de decision, avec explication, limites et prudence.
+Meme `production_allowed` ne signifie pas pari automatique. Cela signifie seulement que le bot peut afficher un signal comme element de decision, avec explication, limites et prudence.
 
-Tant que le projet n'a aucune strategie robuste positive, Telegram et Railway restent hors scope.
+Tant que le projet n'a aucun signal robuste active, Telegram et Railway restent hors scope.

@@ -16,6 +16,7 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 - Lance des backtests temporels, rapports favoris, stabilite et pricing.
 - Entraine un ML leger local pour mesurer une probabilite, pas pour generer des picks.
 - Profile des datasets externes fournis localement, sans telechargement ni scraping.
+- Produit des rapports CLV, reliability curves, bootstrap, Monte Carlo et multiple testing.
 - Genere un rapport central local HTML/JSON pour audit.
 
 ## Ce que le bot ne fait pas
@@ -44,6 +45,10 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 - `external_xg_lab.py` : laboratoire xG externe, jointure controlee et preview local.
 - `external_xg_features.py` : transformation du xG final externe en rolling features pre-match.
 - `xg_model_lab.py` : evaluation locale descriptive des rolling xG.
+- `understat_probe.py` : probe optionnel Understat multi-saisons via `soccerdata`.
+- `clv_analysis.py` : mesure descriptive de Closing Line Value si des cotes closing sont disponibles.
+- `calibration_report.py` : reliability curves, Brier, log loss, ECE et MCE.
+- `statistical_validation.py` : bootstrap ROI, Monte Carlo, IC, drawdown et correction multiple testing.
 - `team_name_normalizer.py` : normalisation prudente et suggestions de mapping d'equipes.
 - `external_adapters/epl_fbref_lab.py` : adaptateur laboratoire EPL/FBref local.
 - `report_runner.py` : orchestration des rapports locaux.
@@ -58,8 +63,9 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 3. Generer `data/features_modern.csv`.
 4. Lancer pricing, backtest, favorite-report et stability-report.
 5. Lancer le ML leger uniquement comme mesure de probabilite.
-6. Generer le rapport central local.
-7. Lire les conclusions avant toute decision Railway ou Telegram.
+6. Lancer la couche V7.0 Statistical Proof Foundation.
+7. Generer le rapport central local.
+8. Lire les conclusions avant toute decision Railway ou Telegram.
 
 Commandes courtes :
 
@@ -68,6 +74,9 @@ python project_audit.py
 python feature_builder.py --output data/features_modern.csv
 python backtest_evaluator.py --preset modern
 python model_trainer.py --features data/features_modern.csv
+python clv_analysis.py --features data/features_modern.csv
+python calibration_report.py --features data/features_modern.csv --prob-column no_vig_probability
+python statistical_validation.py --features data/features_modern.csv
 python report_runner.py --quick
 python dashboard_builder.py --latest
 ```
@@ -243,6 +252,98 @@ Le dataset EPL 2024-2025 couvre une seule ligue et une seule saison. Meme avec u
 
 Le rapport xG se lit comme une analyse prudente : si `n < 300`, le signal reste echantillon faible ; si le ROI test est negatif, le signal est invalide ; si le Brier/log loss ne battent pas le marche no-vig, le xG n'ameliore pas la probabilite.
 
+## Understat Multi-Season Data Probe
+
+La phase V6.9 prepare la prochaine piste xG : Understat multi-saisons via `soccerdata`. Understat couvre plusieurs grandes ligues et peut donner plus de volume que le dataset EPL 2024-2025 seul.
+
+`soccerdata` est optionnel. S'il est absent :
+
+```bash
+python -m pip install soccerdata
+```
+
+Verifier l'environnement :
+
+```bash
+python understat_probe.py --check
+```
+
+Commande reelle a lancer manuellement, hors tests :
+
+```bash
+python understat_probe.py --league EPL --seasons 2020,2021,2022,2023,2024 --output external_data/understat_probe/epl_2020_2024_matches.csv
+python understat_probe.py --profile external_data/understat_probe/epl_2020_2024_matches.csv
+```
+
+Le CSV exporte vise ces colonnes : date, league, season, home/away team, goals, home/away xG, result, source et source_match_id. Il est compatible avec :
+
+```bash
+python external_xg_lab.py --profile external_data/understat_probe/epl_2020_2024_matches.csv
+python external_xg_features.py --external external_data/understat_probe/epl_2020_2024_matches.csv --xgabora data/features_modern.csv --output reports/understat_xg_rolling_features.csv
+python xg_model_lab.py --features reports/understat_xg_rolling_features.csv
+```
+
+xgabora reste la base betting principale parce qu'elle contient les cotes et le volume historique. Understat sert seulement d'enrichissement xG laboratoire. Aucun signal Understat ne doit etre active sans rolling pre-match, benchmark gouvernance et validation humaine.
+
+## Statistical Proof Foundation
+
+La phase V7.0 ajoute la couche de preuve statistique. Elle ne cree aucun pick, ne modifie pas Telegram, ne modifie pas Railway et ne touche pas a `oracle_db.json`.
+
+Commandes principales :
+
+```bash
+python clv_analysis.py --features data/features_modern.csv --output reports/clv_report.json --html reports/clv_report.html
+python calibration_report.py --features data/features_modern.csv --prob-column no_vig_probability --output reports/calibration_report.json --html reports/calibration_report.html
+python statistical_validation.py --features data/features_modern.csv --output reports/statistical_validation.json --html reports/statistical_validation.html
+python report_runner.py --statistical
+```
+
+Pourquoi ROI court terme ne suffit pas :
+
+- le football pre-match est un marche efficient ;
+- 300 ou 1000 picks peuvent encore etre compatibles avec du bruit ;
+- un ROI positif choisi apres coup peut venir du data snooping ;
+- validation positive mais test negatif invalide le signal.
+
+Pourquoi CLV est prioritaire :
+
+- avoir pris 2.10 quand la closing line finit a 2.00 est une information forte ;
+- avoir pris 1.90 quand la closing line finit a 2.00 est une alerte ;
+- sans CLV positive, aucun signal ne peut devenir candidat robuste ;
+- certaines closing odds Pinnacle recentes peuvent demander controle de source, surtout apres 2025-07-23.
+
+Pourquoi multiple testing est dangereux :
+
+- tester des dizaines de segments finit presque toujours par produire un faux positif ;
+- la correction Benjamini-Hochberg penalise les p-values quand plusieurs strategies sont comparees ;
+- un signal qui passe avant correction mais echoue apres correction reste fragile.
+
+Comment lire bootstrap / Monte Carlo :
+
+- le bootstrap donne des percentiles de ROI plausibles sous re-echantillonnage ;
+- si le percentile 5% du ROI est inferieur ou egal a 0, le signal reste observation ;
+- Monte Carlo sert a sentir la dispersion, pas a creer une promesse de profit ;
+- le drawdown simule rappelle qu'un edge faible peut rester difficile a supporter.
+
+Comment lire les reliability curves :
+
+- Brier et log loss mesurent la qualite probabiliste ;
+- ECE mesure l'erreur moyenne de calibration ;
+- MCE mesure le pire ecart de calibration observe ;
+- une probabilite mal calibree ne doit pas piloter une decision.
+
+Pourquoi Kelly ne cree pas d'edge :
+
+- Kelly gere une fraction de mise si l'edge existe deja ;
+- il ne transforme pas un modele fragile en strategie profitable ;
+- dans Oracle Football Bot, Kelly reste reserve a la simulation.
+
+Pourquoi Telegram et Railway doivent attendre :
+
+- aucun signal robuste n'est active ;
+- `production_allowed` signifie seulement aide a la decision explicable, jamais pari automatique ;
+- Railway attend une preuve statistique robuste, CLV positive et revue humaine.
+
 ## Scientific Benchmark
 
 La phase V6.7 consolide les resultats disponibles dans un benchmark scientifique local. Elle compare le marche, les regles Oracle, les segments, les modeles ML et le futur lab xG avec une meme logique de prudence.
@@ -251,7 +352,7 @@ La phase V6.7 consolide les resultats disponibles dans un benchmark scientifique
 python benchmark_governance.py --features data/features_modern.csv --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
 ```
 
-Si une section echoue, le benchmark continue et marque la section comme indisponible. Le rapport reste descriptif : il ne modifie pas la DB, ne lance pas Telegram et ne cree aucun pick.
+Si une section echoue, le benchmark continue et marque la section comme indisponible. Le rapport reste descriptif : il ne modifie pas la DB, ne lance pas Telegram et ne cree aucun pick. Si CLV, calibration ou validation statistique sont absentes, les candidats robustes sont bloques.
 
 ## Model Governance
 
@@ -267,9 +368,13 @@ Chaque strategie recoit un `robustness_score` prudent sur 100. Le statut peut et
 Regles importantes :
 
 - ROI test 2024+ negatif ou nul : jamais robuste.
+- CLV absente ou negative : jamais candidat robuste.
+- Bootstrap ROI 5e percentile inferieur ou egal a 0 : jamais candidat robuste.
+- Correction multiple testing echouee : jamais candidat robuste.
 - Validation positive mais test negatif : invalide.
 - Test absent : maximum fragile.
 - Sample test inferieur a 300 : echantillon faible.
+- Sample test inferieur a 1000 : observation maximum.
 - Fuite post-match : score force a 0.
 
 ## Model Registry
@@ -361,7 +466,7 @@ python project_audit.py
 
 ## Etat actuel : aucune strategie robuste positive
 
-Etat V6.5 Release Candidate locale :
+Etat V7.0 Statistical Proof Foundation :
 
 - memoire moderne 2015-2025 ;
 - environ 528066 records regles ;
@@ -371,9 +476,11 @@ Etat V6.5 Release Candidate locale :
 - External Dataset Lab disponible ;
 - External xG Integration Lab disponible ;
 - External xG Rolling Features Lab disponible ;
+- Understat Multi-Season Data Probe disponible ;
+- CLV, calibration et validation statistique disponibles ;
 - Scientific Benchmark et Model Governance disponibles ;
 - rapport central local disponible ;
-- aucune strategie robuste positive validee ;
+- aucun signal robuste active ;
 - ML actuel ne bat pas le marche no-vig sur test 2024+ ;
 - favoris H2H proches du break-even mais non confirmes.
 
@@ -381,8 +488,8 @@ Etat V6.5 Release Candidate locale :
 
 Priorite suivante :
 
-1. Profiler un dataset externe local riche en xG/FBref/Kaggle avec `external_dataset_probe.py`.
-2. Tester une jointure theorique propre avec `external_join_plan.py`.
-3. Ameliorer les features pre-match sans fuite.
-4. Relancer train/validation/test.
-5. Ne penser a Railway ou Telegram qu'apres un signal robuste, stable et assez volumineux.
+1. Corriger et lancer manuellement Understat multi-saisons apres dry-run.
+2. Produire un export xG Understat dans `external_data/understat_probe/`.
+3. Generer des rolling xG pre-match puis relancer xG lab.
+4. Produire les rapports CLV, calibration et statistical validation.
+5. Ne penser a Railway ou Telegram qu'apres CLV positive, preuve statistique robuste et revue humaine.

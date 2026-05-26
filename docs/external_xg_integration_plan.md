@@ -65,6 +65,19 @@ Une source externe ne vaut le coup que si elle ameliore la probabilite sans fuit
 
 Un signal validation positif mais test negatif reste invalide.
 
+## Statistical Proof Foundation V7.0
+
+Apres generation de rolling xG pre-match, la source doit passer la couche V7.0 :
+
+- CLV positive si le signal selectionne des cotes ;
+- reliability curves lisibles avec Brier, log loss, ECE et MCE ;
+- bootstrap ROI avec percentile 5% strictement positif ;
+- intervalle de confiance ROI qui ne contient pas 0 pour un candidat ;
+- correction de multiple testing si plusieurs segments xG sont compares ;
+- aucun seuil choisi sur le test.
+
+Un ROI xG positif sur un petit echantillon reste observation. Un sample inferieur a 300 est preuve insuffisante. Un sample inferieur a 1000 reste observation maximum.
+
 ## Decision d'integration
 
 La source est interessante si :
@@ -126,3 +139,71 @@ python benchmark_governance.py --features data/features_modern.csv --xg-lab repo
 ```
 
 Si l'echantillon test est inferieur a 300 ou si le ROI test est negatif, le signal reste observation seulement ou invalide. Une seule saison EPL ne suffit pas a generaliser a tout le bot.
+
+## Understat multi-saisons V6.9
+
+Le dataset EPL 2024-2025 a valide le pipeline, mais son volume reste limite. La prochaine piste est Understat multi-saisons via la dependance optionnelle `soccerdata`.
+
+Pourquoi Understat :
+
+- xG disponible sur plusieurs saisons ;
+- couverture utile sur EPL, La Liga, Bundesliga, Serie A et Ligue 1 ;
+- integration Python possible via DataFrames ;
+- compatible avec le pipeline rolling xG apres export CSV.
+
+Pourquoi xgabora reste principal :
+
+- Understat ne fournit pas les cotes betting ;
+- le no-vig, l'edge, l'EV et le ROI ont besoin des cotes xgabora/Football-Data ;
+- Understat ne doit servir qu'a enrichir les features pre-match.
+
+Installer soccerdata si besoin :
+
+```bash
+python -m pip install soccerdata
+```
+
+Verifier l'environnement :
+
+```bash
+python understat_probe.py --check
+```
+
+Dry-run prudent :
+
+```bash
+python understat_probe.py --league EPL --seasons 2020,2021,2022,2023,2024 --output external_data/understat_probe/epl_2020_2024_matches.csv --dry-run
+```
+
+Export reel, a lancer manuellement :
+
+```bash
+python understat_probe.py --league EPL --seasons 2020,2021,2022,2023,2024 --output external_data/understat_probe/epl_2020_2024_matches.csv
+python understat_probe.py --profile external_data/understat_probe/epl_2020_2024_matches.csv
+```
+
+Pipeline apres export :
+
+```bash
+python external_xg_lab.py --profile external_data/understat_probe/epl_2020_2024_matches.csv
+python external_xg_features.py --external external_data/understat_probe/epl_2020_2024_matches.csv --xgabora data/features_modern.csv --output reports/understat_xg_rolling_features.csv
+python xg_model_lab.py --features reports/understat_xg_rolling_features.csv
+python benchmark_governance.py --features data/features_modern.csv --xg-lab reports/understat_xg_rolling_features.csv --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
+```
+
+Aucun signal Understat ne doit etre active sans rolling pre-match, test temporel, benchmark gouvernance et validation humaine.
+
+## Understat multi-saisons V7.0
+
+La prochaine priorite humaine est de produire un export Understat plus large puis de relancer toute la preuve statistique :
+
+```bash
+python understat_probe.py --check
+python understat_probe.py --league EPL --seasons 2020,2021,2022,2023,2024 --output external_data/understat_probe/epl_2020_2024_matches.csv
+python understat_probe.py --profile external_data/understat_probe/epl_2020_2024_matches.csv
+python external_xg_features.py --external external_data/understat_probe/epl_2020_2024_matches.csv --xgabora data/features_modern.csv --output reports/understat_xg_rolling_features.csv
+python xg_model_lab.py --features reports/understat_xg_rolling_features.csv
+python report_runner.py --statistical
+```
+
+Railway et Telegram doivent attendre. Une source xG multi-saisons peut ameliorer la comprehension du match, mais elle ne remplace pas la preuve CLV/statistique et ne cree aucun pick automatique.

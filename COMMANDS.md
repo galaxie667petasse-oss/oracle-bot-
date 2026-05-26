@@ -23,6 +23,10 @@ python test_report_runner.py
 python test_project_audit.py
 python test_decision_policy.py
 python test_benchmark_governance.py
+python test_understat_probe.py
+python test_clv_analysis.py
+python test_calibration_report.py
+python test_statistical_validation.py
 python project_audit.py
 ```
 
@@ -164,7 +168,85 @@ python benchmark_governance.py --features data/features_modern.csv --xg-lab repo
 
 Le fichier produit reste dans `reports/`. Il ne doit pas etre deplace dans `data/` ni utilise comme source de picks.
 
-## 11. Scientific Benchmark & Model Governance
+## 11. Understat Multi-Season Data Probe
+
+Verifier si `soccerdata` est installe :
+
+```bash
+python understat_probe.py --check
+```
+
+Installer la dependance optionnelle :
+
+```bash
+python -m pip install soccerdata
+```
+
+Dry-run sans recuperation :
+
+```bash
+python understat_probe.py --league EPL --seasons 2020,2021,2022,2023,2024 --output external_data/understat_probe/epl_2020_2024_matches.csv --dry-run
+```
+
+Commande reelle a lancer manuellement :
+
+```bash
+python understat_probe.py --league EPL --seasons 2020,2021,2022,2023,2024 --output external_data/understat_probe/epl_2020_2024_matches.csv
+python understat_probe.py --profile external_data/understat_probe/epl_2020_2024_matches.csv
+```
+
+Pipeline ensuite :
+
+```bash
+python external_xg_lab.py --profile external_data/understat_probe/epl_2020_2024_matches.csv
+python external_xg_lab.py --evaluate-join --xgabora data/features_modern.csv --external external_data/understat_probe/epl_2020_2024_matches.csv
+python external_xg_features.py --external external_data/understat_probe/epl_2020_2024_matches.csv --xgabora data/features_modern.csv --output reports/understat_xg_rolling_features.csv
+python xg_model_lab.py --features reports/understat_xg_rolling_features.csv
+python benchmark_governance.py --features data/features_modern.csv --xg-lab reports/understat_xg_rolling_features.csv --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
+```
+
+Understat reste laboratoire. xgabora reste la base betting principale.
+
+## 12. Statistical Proof Foundation V7.0
+
+Ces commandes mesurent la preuve statistique sans activer Telegram, sans Railway et sans modification DB.
+
+Verifier Understat :
+
+```bash
+python understat_probe.py --check
+python understat_probe.py --league EPL --seasons 2020,2021,2022,2023,2024 --output external_data/understat_probe/epl_2020_2024_matches.csv
+python understat_probe.py --profile external_data/understat_probe/epl_2020_2024_matches.csv
+```
+
+Pipeline Understat vers xG rolling :
+
+```bash
+python external_xg_lab.py --profile external_data/understat_probe/epl_2020_2024_matches.csv
+python external_xg_features.py --external external_data/understat_probe/epl_2020_2024_matches.csv --xgabora data/features_modern.csv --output reports/understat_xg_rolling_features.csv
+python xg_model_lab.py --features reports/understat_xg_rolling_features.csv
+```
+
+CLV, reliability curves et validation statistique :
+
+```bash
+python clv_analysis.py --features data/features_modern.csv --output reports/clv_report.json --html reports/clv_report.html
+python calibration_report.py --features data/features_modern.csv --prob-column no_vig_probability --output reports/calibration_report.json --html reports/calibration_report.html
+python statistical_validation.py --features data/features_modern.csv --output reports/statistical_validation.json --html reports/statistical_validation.html
+python report_runner.py --statistical
+python benchmark_governance.py --features data/features_modern.csv --summary-json reports/benchmark_summary.json --html reports/benchmark_governance.html
+```
+
+Lecture prudente :
+
+- ROI positif court terme ne suffit pas.
+- CLV positive est prioritaire sur le ROI court terme.
+- 1000 picks peuvent rester insuffisants si l'IC contient 0.
+- Multiple testing transforme facilement une observation en faux positif.
+- Kelly ne cree pas d'edge et reste limite a la simulation.
+- Telegram et Railway attendent une validation complete.
+
+## 13. Scientific Benchmark & Model Governance
 
 Benchmark complet si `data/features_modern.csv` est disponible :
 
@@ -178,15 +260,15 @@ Sorties :
 - `reports/benchmark_summary.json` : resume machine lisible ;
 - `reports/benchmark_governance.html` : rapport local ouvrable dans le navigateur.
 
-Le benchmark attribue un score prudent et une decision : observation, watchlist, candidat, invalide ou a bloquer. Rien n'est branche aux picks Telegram.
+Le benchmark attribue un score prudent et une decision : rejected, watchlist, observation, candidate, active_shadow_only, active_decision_support ou production_allowed. Meme `production_allowed` ne signifie jamais pari automatique. Rien n'est branche aux picks Telegram.
 
-## 12. Git workflow
+## 14. Git workflow
 
 ```bash
 git status --short
 git diff
-git add README.md PROJECT_STATUS.md COMMANDS.md project_audit.py external_xg_features.py xg_model_lab.py benchmark_governance.py dashboard_builder.py report_runner.py test_external_xg_features.py test_xg_model_lab.py docs/external_xg_integration_plan.md model_registry.json
-git commit -m "Add external xG rolling features lab V6.8"
+git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md understat_probe.py clv_analysis.py calibration_report.py statistical_validation.py decision_policy.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_understat_probe.py test_clv_analysis.py test_calibration_report.py test_statistical_validation.py test_decision_policy.py test_benchmark_governance.py test_project_audit.py
+git commit -m "Add statistical proof foundation V7.0"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -195,7 +277,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 13. Ce qu'il ne faut pas faire
+## 15. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.
@@ -207,3 +289,4 @@ git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.js
 - Ne pas utiliser un preview xG comme dataset d'entrainement production.
 - Ne pas promouvoir une strategie sans test 2024+ positif et gouvernance OK.
 - Ne pas utiliser `home_xg` ou `away_xg` directs du match courant comme features predictives.
+- Ne pas lancer une recuperation Understat large sans dry-run et sans limite de saisons.

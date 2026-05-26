@@ -21,7 +21,7 @@ def digest_tree(root: Path):
 def make_minimal_project(root: Path) -> None:
     for filename in project_audit.ESSENTIAL_FILES:
         if filename.endswith(".md"):
-            write(root / filename, "# Test\n\nVision du projet\nCe que le bot fait\nCe que le bot ne fait pas\nArchitecture\nPipeline local\nEtat actuel\nRoadmap\nV6.5\nAucune strategie robuste positive\nnumpy\n")
+            write(root / filename, "# Test\n\nVision du projet\nCe que le bot fait\nCe que le bot ne fait pas\nArchitecture\nPipeline local\nEtat actuel\nRoadmap\nV7.0\nAucune strategie robuste activee\nnumpy\n")
         else:
             write(root / filename, "# fichier test\n")
     for filename in project_audit.MAIN_TESTS:
@@ -70,6 +70,11 @@ def test_release_candidate_docs_exist_and_have_sections():
         "external dataset lab",
         "external xg integration lab",
         "external xg rolling",
+        "understat",
+        "statistical proof foundation",
+        "clv",
+        "reliability curves",
+        "multiple testing",
         "scientific benchmark",
         "model governance",
         "model registry",
@@ -85,8 +90,8 @@ def test_release_candidate_docs_exist_and_have_sections():
         assert section in readme
 
     status = (root / "PROJECT_STATUS.md").read_text(encoding="utf-8").lower()
-    assert "v6.8 external xg rolling" in status
-    assert "aucune strategie robuste positive" in status
+    assert "v7.0 statistical proof foundation" in status
+    assert "aucun signal robuste active" in status
 
 
 def main():

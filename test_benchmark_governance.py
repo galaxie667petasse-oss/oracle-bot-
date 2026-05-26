@@ -59,7 +59,18 @@ def main():
         benchmark = benchmark_governance.build_benchmark(str(root / "features_absent.csv"), db=synthetic_db())
         assert benchmark["summary"]["sections_available"] >= 1
         assert benchmark["summary"]["sections_failed"]
+        assert benchmark["summary"]["robust_candidates"] == 0
+        assert benchmark["summary"]["strategies_with_clv_available"] == 0
+        assert any("CLV report" in warning for warning in benchmark["summary"]["warnings"])
+        assert any("Calibration report" in warning for warning in benchmark["summary"]["warnings"])
+        assert any("Statistical validation" in warning for warning in benchmark["summary"]["warnings"])
         assert benchmark["registry"]
+        assert all(entry.get("governance_status") != "production_allowed" for entry in benchmark["registry"])
+        assert all("clv_mean" in entry for entry in benchmark["registry"])
+        assert all("ece" in entry for entry in benchmark["registry"])
+        assert all("bootstrap_roi_p05" in entry for entry in benchmark["registry"])
+        assert all("p_value_adjusted" in entry for entry in benchmark["registry"])
+        assert all("rejection_reasons" in entry for entry in benchmark["registry"])
         assert oracle_db.read_text(encoding="utf-8") == before
 
         registry_path = root / "model_registry.json"
@@ -71,6 +82,24 @@ def main():
         registry = json.loads(registry_path.read_text(encoding="utf-8"))
         assert isinstance(registry.get("models"), list)
         assert all("robustness_score" in entry for entry in registry["models"])
+        assert all("governance_status" in entry for entry in registry["models"])
+
+        clv_path = root / "reports" / "clv.json"
+        calibration_path = root / "reports" / "calibration.json"
+        stats_path = root / "reports" / "stats.json"
+        clv_path.parent.mkdir(parents=True, exist_ok=True)
+        clv_path.write_text(json.dumps({"status": "indisponible", "groups": {}, "summary": {}}, ensure_ascii=False), encoding="utf-8")
+        calibration_path.write_text(json.dumps({"status": "indisponible"}, ensure_ascii=False), encoding="utf-8")
+        stats_path.write_text(json.dumps({"status": "indisponible", "by_strategy": {}}, ensure_ascii=False), encoding="utf-8")
+        benchmark_with_reports = benchmark_governance.build_benchmark(
+            str(root / "features_absent.csv"),
+            db=synthetic_db(),
+            clv_report_path=str(clv_path),
+            calibration_report_path=str(calibration_path),
+            statistical_report_path=str(stats_path),
+        )
+        assert benchmark_with_reports["summary"]["clv_report_available"] is False
+        assert benchmark_with_reports["summary"]["robust_candidates"] == 0
 
         summary_path = root / "reports" / "benchmark_summary.json"
         html_path = root / "reports" / "benchmark_governance.html"

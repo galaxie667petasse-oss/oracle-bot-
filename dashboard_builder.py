@@ -21,6 +21,9 @@ REPORT_FILES = {
     "external_recommend": "external_recommend.txt",
     "benchmark_governance": "benchmark_governance.txt",
     "xg_model_lab": "xg_model_lab.txt",
+    "clv": "clv_report.txt",
+    "calibration": "calibration_report.txt",
+    "statistical_validation": "statistical_validation.txt",
 }
 
 
@@ -39,6 +42,17 @@ def read_text(report_dir: Path, filename: str) -> str:
     if not path.exists():
         return ""
     return path.read_text(encoding="utf-8", errors="replace")
+
+
+def read_json(report_dir: Path, filename: str) -> Dict[str, Any]:
+    path = report_dir / filename
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _first(pattern: str, text: str, flags: int = re.MULTILINE) -> Optional[str]:
@@ -83,6 +97,10 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     favorite = texts["favorite"]
     ml_global = texts["ml_global"]
     registry = read_model_registry(report_dir)
+    clv_json = read_json(report_dir, "clv_report.json")
+    calibration_json = read_json(report_dir, "calibration_report.json")
+    statistical_json = read_json(report_dir, "statistical_validation.json")
+    benchmark_json = read_json(report_dir, "benchmark_summary.json")
 
     records_count = _first_float(r"- Records regles: ([0-9]+)", pricing)
     if records_count is None:
@@ -121,6 +139,23 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "ml_market_brier_test": ml_market_brier,
         "model_registry_count": len(registry),
         "best_robustness_score": max((entry.get("robustness_score", 0) for entry in registry), default=None),
+        "clv_status": clv_json.get("status") or "indisponible",
+        "clv_mean": (clv_json.get("summary") or {}).get("clv_mean"),
+        "clv_positive_rate": (clv_json.get("summary") or {}).get("clv_positive_rate"),
+        "calibration_ece": calibration_json.get("ece"),
+        "calibration_mce": calibration_json.get("mce"),
+        "calibration_brier": calibration_json.get("brier"),
+        "calibration_log_loss": calibration_json.get("log_loss"),
+        "stat_roi_ci_low": (statistical_json.get("summary") or {}).get("roi_ci_low"),
+        "stat_roi_ci_high": (statistical_json.get("summary") or {}).get("roi_ci_high"),
+        "stat_bootstrap_p05": ((statistical_json.get("summary") or {}).get("bootstrap_roi") or {}).get("p05"),
+        "stat_bootstrap_p50": ((statistical_json.get("summary") or {}).get("bootstrap_roi") or {}).get("p50"),
+        "stat_bootstrap_p95": ((statistical_json.get("summary") or {}).get("bootstrap_roi") or {}).get("p95"),
+        "stat_sample_size_needed": statistical_json.get("sample_size_needed") or {},
+        "signals_rejected": sum(1 for entry in registry if entry.get("governance_status") == "rejected" or entry.get("status") == "rejected"),
+        "main_rejection_reason": (registry[0].get("reason") if registry else None),
+        "strategies_surviving_multiple_testing": benchmark_json.get("strategies_surviving_multiple_testing"),
+        "final_status": "aucun pick automatique",
         "conclusion": conclusion,
         "warnings": warnings,
     }
@@ -167,6 +202,9 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         ("pricing_low_margin_roi", "ROI marge faible"),
         ("ml_global_brier_test", "Brier ML global"),
         ("best_robustness_score", "Score robustesse max"),
+        ("clv_status", "CLV"),
+        ("calibration_ece", "ECE"),
+        ("stat_bootstrap_p05", "Bootstrap p05"),
     ]:
         value = summary.get(key)
         parts.append(f"<div class='metric'><strong>{html.escape(label)}</strong><br>{html.escape(str(value) if value is not None else 'n/a')}</div>")
@@ -207,6 +245,42 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         except Exception:
             pass
     parts.append(_card("External xG Rolling Lab", "\n".join(xg_lines) + "\nRappel: aucun signal xG n'est branche aux picks."))
+    clv_lines = [
+        f"statut: {summary.get('clv_status')}",
+        f"CLV moyenne: {summary.get('clv_mean')}",
+        f"CLV positive: {summary.get('clv_positive_rate')}%",
+        "verdict: aucune promotion possible sans CLV positive et source fiable",
+    ]
+    if texts["clv"]:
+        clv_lines.extend(_lines_matching(texts["clv"], ["Statut", "Message", "CLV moyenne", "CLV positive", "Verdict", "Avertissement"], 18))
+    parts.append(_card("CLV / Closing Line Value", "\n".join(clv_lines)))
+
+    calibration_lines = [
+        f"Brier: {summary.get('calibration_brier')}",
+        f"Log loss: {summary.get('calibration_log_loss')}",
+        f"ECE: {summary.get('calibration_ece')}",
+        f"MCE: {summary.get('calibration_mce')}",
+    ]
+    if texts["calibration"]:
+        calibration_lines.extend(_lines_matching(texts["calibration"], ["Brier", "Log loss", "ECE", "MCE", "Verdict"], 18))
+    parts.append(_card("Calibration probabiliste", "\n".join(calibration_lines)))
+
+    stat_lines = [
+        f"IC ROI: {summary.get('stat_roi_ci_low')} -> {summary.get('stat_roi_ci_high')}",
+        f"Bootstrap ROI p05/p50/p95: {summary.get('stat_bootstrap_p05')} / {summary.get('stat_bootstrap_p50')} / {summary.get('stat_bootstrap_p95')}",
+        f"Sample size approx: {summary.get('stat_sample_size_needed')}",
+    ]
+    if texts["statistical_validation"]:
+        stat_lines.extend(_lines_matching(texts["statistical_validation"], ["Picks", "ROI observe", "IC ROI", "Bootstrap", "p-value", "Verdict"], 24))
+    parts.append(_card("Validation statistique", "\n".join(stat_lines)))
+
+    multiple_lines = [
+        f"Strategie survivant correction: {summary.get('strategies_surviving_multiple_testing')}",
+        "Correction: Benjamini-Hochberg quand plusieurs strategies sont presentes.",
+        "Tout signal positif non corrige reste fragile.",
+    ]
+    parts.append(_card("Multiple testing", "\n".join(multiple_lines)))
+
     governance_lines = []
     if texts["benchmark_governance"]:
         governance_lines.extend(_lines_matching(texts["benchmark_governance"], ["Top gouvernance", "score=", "Conclusion", "Sections indisponibles", "Modeles/strategies"], 24))
@@ -217,7 +291,10 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
                 f"{entry.get('name')}: score={entry.get('robustness_score')}, statut={entry.get('status')}, "
                 f"decision={entry.get('decision')}, raison={entry.get('reason', '')}"
             )
-    parts.append(_card("Gouvernance des modeles", "\n".join(governance_lines)))
+    governance_lines.append(f"signaux rejetes: {summary.get('signals_rejected')}")
+    governance_lines.append(f"raison principale: {summary.get('main_rejection_reason')}")
+    governance_lines.append(f"statut final: {summary.get('final_status')}")
+    parts.append(_card("Gouvernance finale", "\n".join(governance_lines)))
     conclusion = "\n".join([
         summary["conclusion"],
         "Observations seulement: aucune sortie de ce rapport ne modifie Telegram, Railway ou la DB.",

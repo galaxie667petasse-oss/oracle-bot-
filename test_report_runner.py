@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, run_report
+from report_runner import ReportCommand, command_set, run_report
 
 
 def write_report(path: Path, text: str) -> None:
@@ -92,6 +92,11 @@ Score utilite Oracle:
         assert summary["records_count"] == 528066
         assert summary["pricing_low_margin_roi"] == -1.4
         assert summary["ml_global_brier_test"] == 0.213805
+        assert any(command.name == "CLV analysis" for command in command_set("statistical"))
+        assert any(command.name == "Benchmark governance" for command in command_set("full"))
+        assert "CLV / Closing Line Value" in html
+        assert "Validation statistique" in html
+        assert "aucun pick automatique" in html.lower()
 
     print("test_report_runner ok")
 
