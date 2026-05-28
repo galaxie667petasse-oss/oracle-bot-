@@ -59,7 +59,30 @@ def _season_from_date(date_key: str) -> str:
     return f"{start}-{start + 1}"
 
 
-def _read_matches(path: str, league: str = "", use_aliases: bool = True) -> Dict[str, Any]:
+def _league_key(value: Any) -> str:
+    text = normalize_team_name(value, use_aliases=False)
+    if text in {"bundesliga", "ger bundesliga", "germany bundesliga", "germany", "d1"}:
+        return "bundesliga"
+    if text in {"la liga", "laliga", "esp la liga", "spain", "sp1"}:
+        return "la_liga"
+    if text in {"epl", "premier league", "eng premier league", "england", "e0"}:
+        return "epl"
+    if text in {"serie a", "italy serie a", "ita serie a", "italy", "i1"}:
+        return "serie_a"
+    if text in {"ligue 1", "france ligue 1", "fra ligue 1", "france", "f1"}:
+        return "ligue_1"
+    return text.replace(" ", "_")
+
+
+def _league_matches(row_league: str, requested: str) -> bool:
+    if not requested:
+        return True
+    if not row_league:
+        return False
+    return _league_key(row_league) == _league_key(requested)
+
+
+def _read_matches(path: str, league: str = "", use_aliases: bool = True, filter_league: bool = False) -> Dict[str, Any]:
     target = Path(path)
     if not target.exists():
         raise FileNotFoundError(f"Fichier introuvable: {path}")
@@ -77,11 +100,18 @@ def _read_matches(path: str, league: str = "", use_aliases: bool = True) -> Dict
         raise ValueError(f"Colonnes date/home/away insuffisantes dans {path}.")
     matches: List[Dict[str, Any]] = []
     skipped = 0
+    filtered_out = 0
+    competitions: Counter = Counter()
     for index, row in enumerate(rows, start=1):
         date_key = parse_date(row.get(date_col))
         home = str(row.get(home_col) or "").strip()
         away = str(row.get(away_col) or "").strip()
         row_league = str(row.get(league_col) or league or "").strip()
+        if filter_league and league and league_col and not _league_matches(row_league, league):
+            filtered_out += 1
+            continue
+        if row_league:
+            competitions[row_league] += 1
         if not date_key or not home or not away:
             skipped += 1
             continue
@@ -113,6 +143,8 @@ def _read_matches(path: str, league: str = "", use_aliases: bool = True) -> Dict
         "detected": detected,
         "matches": matches,
         "skipped": skipped,
+        "filtered_out": filtered_out,
+        "competitions": dict(competitions.most_common()),
     }
 
 
@@ -170,6 +202,7 @@ def _examples(matches: Sequence[Dict[str, Any]], limit: int = 20) -> List[Dict[s
         {
             "date": item["date"],
             "season": item.get("season"),
+            "competition": item.get("league", ""),
             "home": item["home"],
             "away": item["away"],
             "home_norm": item["home_norm"],
@@ -192,11 +225,52 @@ def _alias_usage(matches: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     ]
 
 
-def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = "") -> Dict[str, Any]:
-    x_basic = _read_matches(xgabora_path, league=league, use_aliases=False)
+def _team_candidate_suggestions(unmatched_by_team: Counter, xgabora_names: Iterable[str], league: str) -> List[Dict[str, Any]]:
+    xgabora_list = sorted({str(name or "").strip() for name in xgabora_names if str(name or "").strip()})
+    suggestions: List[Dict[str, Any]] = []
+    for external_name, count in unmatched_by_team.most_common(30):
+        scored = []
+        for xgabora_name in xgabora_list:
+            score = team_name_similarity(external_name, xgabora_name, league=league)
+            if score >= SUGGESTION_THRESHOLD:
+                scored.append((score, xgabora_name))
+        scored.sort(reverse=True)
+        if not scored:
+            continue
+        best_score = scored[0][0]
+        top = [
+            {"xgabora_name": name, "similarity": score}
+            for score, name in scored[:5]
+        ]
+        status = "alias_sur" if best_score >= 0.97 and (len(scored) == 1 or best_score - scored[1][0] >= 0.04) else "alias_probable"
+        if len(scored) > 1 and best_score - scored[1][0] < 0.04:
+            status = "alias_ambigu"
+        suggestions.append({
+            "external_name": external_name,
+            "count": count,
+            "recommended_target": scored[0][1],
+            "target_exists_in_xgabora": True,
+            "similarity": best_score,
+            "status": status,
+            "top_candidates": top,
+            "normalized_external": normalize_team_name(external_name, league=league),
+            "normalized_target": normalize_team_name(scored[0][1], league=league),
+        })
+    return suggestions
+
+
+def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = "", show_unmatched: int = 30) -> Dict[str, Any]:
+    x_basic = _read_matches(xgabora_path, league=league, use_aliases=False, filter_league=bool(league))
     e_basic = _read_matches(external_path, league=league, use_aliases=False)
-    x_alias = _read_matches(xgabora_path, league=league, use_aliases=True)
+    x_alias = _read_matches(xgabora_path, league=league, use_aliases=True, filter_league=bool(league))
     e_alias = _read_matches(external_path, league=league, use_aliases=True)
+    warnings: List[str] = []
+    if league and not x_alias["matches"]:
+        warnings.append("Filtre ligue xgabora sans resultat: diagnostic relance sans filtre.")
+        x_basic = _read_matches(xgabora_path, league=league, use_aliases=False, filter_league=False)
+        x_alias = _read_matches(xgabora_path, league=league, use_aliases=True, filter_league=False)
+    elif league and x_alias.get("filtered_out", 0) == 0:
+        warnings.append("Filtre ligue non discriminant ou competition absente cote xgabora.")
 
     x_basic_keys = _index_by_key(x_basic["matches"], "basic_key")
     x_alias_keys = _index_by_key(x_alias["matches"], "key")
@@ -252,12 +326,18 @@ def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = 
     for match in unmatched:
         unmatched_by_team[match["home"]] += 1
         unmatched_by_team[match["away"]] += 1
+    candidate_suggestions = _team_candidate_suggestions(unmatched_by_team, x_names, league)
 
     quality = classify_join_quality(exact_rate_after)
+    unmatched_limit = max(0, int(show_unmatched or 0))
     return {
         "xgabora_path": xgabora_path,
         "external_path": external_path,
         "league": league,
+        "show_unmatched": unmatched_limit,
+        "warnings": warnings,
+        "xgabora_competitions_considered": x_alias.get("competitions", {}),
+        "xgabora_rows_filtered_out": x_alias.get("filtered_out", 0),
         "external_matches": external_count,
         "xgabora_match_level_unique": len({match["key"] for match in x_alias["matches"]}),
         "join_rate_before_alias": exact_rate_before,
@@ -270,13 +350,15 @@ def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = 
         "fuzzy_matches_possible": len(fuzzy),
         "ambiguous_fuzzy_matches": len(ambiguous_fuzzy),
         "unmatched_count": len(unmatched),
-        "unmatched_external_examples": _examples(unmatched, 30),
+        "unmatched_external_examples": _examples(unmatched, unmatched_limit),
         "unrecognized_external_teams": [
             {"team": team, "count": count}
             for team, count in unmatched_by_team.most_common(30)
         ],
         "close_xgabora_suggestions": suggestions,
         "top_alias_suggestions": suggestions[:20],
+        "xgabora_candidates_by_team": candidate_suggestions,
+        "recommended_aliases": candidate_suggestions,
         "alias_used": _alias_usage(e_alias["matches"]),
         "distribution_by_season": dict(sorted(by_season.items())),
         "unmatched_by_season": dict(sorted(unmatched_by_season.items())),
@@ -287,6 +369,13 @@ def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = 
         "unmatched_by_team": [
             {"team": team, "count": count}
             for team, count in unmatched_by_team.most_common(30)
+        ],
+        "unmatched_examples_by_team": [
+            {
+                "team": team,
+                "examples": _examples([item for item in unmatched if item["home"] == team or item["away"] == team], min(5, unmatched_limit or 5)),
+            }
+            for team, _count in unmatched_by_team.most_common(12)
         ],
         "probable_causes": [
             {"cause": cause, "count": count}
@@ -312,13 +401,14 @@ def write_json(report: Dict[str, Any], path: str) -> Path:
 
 def write_html(report: Dict[str, Any], path: str) -> Path:
     target = ensure_report_path(path)
+    display_limit = int(report.get("show_unmatched") or 20)
     suggestions = "".join(
-        f"<li>{html.escape(str(item.get('external_name')))} -> {html.escape(str(item.get('suggested_xgabora_name')))} ({item.get('similarity')})</li>"
-        for item in report.get("top_alias_suggestions", [])[:20]
+        f"<li>{html.escape(str(item.get('external_name')))} -> {html.escape(str(item.get('recommended_target') or item.get('suggested_xgabora_name')))} ({item.get('similarity')}, {html.escape(str(item.get('status', 'suggestion_a_valider')))})</li>"
+        for item in (report.get("recommended_aliases") or report.get("top_alias_suggestions", []))[:20]
     ) or "<li>Aucune suggestion au-dessus du seuil.</li>"
     unmatched = "".join(
         f"<li>{html.escape(item['date'])}: {html.escape(item['home'])} - {html.escape(item['away'])}</li>"
-        for item in report.get("unmatched_external_examples", [])[:20]
+        for item in report.get("unmatched_external_examples", [])[:display_limit]
     ) or "<li>Aucun exemple.</li>"
     target.write_text("\n".join([
         "<!doctype html>",
@@ -364,11 +454,20 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Matchs externes non joints: {report.get('unmatched_count')}")
     print(f"- Join quality: {report.get('join_quality')}")
     print(f"- Modeling allowed par jointure: {report.get('modeling_allowed_by_join_quality')}")
+    examples = report.get("unmatched_external_examples") or []
+    if examples:
+        print("- Exemples non joints:")
+        for item in examples[: int(report.get("show_unmatched") or 20)]:
+            print(f"  - {item.get('date')}: {item.get('home')} - {item.get('away')} ({item.get('season')})")
     for cause in report.get("probable_causes", [])[:8]:
         print(f"- Cause probable: {cause['cause']} ({cause['count']})")
     print("- Suggestions alias a valider:")
-    for suggestion in report.get("top_alias_suggestions", [])[:8]:
-        print(f"  - {suggestion['external_name']} -> {suggestion['suggested_xgabora_name']} ({suggestion['similarity']})")
+    suggestions = report.get("recommended_aliases") or report.get("top_alias_suggestions", [])
+    for suggestion in suggestions[:8]:
+        target = suggestion.get("recommended_target") or suggestion.get("suggested_xgabora_name")
+        print(f"  - {suggestion['external_name']} -> {target} ({suggestion['similarity']}, {suggestion.get('status', 'suggestion_a_valider')})")
+    for warning in report.get("warnings", []):
+        print(f"- Avertissement: {warning}")
     print("- Rappel: aucun alias n'est applique automatiquement aux fichiers source.")
 
 
@@ -377,6 +476,7 @@ def parse_args(argv=None):
     parser.add_argument("--xgabora", required=True, help="CSV features/xgabora local")
     parser.add_argument("--external", required=True, help="CSV externe Understat ou xG")
     parser.add_argument("--league", default="", help="Ligue optionnelle pour les alias")
+    parser.add_argument("--show-unmatched", type=int, default=20, help="Nombre d'exemples non joints a afficher")
     parser.add_argument("--output", default="", help="Rapport JSON dans reports/")
     parser.add_argument("--html", default="", help="Rapport HTML dans reports/")
     return parser.parse_args(argv)
@@ -385,7 +485,7 @@ def parse_args(argv=None):
 def main(argv=None) -> int:
     args = parse_args(argv)
     try:
-        report = build_join_diagnostics(args.xgabora, args.external, league=args.league)
+        report = build_join_diagnostics(args.xgabora, args.external, league=args.league, show_unmatched=args.show_unmatched)
         if args.output:
             path = write_json(report, args.output)
             print(f"- Rapport JSON jointure ecrit: {path}")

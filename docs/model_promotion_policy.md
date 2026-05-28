@@ -101,3 +101,21 @@ Seuils :
 - `insuffisant` : moins de 50%, modeling bloque.
 
 Pour La Liga, un join rate autour de 39.89% impose `join_quality=insuffisant`, `modeling_allowed_by_join_quality=false` et `join_blocks_promotion=true`. Les alias peuvent ameliorer la jointure, mais ils doivent etre documentes et audites. Une suggestion fuzzy ne suffit pas a promouvoir un signal.
+
+## V7.5 Big Five xG et CLV readiness
+
+La gouvernance Big Five ajoute deux garde-fous :
+
+- `multi_league_xg_aggregator.py` resume les ligues disponibles, la quality, la jointure, le Brier/log loss marche vs xG, le ROI edge test, le sample et les raisons de rejet.
+- `clv_readiness_report.py` dit si les closing odds necessaires sont presentes dans la feature matrix.
+
+Regles supplementaires :
+
+- Big 5 xG positif sans CLV calculable = observation/watchlist maximum.
+- Join quality inferieure a 75% = modele bloque ou observation stricte.
+- Sample edge test inferieur a 1000 = pas de promotion.
+- Brier/log loss legerement meilleurs sans ROI test robuste = observation technique.
+- ROI positif avec sample faible = bruit possible, pas preuve.
+- CLV readiness `indisponible` bloque tout candidat robuste.
+
+Les aliases Serie A et Ligue 1 servent uniquement a fiabiliser la jointure future. Ils ne creent aucun signal. Un statut `production_allowed`, s'il existe un jour, resterait une aide decisionnelle explicable, jamais un pari automatique.

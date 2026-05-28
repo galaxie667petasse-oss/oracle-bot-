@@ -76,6 +76,7 @@ def read_external_matches(path: str) -> Tuple[List[Dict[str, Any]], Dict[str, An
         date_col = first_column(detected, "date")
         home_col = first_column(detected, "home_team")
         away_col = first_column(detected, "away_team")
+        league_col = first_column(detected, "competition")
         home_xg_col = first_column(detected, "home_xg")
         away_xg_col = first_column(detected, "away_xg")
         score_col = first_column(detected, "score_home", "score_away")
@@ -86,6 +87,7 @@ def read_external_matches(path: str) -> Tuple[List[Dict[str, Any]], Dict[str, An
             date_key = parse_date(row.get(date_col))
             home = str(row.get(home_col) or "").strip()
             away = str(row.get(away_col) or "").strip()
+            league = str(row.get(league_col) or "").strip()
             home_xg = parse_float(row.get(home_xg_col))
             away_xg = parse_float(row.get(away_xg_col))
             if not date_key or not home or not away or home_xg is None or away_xg is None:
@@ -95,8 +97,9 @@ def read_external_matches(path: str) -> Tuple[List[Dict[str, Any]], Dict[str, An
                 "date": date_key,
                 "home": home,
                 "away": away,
-                "home_norm": normalize_team_name(home),
-                "away_norm": normalize_team_name(away),
+                "league": league,
+                "home_norm": normalize_team_name(home, league=league),
+                "away_norm": normalize_team_name(away, league=league),
                 "home_xg": home_xg,
                 "away_xg": away_xg,
                 "score": row.get(score_col, "") if score_col else row.get("score", ""),
@@ -164,8 +167,8 @@ def compute_rolling_features(matches: Iterable[Dict[str, Any]]) -> List[Dict[str
     return out
 
 
-def _match_key(date_key: str, home: Any, away: Any) -> Tuple[str, str, str]:
-    return date_key, normalize_team_name(home), normalize_team_name(away)
+def _match_key(date_key: str, home: Any, away: Any, league: Any = "") -> Tuple[str, str, str]:
+    return date_key, normalize_team_name(home, league=league), normalize_team_name(away, league=league)
 
 
 def read_xgabora_rows(path: str) -> Tuple[List[Dict[str, Any]], List[str]]:
@@ -215,7 +218,7 @@ def join_rolling_with_xgabora(rolling_matches: List[Dict[str, Any]], xgabora_row
     enriched: List[Dict[str, Any]] = []
     for row in xgabora_rows:
         date_key = str(row.get("date") or row.get("date_key") or "")
-        key = _match_key(date_key, row.get("home"), row.get("away"))
+        key = _match_key(date_key, row.get("home"), row.get("away"), row.get("competition") or row.get("league"))
         rolling = rolling_by_key.get(key)
         if not rolling:
             continue

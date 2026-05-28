@@ -18,6 +18,21 @@ DEFAULT_PREFIX = "understat_epl_2020_2025"
 DEFAULT_EXPECTED_SEASONS = "2020-2021,2021-2022,2022-2023,2023-2024,2024-2025"
 
 
+def infer_league(external: str, league: str = "") -> str:
+    if league and str(league).strip().lower() != "epl":
+        return league
+    text = str(external or "").replace("\\", "/").lower()
+    if "bundesliga" in text:
+        return "Bundesliga"
+    if "laliga" in text or "la-liga" in text or "la_liga" in text:
+        return "La-Liga"
+    if "seriea" in text or "serie-a" in text or "serie_a" in text:
+        return "Serie A"
+    if "ligue1" in text or "ligue-1" in text or "ligue_1" in text:
+        return "Ligue 1"
+    return league or "EPL"
+
+
 def report_path(prefix: str, suffix: str) -> Path:
     target = Path("reports") / f"{prefix}_{suffix}"
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -101,6 +116,7 @@ def build_pipeline(
 ) -> Dict[str, Any]:
     external_path = Path(external)
     xgabora_path = Path(xgabora)
+    league = infer_league(external, league)
     if not external_path.exists():
         raise FileNotFoundError(f"Fichier externe introuvable: {external}")
     if not xgabora_path.exists():

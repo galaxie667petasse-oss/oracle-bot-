@@ -319,7 +319,92 @@ Lecture prudente :
 - `join_rate_fuzzy` suggere des pistes; il ne doit pas creer une jointure automatique ambigue.
 - `join_quality=insuffisant` bloque `promotion_allowed`.
 
-## 15. Scientific Benchmark & Model Governance
+## 15. V7.4 Bundesliga Team Alias Expansion
+
+Diagnostic Bundesliga Understat/xgabora :
+
+```bash
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/bundesliga_2020_2025_matches.csv --output reports/bundesliga_join_diagnostics.json --html reports/bundesliga_join_diagnostics.html --league Bundesliga
+```
+
+Pipeline strict Bundesliga :
+
+```bash
+python understat_xg_pipeline.py --external external_data/understat_probe/bundesliga_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix bundesliga_2020_2025 --skip-benchmark --strict-join
+```
+
+Lecture prudente :
+
+- Bundesliga avait un export propre mais une jointure autour de 24.12%, donc `--strict-join` devait bloquer.
+- Les alias Bundesliga mapent les noms Understat longs vers les noms xgabora observes : Leverkusen, Ein Frankfurt, MGladbach, Dortmund, FC Koln, Mainz, RB Leipzig, etc.
+- Un bon xG dataset ne suffit pas si la jointure est mauvaise.
+- Meme apres correction de jointure, CLV absente bloque toute promotion.
+
+## 16. V7.5 Big Five xG Completion & CLV Readiness
+
+Export Serie A manuel, sans automatisation reseau :
+
+```bash
+python understat_probe.py --league "Serie A" --seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output external_data/understat_probe/seriea_2020_2025_matches.csv
+```
+
+Diagnostic Serie A :
+
+```bash
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/seriea_2020_2025_matches.csv --output reports/seriea_join_diagnostics.json --html reports/seriea_join_diagnostics.html --league "Serie A"
+```
+
+Pipeline Serie A :
+
+```bash
+python understat_xg_pipeline.py --external external_data/understat_probe/seriea_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix seriea_2020_2025 --skip-benchmark --strict-join
+```
+
+Export Ligue 1 manuel :
+
+```bash
+python understat_probe.py --league "Ligue 1" --seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output external_data/understat_probe/ligue1_2020_2025_matches.csv
+```
+
+Diagnostic Ligue 1 :
+
+```bash
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/ligue1_2020_2025_matches.csv --output reports/ligue1_join_diagnostics.json --html reports/ligue1_join_diagnostics.html --league "Ligue 1"
+```
+
+Pipeline Ligue 1 :
+
+```bash
+python understat_xg_pipeline.py --external external_data/understat_probe/ligue1_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix ligue1_2020_2025 --skip-benchmark --strict-join
+```
+
+Agregateur Big 5 :
+
+```bash
+python multi_league_xg_aggregator.py --reports-dir reports --output reports/big5_xg_summary.json --html reports/big5_xg_summary.html
+```
+
+CLV readiness :
+
+```bash
+python clv_readiness_report.py --features data/features_modern.csv --output reports/clv_readiness.json --html reports/clv_readiness.html
+```
+
+Runner Big 5 :
+
+```bash
+python report_runner.py --big5-xg --skip-benchmark
+```
+
+Lecture prudente :
+
+- EPL, La Liga et Bundesliga montrent que la jointure est une condition avant modele.
+- Serie A et Ligue 1 doivent etre exportees et diagnostiquees manuellement, une ligue a la fois.
+- xG peut ameliorer Brier/log loss sans prouver un edge betting.
+- ROI edge positif avec sample faible reste observation.
+- CLV fiable reste le bloqueur principal.
+
+## 17. Scientific Benchmark & Model Governance
 
 Benchmark complet si `data/features_modern.csv` est disponible :
 
@@ -335,13 +420,13 @@ Sorties :
 
 Le benchmark attribue un score prudent et une decision : rejected, watchlist, observation, candidate, active_shadow_only, active_decision_support ou production_allowed. Meme `production_allowed` ne signifie jamais pari automatique. Rien n'est branche aux picks Telegram.
 
-## 16. Git workflow
+## 18. Git workflow
 
 ```bash
 git status --short
 git diff
-git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md understat_probe.py clv_analysis.py calibration_report.py statistical_validation.py decision_policy.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_understat_probe.py test_clv_analysis.py test_calibration_report.py test_statistical_validation.py test_decision_policy.py test_benchmark_governance.py test_project_audit.py
-git commit -m "Add statistical proof foundation V7.0"
+git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
+git commit -m "Add Big Five xG CLV readiness V7.5"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -350,7 +435,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 17. Ce qu'il ne faut pas faire
+## 19. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

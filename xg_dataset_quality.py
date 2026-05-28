@@ -50,9 +50,27 @@ def expected_season_labels(value: str) -> List[str]:
 
 
 def expected_matches_per_season(league: str) -> Optional[int]:
-    if str(league or "").strip().lower() in {"epl", "premier league", "england"}:
+    normalized = str(league or "").strip().lower()
+    if normalized in {"epl", "premier league", "england", "eng-premier league"}:
+        return 380
+    if normalized in {"la-liga", "la liga", "laliga", "esp-la liga", "spain"}:
+        return 380
+    if normalized in {"bundesliga", "ger-bundesliga", "germany", "d1"}:
+        return 306
+    if normalized in {"serie a", "ita-serie a", "italy", "i1"}:
         return 380
     return None
+
+
+def expected_matches_for_season(league: str, season: str) -> Optional[int]:
+    normalized = str(league or "").strip().lower()
+    if normalized in {"ligue 1", "fra-ligue 1", "france", "f1"}:
+        try:
+            start_year = int(str(season)[:4])
+        except Exception:
+            return None
+        return 306 if start_year >= 2023 else 380
+    return expected_matches_per_season(league)
 
 
 def _percentage(numerator: int, denominator: int) -> float:
@@ -119,12 +137,21 @@ def build_quality_report(external_path: str, league: str = "", expected_seasons:
     seasons = [season for season in seasons if season]
     expected = expected_season_labels(expected_seasons)
     expected_per_season = expected_matches_per_season(league)
+    expected_by_season = {
+        season: expected_matches_for_season(league, season)
+        for season in expected
+        if expected_matches_for_season(league, season) is not None
+    }
     matches_by_season: Dict[str, int] = {}
     for row in rows:
         season = _season_from_row(row, season_col if season_col == "season" else "", date_col) or "inconnue"
         matches_by_season[season] = matches_by_season.get(season, 0) + 1
     completeness_by_season: Dict[str, Optional[float]] = {}
-    if expected_per_season:
+    if expected_by_season:
+        for season in sorted(set(seasons) | set(expected)):
+            season_expected = expected_by_season.get(season, expected_matches_for_season(league, season))
+            completeness_by_season[season] = round(matches_by_season.get(season, 0) / season_expected * 100.0, 2) if season_expected else None
+    elif expected_per_season:
         for season in sorted(set(seasons) | set(expected)):
             completeness_by_season[season] = round(matches_by_season.get(season, 0) / expected_per_season * 100.0, 2)
     else:
@@ -165,7 +192,9 @@ def build_quality_report(external_path: str, league: str = "", expected_seasons:
     else:
         score_missing = len(rows)
 
-    expected_total = expected_per_season * len(expected) if expected_per_season and expected else None
+    expected_total = sum(value for value in expected_by_season.values() if value is not None) if expected_by_season and expected else None
+    if expected_total is None:
+        expected_total = expected_per_season * len(expected) if expected_per_season and expected else None
     actual_total = len(rows)
     completeness_total = round(actual_total / expected_total * 100.0, 2) if expected_total else None
     missing_seasons = sorted(set(expected) - set(seasons))
@@ -212,6 +241,7 @@ def build_quality_report(external_path: str, league: str = "", expected_seasons:
         "extra_seasons": extra_seasons,
         "matches_by_season": dict(sorted(matches_by_season.items())),
         "expected_matches_per_season": expected_per_season,
+        "expected_matches_by_season": expected_by_season,
         "completeness_by_season": completeness_by_season,
         "total_expected_matches": expected_total,
         "total_actual_matches": actual_total,

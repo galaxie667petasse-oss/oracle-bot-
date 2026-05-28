@@ -340,6 +340,37 @@ Seuils V7.3 :
 
 On ne lance pas encore toutes les ligues parce que chaque ligue doit d'abord passer son quality gate dataset, puis son quality gate jointure. Sans CLV positive et gouvernance complete, meme une jointure excellente ne cree pas d'edge jouable.
 
+## V7.4 Bundesliga Team Alias Expansion
+
+V7.4 etend les alias Bundesliga. Le premier diagnostic Bundesliga etait sainement bloque par `--strict-join` : l'export Understat etait complet, avec 1530 matchs, cinq saisons de 306 matchs et 100% de xG, mais la jointure restait autour de 24.12%. Un dataset xG propre ne suffit pas si les noms d'equipes ne rejoignent pas xgabora.
+
+La Bundesliga utilise souvent des noms raccourcis dans xgabora : `Leverkusen`, `Ein Frankfurt`, `MGladbach`, `Dortmund`, `FC Koln`, `Mainz`, `RB Leipzig`, `Werder Bremen`, `Union Berlin`, `Hertha`, `Schalke 04`. V7.4 mappe explicitement les variantes Understat comme `Bayer Leverkusen`, `Eintracht Frankfurt`, `Borussia Monchengladbach`, `FC Bayern München`, `1. FC Union Berlin`, `VfL Wolfsburg`, `VfB Stuttgart`, `Mainz 05` ou `Greuther Fürth`.
+
+Relancer le diagnostic :
+
+```bash
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/bundesliga_2020_2025_matches.csv --output reports/bundesliga_join_diagnostics.json --html reports/bundesliga_join_diagnostics.html --league Bundesliga
+python understat_xg_pipeline.py --external external_data/understat_probe/bundesliga_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix bundesliga_2020_2025 --skip-benchmark --strict-join
+```
+
+Le blocage strict est une protection, pas un echec : si la jointure reste sous 75%, le modele doit attendre. Meme au-dessus de 90%, la promotion reste impossible sans CLV positive, sample suffisant, bootstrap favorable et gouvernance complete.
+
+## V7.5 Big Five xG Completion & CLV Readiness
+
+V7.5 prepare la couverture Big Five sans lancer de recuperation reseau. EPL, La Liga et Bundesliga sont maintenant des laboratoires exploitables ou en cours de controle, et les alias ont montre qu'une jointure faible peut devenir excellente quand les noms Understat/xgabora sont audites. Serie A et Ligue 1 disposent d'alias prudents pour les exports futurs.
+
+La phase ajoute `multi_league_xg_aggregator.py` pour comparer les rapports xG par ligue, et `clv_readiness_report.py` pour expliquer pourquoi la CLV est ou non calculable. Si la CLV reste absente, tout ROI positif a faible sample reste observation/watchlist maximum. Un Brier ou log loss legerement meilleur ne suffit pas a creer un edge betting.
+
+Commandes locales :
+
+```bash
+python multi_league_xg_aggregator.py --reports-dir reports --output reports/big5_xg_summary.json --html reports/big5_xg_summary.html
+python clv_readiness_report.py --features data/features_modern.csv --output reports/clv_readiness.json --html reports/clv_readiness.html
+python report_runner.py --big5-xg --skip-benchmark
+```
+
+Telegram et Railway restent en attente. Avant toute aide decisionnelle, il faut des closing odds fiables, une CLV positive, un ROI test recent positif, un sample suffisant, bootstrap favorable, calibration correcte, correction multiple testing et gouvernance complete.
+
 ## Statistical Proof Foundation
 
 La phase V7.0 ajoute la couche de preuve statistique. Elle ne cree aucun pick, ne modifie pas Telegram, ne modifie pas Railway et ne touche pas a `oracle_db.json`.
@@ -521,7 +552,7 @@ python project_audit.py
 
 ## Etat actuel : aucune strategie robuste positive
 
-Etat V7.2 Understat xG Full Pipeline Quality Gate :
+Etat V7.5 Big Five xG Completion & CLV Readiness :
 
 - memoire moderne 2015-2025 ;
 - environ 528066 records regles ;
@@ -533,6 +564,9 @@ Etat V7.2 Understat xG Full Pipeline Quality Gate :
 - External xG Rolling Features Lab disponible ;
 - Understat Multi-Season Data Probe disponible ;
 - Understat xG Full Pipeline Quality Gate disponible ;
+- diagnostics multi-ligues et aliases Big Five disponibles ;
+- agregateur Big 5 xG disponible ;
+- CLV readiness disponible ;
 - CLV, calibration et validation statistique disponibles ;
 - Scientific Benchmark et Model Governance disponibles ;
 - rapport central local disponible ;
@@ -544,8 +578,8 @@ Etat V7.2 Understat xG Full Pipeline Quality Gate :
 
 Priorite suivante :
 
-1. Auditer l'export Understat 1900 lignes avec `xg_dataset_quality.py`.
-2. Lancer `understat_xg_pipeline.py --skip-benchmark` pour verifier rolling features et modele.
-3. Lire le Brier/log loss xG contre le marche et le ROI edge test.
-4. Produire les rapports CLV, calibration et statistical validation.
+1. Commit/push les phases locales prudentes.
+2. Lancer manuellement Serie A puis Ligue 1 Understat, sans automatiser de reseau.
+3. Relancer diagnostics, pipelines stricts et agregateur Big 5.
+4. Ajouter des closing odds fiables dans une feature matrix enrichie.
 5. Ne penser a Railway ou Telegram qu'apres CLV positive, preuve statistique robuste et revue humaine.

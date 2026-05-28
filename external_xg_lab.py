@@ -305,8 +305,9 @@ def _row_to_match(row: Dict[str, Any], detected: Dict[str, List[str]], source: s
     date_key = parse_date(row.get(date_column))
     home_raw = str(row.get(home_column) or "").strip()
     away_raw = str(row.get(away_column) or "").strip()
-    home_norm = normalize_team_name(home_raw)
-    away_norm = normalize_team_name(away_raw)
+    row_league = str(first_value(row, detected, "competition") or "").strip()
+    home_norm = normalize_team_name(home_raw, league=row_league)
+    away_norm = normalize_team_name(away_raw, league=row_league)
     if not date_key or not home_norm or not away_norm:
         return None
     return {
@@ -315,6 +316,7 @@ def _row_to_match(row: Dict[str, Any], detected: Dict[str, List[str]], source: s
         "away": away_raw,
         "home_norm": home_norm,
         "away_norm": away_norm,
+        "league": row_league,
         "key": (date_key, home_norm, away_norm),
         "row": row,
         "source": source,
@@ -342,9 +344,10 @@ def load_match_rows(path: str) -> Dict[str, Any]:
 def _best_fuzzy_match(external_match: Dict[str, Any], candidates: List[Dict[str, Any]]) -> Tuple[Optional[Dict[str, Any]], float]:
     best = None
     best_score = 0.0
+    league = external_match.get("league") or ""
     for candidate in candidates:
-        home_score = team_name_similarity(external_match["home"], candidate["home"])
-        away_score = team_name_similarity(external_match["away"], candidate["away"])
+        home_score = team_name_similarity(external_match["home"], candidate["home"], league=league or candidate.get("league"))
+        away_score = team_name_similarity(external_match["away"], candidate["away"], league=league or candidate.get("league"))
         score = round((home_score + away_score) / 2.0, 4)
         if home_score >= 0.78 and away_score >= 0.78 and score > best_score:
             best = candidate

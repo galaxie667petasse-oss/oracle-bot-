@@ -262,3 +262,49 @@ python understat_xg_pipeline.py --external external_data/understat_probe/laliga_
 ```
 
 EPL a une jointure proche de 98% et reste le meilleur terrain de controle. La Liga doit d'abord passer le diagnostic et les alias avant d'etre modelisee. Les autres ligues attendent pour eviter d'empiler des erreurs de jointure et du multiple testing.
+
+## V7.4 Bundesliga Team Alias Expansion
+
+La Bundesliga a valide le quality gate dataset, mais pas la jointure initiale : 1530 matchs, cinq saisons completes de 306 matchs et xG coverage 100%, avec une jointure autour de 24.12% avant alias. Le blocage `--strict-join` etait donc le comportement attendu.
+
+Les noms xgabora sont souvent raccourcis : `Leverkusen`, `Ein Frankfurt`, `MGladbach`, `Dortmund`, `FC Koln`, `Mainz`, `RB Leipzig`, `Werder Bremen`, `Union Berlin`, `Hertha`, `Schalke 04`. V7.4 ajoute les alias Bundesliga controles dans `team_name_normalizer.py`.
+
+Relancer :
+
+```bash
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/bundesliga_2020_2025_matches.csv --output reports/bundesliga_join_diagnostics.json --html reports/bundesliga_join_diagnostics.html --league Bundesliga
+python understat_xg_pipeline.py --external external_data/understat_probe/bundesliga_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix bundesliga_2020_2025 --skip-benchmark --strict-join
+```
+
+Un dataset xG propre ne suffit jamais : la jointure doit etre excellente ou exploitable, puis le modele doit encore battre le marche, avoir un sample suffisant, une CLV positive et une gouvernance complete.
+
+## V7.5 Big Five xG Completion & CLV Readiness
+
+V7.5 prepare la fin du laboratoire Big Five sans lancer automatiquement Serie A ou Ligue 1. Les aliases Serie A et Ligue 1 sont ajoutes pour eviter de repeter les erreurs La Liga/Bundesliga : un export Understat peut etre complet, avec 100% xG, mais rester inutilisable si la jointure ne rejoint pas les noms xgabora reels.
+
+Principes :
+
+- EPL, La Liga et Bundesliga servent de controles multi-ligues ;
+- Serie A et Ligue 1 doivent etre exportees manuellement, une ligue a la fois ;
+- `join_diagnostics.py --league` doit confirmer la cible xgabora et les alias avant modeling ;
+- `understat_xg_pipeline.py --strict-join` bloque sous 75% de jointure ;
+- `multi_league_xg_aggregator.py` compare Brier/log loss, ROI edge, sample et blocages par ligue ;
+- `clv_readiness_report.py` identifie les colonnes closing odds manquantes ;
+- sans CLV fiable, tout xG reste observation/watchlist.
+
+Commandes :
+
+```bash
+python understat_probe.py --league "Serie A" --seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output external_data/understat_probe/seriea_2020_2025_matches.csv
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/seriea_2020_2025_matches.csv --output reports/seriea_join_diagnostics.json --html reports/seriea_join_diagnostics.html --league "Serie A"
+python understat_xg_pipeline.py --external external_data/understat_probe/seriea_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix seriea_2020_2025 --skip-benchmark --strict-join
+
+python understat_probe.py --league "Ligue 1" --seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output external_data/understat_probe/ligue1_2020_2025_matches.csv
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/ligue1_2020_2025_matches.csv --output reports/ligue1_join_diagnostics.json --html reports/ligue1_join_diagnostics.html --league "Ligue 1"
+python understat_xg_pipeline.py --external external_data/understat_probe/ligue1_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix ligue1_2020_2025 --skip-benchmark --strict-join
+
+python multi_league_xg_aggregator.py --reports-dir reports --output reports/big5_xg_summary.json --html reports/big5_xg_summary.html
+python clv_readiness_report.py --features data/features_modern.csv --output reports/clv_readiness.json --html reports/clv_readiness.html
+```
+
+Interpretation : une ligue peut afficher un ROI edge positif mais rester bloquee par sample < 1000 ou CLV absente. Une legere amelioration Brier/log loss est une observation technique, pas une preuve de rentabilite. Telegram et Railway restent hors scope.

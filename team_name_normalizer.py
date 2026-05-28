@@ -65,11 +65,156 @@ LEAGUE_ALIASES = {
         "ca osasuna": "osasuna",
         "huesca": "huesca",
         "sd huesca": "huesca",
-    }
+    },
+    "bundesliga": {
+        "bayer leverkusen": "leverkusen",
+        "leverkusen": "leverkusen",
+        "eintracht frankfurt": "ein frankfurt",
+        "ein frankfurt": "ein frankfurt",
+        "frankfurt": "ein frankfurt",
+        "heidenheim": "heidenheim",
+        "heidenheim 1846": "heidenheim",
+        "fc heidenheim": "heidenheim",
+        "1 heidenheim": "heidenheim",
+        "borussia dortmund": "dortmund",
+        "dortmund": "dortmund",
+        "borussia m gladbach": "mgladbach",
+        "borussia mgladbach": "mgladbach",
+        "borussia monchengladbach": "mgladbach",
+        "monchengladbach": "mgladbach",
+        "m gladbach": "mgladbach",
+        "mgladbach": "mgladbach",
+        "gladbach": "mgladbach",
+        "rb leipzig": "rb leipzig",
+        "rasenballsport leipzig": "rb leipzig",
+        "leipzig": "rb leipzig",
+        "bayern munich": "bayern munich",
+        "bayern munchen": "bayern munich",
+        "fc bayern munchen": "bayern munich",
+        "bayern": "bayern munich",
+        "freiburg": "freiburg",
+        "sc freiburg": "freiburg",
+        "hoffenheim": "hoffenheim",
+        "tsg hoffenheim": "hoffenheim",
+        "wolfsburg": "wolfsburg",
+        "vfl wolfsburg": "wolfsburg",
+        "werder bremen": "werder bremen",
+        "bremen": "werder bremen",
+        "union berlin": "union berlin",
+        "1 union berlin": "union berlin",
+        "hertha berlin": "hertha",
+        "hertha bsc": "hertha",
+        "hertha": "hertha",
+        "schalke 04": "schalke 04",
+        "fc schalke 04": "schalke 04",
+        "koln": "koln",
+        "cologne": "koln",
+        "fc cologne": "koln",
+        "fc koln": "koln",
+        "1 koln": "koln",
+        "mainz 05": "mainz",
+        "fsv mainz 05": "mainz",
+        "mainz": "mainz",
+        "augsburg": "augsburg",
+        "fc augsburg": "augsburg",
+        "stuttgart": "stuttgart",
+        "vfb stuttgart": "stuttgart",
+        "bochum": "bochum",
+        "vfl bochum": "bochum",
+        "darmstadt": "darmstadt",
+        "sv darmstadt 98": "darmstadt",
+        "arminia bielefeld": "bielefeld",
+        "bielefeld": "bielefeld",
+        "greuther furth": "greuther furth",
+        "greuther fuerth": "greuther furth",
+        "fuerth": "greuther furth",
+        "furth": "greuther furth",
+    },
+    "serie_a": {
+        "internazionale": "inter",
+        "inter milan": "inter",
+        "inter": "inter",
+        "ac milan": "milan",
+        "milan": "milan",
+        "juventus": "juventus",
+        "juve": "juventus",
+        "roma": "roma",
+        "as roma": "roma",
+        "lazio": "lazio",
+        "napoli": "napoli",
+        "ssc napoli": "napoli",
+        "atalanta": "atalanta",
+        "fiorentina": "fiorentina",
+        "sassuolo": "sassuolo",
+        "bologna": "bologna",
+        "torino": "torino",
+        "udinese": "udinese",
+        "sampdoria": "sampdoria",
+        "genoa": "genoa",
+        "cagliari": "cagliari",
+        "verona": "verona",
+        "hellas verona": "verona",
+        "spezia": "spezia",
+        "empoli": "empoli",
+        "venezia": "venezia",
+        "salernitana": "salernitana",
+        "lecce": "lecce",
+        "monza": "monza",
+        "cremonese": "cremonese",
+        "parma": "parma",
+        "benevento": "benevento",
+        "crotone": "crotone",
+        "frosinone": "frosinone",
+        "como": "como",
+    },
+    "ligue_1": {
+        "paris saint germain": "paris sg",
+        "psg": "paris sg",
+        "paris sg": "paris sg",
+        "marseille": "marseille",
+        "olympique marseille": "marseille",
+        "lyon": "lyon",
+        "olympique lyonnais": "lyon",
+        "monaco": "monaco",
+        "as monaco": "monaco",
+        "lille": "lille",
+        "losc lille": "lille",
+        "rennes": "rennes",
+        "stade rennes": "rennes",
+        "nice": "nice",
+        "ogc nice": "nice",
+        "lens": "lens",
+        "rc lens": "lens",
+        "strasbourg": "strasbourg",
+        "reims": "reims",
+        "stade de reims": "reims",
+        "montpellier": "montpellier",
+        "nantes": "nantes",
+        "fc nantes": "nantes",
+        "bordeaux": "bordeaux",
+        "saint etienne": "st etienne",
+        "st etienne": "st etienne",
+        "angers": "angers",
+        "brest": "brest",
+        "stade brestois": "brest",
+        "metz": "metz",
+        "lorient": "lorient",
+        "troyes": "troyes",
+        "clermont foot": "clermont",
+        "clermont": "clermont",
+        "auxerre": "auxerre",
+        "toulouse": "toulouse",
+        "le havre": "le havre",
+        "ajaccio": "ajaccio",
+        "dijon": "dijon",
+        "nimes": "nimes",
+        "amiens": "amiens",
+    },
 }
 
-for _alias, _canonical in LEAGUE_ALIASES["la_liga"].items():
-    ALIASES.setdefault(_alias, _canonical)
+for _league_aliases in LEAGUE_ALIASES.values():
+    for _alias, _canonical in _league_aliases.items():
+        ALIASES.setdefault(_alias, _canonical)
 
 STOP_WORDS = {
     "fc",
@@ -101,6 +246,16 @@ def _league_key(league: Optional[object]) -> str:
     if text in {"la liga", "laliga", "esp la liga", "spain", "espana"}:
         return "la_liga"
     if text in {"epl", "premier league", "eng premier league", "england"}:
+        return "epl"
+    if text in {"bundesliga", "ger bundesliga", "germany bundesliga", "germany", "d1"}:
+        return "bundesliga"
+    if text in {"serie a", "italy serie a", "ita serie a", "italy", "i1"}:
+        return "serie_a"
+    if text in {"ligue 1", "france ligue 1", "fra ligue 1", "france", "f1"}:
+        return "ligue_1"
+    if text in {"sp1"}:
+        return "la_liga"
+    if text in {"e0"}:
         return "epl"
     return text.replace(" ", "_")
 
@@ -159,9 +314,9 @@ def normalize_team_name(name: object, league: Optional[object] = None, aliases: 
     return apply_aliases(cleaned, aliases=aliases, league=league)
 
 
-def team_name_similarity(a: object, b: object) -> float:
-    left = normalize_team_name(a)
-    right = normalize_team_name(b)
+def team_name_similarity(a: object, b: object, league: Optional[object] = None) -> float:
+    left = normalize_team_name(a, league=league)
+    right = normalize_team_name(b, league=league)
     if not left or not right:
         return 0.0
     if left == right:
@@ -176,7 +331,7 @@ def suggest_team_aliases(external_names: Iterable[object], xgabora_names: Iterab
         best_name = ""
         best_score = 0.0
         for xgabora_name in xgabora_list:
-            score = team_name_similarity(external_name, xgabora_name)
+            score = team_name_similarity(external_name, xgabora_name, league=league)
             if score > best_score:
                 best_name = xgabora_name
                 best_score = score
