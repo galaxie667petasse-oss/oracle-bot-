@@ -401,9 +401,16 @@ def _xg_rolling_lab_entry(report: Dict[str, Any]) -> Dict[str, Any]:
 def _xg_quality_model_entry(quality: Dict[str, Any], model: Dict[str, Any]) -> Dict[str, Any]:
     verdict = model.get("verdict") or {}
     comparison = model.get("comparison") or {}
+    join_context = model.get("join_quality_context") or quality.get("join_quality_context") or {}
     selected_test = verdict.get("selected_test") or {}
     with_xg = comparison.get("with_xg") or {}
     market = comparison.get("market") or ((model.get("market_baseline") or {}).get("test") or {})
+    join_rate = _safe_float(join_context.get("join_rate") if join_context.get("join_rate") is not None else join_context.get("join_rate_after_alias"))
+    join_quality = join_context.get("join_quality")
+    join_blocks = bool(join_context.get("join_blocks_promotion"))
+    if join_rate is not None and join_rate < 50:
+        join_blocks = True
+        join_quality = join_quality or "insuffisant"
     metrics = {
         "validation": (((model.get("models") or [{}, {}])[-1] if model.get("models") else {}).get("selected_validation") or {}),
         "test": selected_test,
@@ -423,17 +430,22 @@ def _xg_quality_model_entry(quality: Dict[str, Any], model: Dict[str, Any]) -> D
     }
     quality_verdict = quality.get("verdict")
     promotion_allowed = bool(verdict.get("promotion_allowed"))
+    quality_path = str(quality.get("external_path") or model.get("features_path") or "").lower()
+    name = "understat_laliga_2020_2025_rolling_xg_lab" if "laliga" in quality_path or "la-liga" in quality_path else "understat_epl_2020_2025_rolling_xg_lab"
     notes = (
         f"quality={quality_verdict}; "
+        f"join_quality={join_quality}; "
         f"xg_model={verdict.get('governance_note') or model.get('conclusion') or 'observation seulement'}; "
         "lab_only=true; can_influence_picks=false"
     )
-    entry = _registry_entry("understat_epl_2020_2025_rolling_xg_lab", "external_xg_lab", metrics, notes=notes)
+    entry = _registry_entry(name, "external_xg_lab", metrics, notes=notes)
     rejection_reasons = list(entry.get("rejection_reasons") or [])
     if quality_verdict != "exploitable_rolling_xg":
         rejection_reasons.append("quality gate xG non exploitable")
     if not promotion_allowed:
         rejection_reasons.append("xG model promotion_allowed=false")
+    if join_blocks:
+        rejection_reasons.append("jointure externe insuffisante")
     if verdict.get("rejection_reasons"):
         rejection_reasons.extend(verdict.get("rejection_reasons") or [])
     entry.update({
@@ -443,6 +455,11 @@ def _xg_quality_model_entry(quality: Dict[str, Any], model: Dict[str, Any]) -> D
         "xg_model_verdict": verdict.get("governance_note"),
         "xg_model_promotion_allowed": promotion_allowed,
         "promotion_allowed": False,
+        "join_rate": join_rate,
+        "join_quality": join_quality,
+        "alias_applied": join_context.get("alias_applied"),
+        "unmatched_count": join_context.get("unmatched_count"),
+        "join_blocks_promotion": join_blocks,
         "rejection_reasons": list(dict.fromkeys(rejection_reasons)),
         "quality_context": {
             "rows": quality.get("rows"),
@@ -458,9 +475,10 @@ def _xg_quality_model_entry(quality: Dict[str, Any], model: Dict[str, Any]) -> D
             "sample_test_sufficient": verdict.get("sample_test_sufficient"),
             "delta_brier_xg_vs_market": comparison.get("delta_brier_xg_vs_market"),
             "delta_log_loss_xg_vs_market": comparison.get("delta_log_loss_xg_vs_market"),
+            "join_quality_context": join_context,
         },
     })
-    if quality_verdict != "exploitable_rolling_xg" or not promotion_allowed:
+    if quality_verdict != "exploitable_rolling_xg" or not promotion_allowed or join_blocks:
         entry["robustness_score"] = min(entry.get("robustness_score", 0), 59)
         entry["governance_status"] = "observation" if entry["robustness_score"] < 40 else "watchlist"
         entry["status"] = entry["governance_status"]
@@ -660,6 +678,11 @@ def write_summary(benchmark: Dict[str, Any], path: str) -> Path:
             "p_value_adjusted": entry.get("p_value_adjusted"),
             "quality_verdict": entry.get("quality_verdict"),
             "xg_model_verdict": entry.get("xg_model_verdict"),
+            "join_rate": entry.get("join_rate"),
+            "join_quality": entry.get("join_quality"),
+            "alias_applied": entry.get("alias_applied"),
+            "unmatched_count": entry.get("unmatched_count"),
+            "join_blocks_promotion": entry.get("join_blocks_promotion"),
             "lab_only": entry.get("lab_only"),
             "promotion_allowed": entry.get("promotion_allowed"),
             "status": entry["status"],

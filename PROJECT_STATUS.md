@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V7.2 Understat xG Full Pipeline Quality Gate.
+V7.3 Multi-League Join Diagnostics & Team Alias Mapping.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation reste en place et V7.2 ajoute un quality gate complet pour l'export Understat xG multi-saisons. Aucun signal robuste active. Aucun changement V7.2 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation et V7.2 Understat xG Full Pipeline Quality Gate restent en place. V7.3 ajoute les diagnostics de jointure multi-ligues et le mapping d'alias equipes. Aucun signal robuste active. Aucun changement V7.3 ne branche Telegram, Railway ou un pick automatique.
 
 ## Etat general
 
@@ -15,6 +15,7 @@ Etat : local prudent. V7.0 Statistical Proof Foundation reste en place et V7.2 a
 - Probe Understat multi-saisons disponible, dependance `soccerdata` optionnelle.
 - Export Understat EPL 2020-2025 attendu : 1900 lignes avec saisons explicites `2020-2021` a `2024-2025`.
 - Quality gate xG disponible via `xg_dataset_quality.py`.
+- Diagnostic jointure disponible via `join_diagnostics.py`.
 - Pipeline local Understat xG disponible via `understat_xg_pipeline.py`.
 - CLV / Closing Line Value disponible si des cotes closing sont presentes.
 - Reliability curves disponibles via `calibration_report.py`.
@@ -33,12 +34,15 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - multiple testing dangereux sur des dizaines de segments ;
 - CLV + preuve statistique + stabilite annuelle restent necessaires meme si xG ameliore Brier/log loss ;
 - xG multi-saisons Understat doit etre transforme en rolling pre-match sans fuite ;
+- La Liga exporte correctement mais joint trop faiblement a xgabora tant que les alias/dates/competitions ne sont pas diagnostiques ;
 - absence de validation humaine complete.
 
 ## Etat des modules
 
 - `understat_probe.py` : export optionnel Understat local via soccerdata, chemins `Path`, dry-run sans reseau.
 - `xg_dataset_quality.py` : controle lignes, saisons, completeness, xG coverage, doublons et fuite.
+- `join_diagnostics.py` : join rate avant/apres alias, fuzzy suggestions, causes probables et join_quality.
+- `team_name_normalizer.py` : alias manuels controles, dont La Liga, sans modification des CSV source.
 - `understat_xg_pipeline.py` : orchestration locale quality, jointure, rolling features, xG model et gouvernance optionnelle.
 - `clv_analysis.py` : CLV descriptive, verdict indisponible si cotes closing absentes.
 - `calibration_report.py` : Brier, log loss, ECE, MCE et reliability curves.
@@ -57,6 +61,8 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - xG EPL 2024-2025 : echantillon trop petit, pas de signal robuste.
 - Ancien export Understat 1520 lignes : incomplet a cause d'une ambiguite de saison.
 - Nouvel export Understat attendu 1900 lignes : base correcte pour un laboratoire EPL 2020-2025.
+- EPL Understat 2020-2025 : jointure autour de 98%, quality exploitable, mais xG ne bat pas le marche.
+- La Liga Understat 2020-2025 : export complet, mais jointure observee autour de 39.89%, donc `join_quality=insuffisant` tant que le diagnostic n'est pas corrige.
 - CLV sur `data/features_modern.csv` est probablement indisponible tant que les colonnes closing `C_*` ne sont pas exportees.
 - Rien n'est branche aux picks Telegram ou Railway.
 
@@ -70,6 +76,7 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - Rolling features pre-match sans usage du match courant.
 - Understat probe sans recuperation dans les tests.
 - Quality gate Understat xG sans recuperation reseau.
+- Diagnostic de jointure sans recuperation reseau.
 - Pipeline xG local depuis CSV deja telecharge.
 - Rapports locaux qui ne modifient pas `oracle_db.json`.
 - Registre modele sans secrets, sans predictions individuelles et sans gros dataset.
@@ -87,8 +94,8 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 
 ## Prochaine vraie priorite
 
-1. Auditer l'export Understat EPL 2020-2025 avec `xg_dataset_quality.py`.
-2. Lancer `understat_xg_pipeline.py --skip-benchmark` depuis le CSV local.
-3. Comparer marche no-vig, modele sans xG et modele avec rolling xG.
-4. Relancer CLV, calibration, statistical validation et benchmark governance.
+1. Lancer `join_diagnostics.py` sur La Liga pour identifier les noms et dates qui cassent la jointure.
+2. Ajouter prudemment les alias confirmes dans `team_name_normalizer.py` ou dans un fichier local non versionne.
+3. Relancer `understat_xg_pipeline.py --strict-join` avant tout modele La Liga.
+4. Relancer CLV, calibration, statistical validation et benchmark governance seulement apres jointure exploitable.
 5. Conserver Railway et Telegram en attente tant qu'aucune preuve robuste complete n'existe.

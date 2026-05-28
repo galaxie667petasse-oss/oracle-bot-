@@ -72,6 +72,7 @@ def test_release_candidate_docs_exist_and_have_sections():
         "external xg rolling",
         "understat",
         "understat xg full pipeline quality gate",
+        "multi-league join diagnostics",
         "statistical proof foundation",
         "clv",
         "reliability curves",

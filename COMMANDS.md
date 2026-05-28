@@ -292,7 +292,34 @@ python report_runner.py --xg-understat
 
 Le nouvel export 1900 lignes remplace l'ancien export 1520 lignes pour le laboratoire EPL 2020-2025. Le xG reste post-match et doit passer par rolling anti-fuite. Sans CLV positive et ROI test positif, aucune promotion n'est autorisee.
 
-## 14. Scientific Benchmark & Model Governance
+## 14. V7.3 Multi-League Join Diagnostics
+
+Diagnostic La Liga Understat/xgabora :
+
+```bash
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/laliga_2020_2025_matches.csv --output reports/laliga_join_diagnostics.json --html reports/laliga_join_diagnostics.html
+```
+
+Evaluation jointure via le lab xG :
+
+```bash
+python external_xg_lab.py --evaluate-join --xgabora data/features_modern.csv --external external_data/understat_probe/laliga_2020_2025_matches.csv
+```
+
+Pipeline strict : bloque le modele si la jointure apres alias reste sous 75% :
+
+```bash
+python understat_xg_pipeline.py --external external_data/understat_probe/laliga_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix laliga_2020_2025 --skip-benchmark --strict-join
+```
+
+Lecture prudente :
+
+- La Liga peut exporter 1900 matchs et 100% xG tout en restant inutilisable pour modeling si la jointure est faible.
+- Les alias corrigent des noms comme Atletico/Atletico Madrid, Athletic Club/Athletic Bilbao ou Betis/Real Betis, mais ils doivent etre audites.
+- `join_rate_fuzzy` suggere des pistes; il ne doit pas creer une jointure automatique ambigue.
+- `join_quality=insuffisant` bloque `promotion_allowed`.
+
+## 15. Scientific Benchmark & Model Governance
 
 Benchmark complet si `data/features_modern.csv` est disponible :
 
@@ -308,7 +335,7 @@ Sorties :
 
 Le benchmark attribue un score prudent et une decision : rejected, watchlist, observation, candidate, active_shadow_only, active_decision_support ou production_allowed. Meme `production_allowed` ne signifie jamais pari automatique. Rien n'est branche aux picks Telegram.
 
-## 15. Git workflow
+## 16. Git workflow
 
 ```bash
 git status --short
@@ -323,7 +350,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 16. Ce qu'il ne faut pas faire
+## 17. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

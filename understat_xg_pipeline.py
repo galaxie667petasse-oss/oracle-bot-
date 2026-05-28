@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 import benchmark_governance
 import external_xg_features
 import external_xg_lab
+import join_diagnostics
 import xg_dataset_quality
 import xg_model_lab
 
@@ -59,7 +60,9 @@ def write_html(summary: Dict[str, Any], path: Path) -> Path:
     benchmark = ((summary.get("benchmark") or {}).get("data") or {}).get("summary") or {}
     rows = [
         ("Quality verdict", quality.get("verdict")),
-        ("Join rate", rolling.get("join_rate")),
+        ("Join rate avant alias", summary.get("join_rate_before_alias")),
+        ("Join rate apres alias", summary.get("join_rate_after_alias")),
+        ("Join quality", summary.get("join_quality")),
         ("Rolling avg3", rolling.get("avg3_rows")),
         ("Rolling avg5", rolling.get("avg5_rows")),
         ("Brier marche", model.get("market_brier_test")),
@@ -94,6 +97,7 @@ def build_pipeline(
     skip_model: bool = False,
     skip_benchmark: bool = False,
     dry_run: bool = False,
+    strict_join: bool = False,
 ) -> Dict[str, Any]:
     external_path = Path(external)
     xgabora_path = Path(xgabora)
@@ -104,6 +108,8 @@ def build_pipeline(
 
     quality_json = report_path(out_prefix, "quality.json")
     quality_html = report_path(out_prefix, "quality.html")
+    join_json = report_path(out_prefix, "join_diagnostics.json")
+    join_html = report_path(out_prefix, "join_diagnostics.html")
     rolling_csv = report_path(out_prefix, "rolling_features.csv")
     model_json = report_path(out_prefix, "xg_model.json")
     model_html = report_path(out_prefix, "xg_model.html")
@@ -115,7 +121,7 @@ def build_pipeline(
 
     planned_steps = [
         f"Quality gate -> {quality_json}",
-        f"Evaluation jointure xG -> memoire pipeline",
+        f"Diagnostic jointure -> {join_json}",
         f"Rolling features -> {rolling_csv}",
         f"xG model lab -> {model_json}" if not skip_model else "xG model lab ignore (--skip-model)",
         f"Benchmark governance -> {benchmark_summary}" if not skip_benchmark else "Benchmark ignore (--skip-benchmark)",
@@ -149,6 +155,40 @@ def build_pipeline(
         summary["warnings"].append(f"Quality gate indisponible: {exc}")
 
     try:
+        diagnostics = join_diagnostics.build_join_diagnostics(str(xgabora_path), str(external_path), league=league)
+        join_diagnostics.write_json(diagnostics, str(join_json))
+        join_diagnostics.write_html(diagnostics, str(join_html))
+        summary["join_diagnostics"] = status_block(True, data=diagnostics)
+        summary["join_rate_before_alias"] = diagnostics.get("join_rate_before_alias")
+        summary["join_rate_after_alias"] = diagnostics.get("join_rate_after_alias")
+        summary["join_quality"] = diagnostics.get("join_quality")
+        summary["modeling_allowed_by_join_quality"] = diagnostics.get("modeling_allowed_by_join_quality")
+        summary["unmatched_examples"] = diagnostics.get("unmatched_external_examples", [])[:10]
+        summary["alias_matches_gained"] = diagnostics.get("alias_matches_gained")
+        if not diagnostics.get("modeling_allowed_by_join_quality"):
+            summary["warnings"].append("Avertissement fort: taux de jointure inferieur a 50%, modele xG bloque.")
+        if strict_join and float(diagnostics.get("join_rate_after_alias") or 0.0) < 75.0:
+            summary["rolling_features"] = status_block(False, warning="Pipeline stoppe par --strict-join")
+            summary["xg_model"] = status_block(False, warning="Modele bloque par --strict-join")
+            summary["benchmark"] = status_block(False, warning="Benchmark non lance apres --strict-join")
+            summary["final_status"] = {
+                "quality_verdict": ((summary.get("quality") or {}).get("data") or {}).get("verdict"),
+                "join_rate": diagnostics.get("join_rate_after_alias"),
+                "join_quality": diagnostics.get("join_quality"),
+                "modeling_allowed_by_join_quality": diagnostics.get("modeling_allowed_by_join_quality"),
+                "unmatched_examples": summary["unmatched_examples"],
+            }
+            summary["conclusion"] = "Pipeline stoppe: jointure externe insuffisante pour --strict-join."
+            write_json(summary, summary_json)
+            write_html(summary, summary_html)
+            raise ValueError("Jointure externe insuffisante pour --strict-join: seuil minimum 75%.")
+    except ValueError:
+        raise
+    except Exception as exc:
+        summary["join_diagnostics"] = status_block(False, warning=str(exc))
+        summary["warnings"].append(f"Diagnostic jointure indisponible: {exc}")
+
+    try:
         join = external_xg_lab.evaluate_join(str(xgabora_path), str(external_path))
         summary["join"] = status_block(True, data={
             "join_rate": (join.get("plan") or {}).get("match_rate"),
@@ -162,17 +202,29 @@ def build_pipeline(
         summary["warnings"].append(f"Evaluation jointure indisponible: {exc}")
 
     try:
-        rolling = external_xg_features.build_external_xg_features(str(external_path), str(xgabora_path), str(rolling_csv))
+        rolling = external_xg_features.build_external_xg_features(str(external_path), str(xgabora_path), str(rolling_csv), alias_report=str(join_json))
         summary["rolling_features"] = status_block(True, data=rolling)
     except Exception as exc:
         summary["rolling_features"] = status_block(False, warning=str(exc))
         summary["warnings"].append(f"Rolling features indisponibles: {exc}")
 
+    modeling_allowed = bool(summary.get("modeling_allowed_by_join_quality", True))
     if skip_model:
         summary["xg_model"] = status_block(False, warning="Modele ignore par --skip-model")
+    elif not modeling_allowed:
+        summary["xg_model"] = status_block(False, warning="Modele bloque par qualite de jointure insuffisante")
     elif summary.get("rolling_features", {}).get("ok"):
         try:
             model_report = xg_model_lab.build_xg_model_report(str(rolling_csv))
+            model_report["join_quality_context"] = {
+                "join_rate": summary.get("join_rate_after_alias"),
+                "join_rate_before_alias": summary.get("join_rate_before_alias"),
+                "join_quality": summary.get("join_quality"),
+                "modeling_allowed_by_join_quality": summary.get("modeling_allowed_by_join_quality"),
+                "alias_applied": ((summary.get("join_diagnostics") or {}).get("data") or {}).get("alias_applied"),
+                "unmatched_count": ((summary.get("join_diagnostics") or {}).get("data") or {}).get("unmatched_count"),
+                "join_blocks_promotion": not bool(summary.get("modeling_allowed_by_join_quality", True)),
+            }
             xg_model_lab.write_json(model_report, str(model_json))
             xg_model_lab.write_html(model_report, str(model_html))
             summary["xg_model"] = status_block(True, data=model_report)
@@ -207,7 +259,12 @@ def build_pipeline(
     model_summary = ((summary.get("xg_model") or {}).get("summary") or {})
     summary["final_status"] = {
         "quality_verdict": quality_verdict,
-        "join_rate": rolling_data.get("join_rate") or ((summary.get("join") or {}).get("data") or {}).get("join_rate"),
+        "join_rate": summary.get("join_rate_after_alias") or rolling_data.get("join_rate") or ((summary.get("join") or {}).get("data") or {}).get("join_rate"),
+        "join_rate_before_alias": summary.get("join_rate_before_alias"),
+        "join_rate_after_alias": summary.get("join_rate_after_alias"),
+        "join_quality": summary.get("join_quality"),
+        "modeling_allowed_by_join_quality": summary.get("modeling_allowed_by_join_quality"),
+        "unmatched_examples": summary.get("unmatched_examples", []),
         "rolling_avg3_rows": rolling_data.get("avg3_rows"),
         "rolling_avg5_rows": rolling_data.get("avg5_rows"),
         "unique_matches_rolling": rolling_data.get("matched_external_matches"),
@@ -232,7 +289,10 @@ def print_summary(summary: Dict[str, Any]) -> None:
     final = summary.get("final_status") or {}
     model = final.get("xg_model") or {}
     print(f"- Quality verdict: {final.get('quality_verdict')}")
-    print(f"- Join rate: {final.get('join_rate')}%")
+    print(f"- Join rate avant alias: {final.get('join_rate_before_alias')}%")
+    print(f"- Join rate apres alias: {final.get('join_rate_after_alias')}%")
+    print(f"- Join quality: {final.get('join_quality')}")
+    print(f"- Modeling allowed par jointure: {final.get('modeling_allowed_by_join_quality')}")
     print(f"- Rolling avg3/avg5: {final.get('rolling_avg3_rows')} / {final.get('rolling_avg5_rows')}")
     print(f"- Matchs uniques rolling: {final.get('unique_matches_rolling')}")
     print(f"- Brier marche/xG: {model.get('market_brier_test')} / {model.get('xg_brier_test')}")
@@ -254,6 +314,7 @@ def parse_args(argv=None):
     parser.add_argument("--skip-benchmark", action="store_true", help="Ignore benchmark_governance")
     parser.add_argument("--skip-model", action="store_true", help="Ignore xg_model_lab")
     parser.add_argument("--dry-run", action="store_true", help="Affiche les etapes sans les lancer")
+    parser.add_argument("--strict-join", action="store_true", help="Stoppe si la jointure apres alias est inferieure a 75%%")
     return parser.parse_args(argv)
 
 
@@ -269,6 +330,7 @@ def main(argv=None) -> int:
             skip_model=args.skip_model,
             skip_benchmark=args.skip_benchmark,
             dry_run=args.dry_run,
+            strict_join=args.strict_join,
         )
         print_summary(summary)
         return 0

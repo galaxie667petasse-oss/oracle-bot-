@@ -418,6 +418,12 @@ def match_has_odds(match: Dict[str, Any]) -> bool:
 
 def evaluate_join(xgabora_path: str, external_path: str) -> Dict[str, Any]:
     plan = build_join_plan(xgabora_path, external_path)
+    try:
+        from join_diagnostics import classify_join_quality
+
+        join_quality = classify_join_quality(plan["match_rate"])
+    except Exception:
+        join_quality = {"join_quality": "", "modeling_allowed_by_join_quality": True, "reason": ""}
     profiles = plan["external_profiles"]
     detected_any = {role: [] for role in ROLE_ORDER}
     date_min = ""
@@ -478,7 +484,17 @@ def evaluate_join(xgabora_path: str, external_path: str) -> Dict[str, Any]:
         "only_post_match_xg": only_post_match_xg,
         "notes": notes,
         "verdict": verdict,
+        "join_quality": join_quality.get("join_quality"),
+        "modeling_allowed_by_join_quality": join_quality.get("modeling_allowed_by_join_quality"),
+        "join_quality_reason": join_quality.get("reason"),
     }
+
+
+def write_alias_report(xgabora_path: str, external_path: str, output: str, league: str = "") -> Path:
+    from join_diagnostics import build_join_diagnostics, write_json
+
+    report = build_join_diagnostics(xgabora_path, external_path, league=league)
+    return write_json(report, output)
 
 
 def _ensure_reports_output(output: str) -> Path:
@@ -616,6 +632,8 @@ def print_evaluation(evaluation: Dict[str, Any]) -> None:
     print(f"- Periode couverte: {evaluation.get('date_min') or 'non detectee'} -> {evaluation.get('date_max') or 'non detectee'}")
     print(f"- Recouvre 2024+: {'oui' if evaluation.get('covers_2024_plus') else 'non'}")
     print(f"- Matchs test 2024+ avec xG joints: {evaluation.get('test_matches_with_xg', 0)}")
+    print(f"- Qualite jointure: {evaluation.get('join_quality')}")
+    print(f"- Modeling allowed par jointure: {evaluation.get('modeling_allowed_by_join_quality')}")
     print(f"- Verdict: {evaluation.get('verdict')}")
     for note in evaluation.get("notes") or []:
         print(f"- Note: {note}")
@@ -640,6 +658,8 @@ def parse_args(argv=None):
     parser.add_argument("--xgabora", default="", help="CSV xgabora/features_modern.csv")
     parser.add_argument("--external", default="", help="CSV externe xG a comparer")
     parser.add_argument("--output", default="reports/external_xg_preview.csv", help="Sortie preview, obligatoirement dans reports/")
+    parser.add_argument("--alias-report", default="", help="Rapport JSON alias/jointure dans reports/")
+    parser.add_argument("--league", default="", help="Ligue optionnelle pour les alias")
     return parser.parse_args(argv)
 
 
@@ -657,7 +677,11 @@ def main(argv=None) -> int:
         if args.evaluate_join:
             if not args.xgabora or not args.external:
                 raise ValueError("--evaluate-join requiert --xgabora et --external.")
-            print_evaluation(evaluate_join(args.xgabora, args.external))
+            evaluation = evaluate_join(args.xgabora, args.external)
+            print_evaluation(evaluation)
+            if args.alias_report:
+                path = write_alias_report(args.xgabora, args.external, args.alias_report, league=args.league)
+                print(f"- Rapport alias ecrit: {path}")
             return 0
         if args.build_preview:
             if not args.xgabora or not args.external:

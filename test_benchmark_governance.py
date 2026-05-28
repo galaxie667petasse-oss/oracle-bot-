@@ -135,6 +135,14 @@ def main():
             "market_baseline": {"test": {"brier": 0.21, "log_loss": 0.61}},
             "models": [{}, {"selected_validation": {"picks": 1000, "roi": 1.0}}],
             "split_config": {"test_from": "2024-01-01"},
+            "join_quality_context": {
+                "join_rate": 39.89,
+                "join_quality": "insuffisant",
+                "modeling_allowed_by_join_quality": False,
+                "alias_applied": True,
+                "unmatched_count": 1142,
+                "join_blocks_promotion": True,
+            },
         }, ensure_ascii=False), encoding="utf-8")
         benchmark_with_xg = benchmark_governance.build_benchmark(
             str(root / "features_absent.csv"),
@@ -151,7 +159,11 @@ def main():
         assert xg_entries[0]["can_influence_picks"] is False
         assert xg_entries[0]["quality_verdict"] == "fragile"
         assert xg_entries[0]["promotion_allowed"] is False
+        assert xg_entries[0]["join_quality"] == "insuffisant"
+        assert xg_entries[0]["join_blocks_promotion"] is True
+        assert xg_entries[0]["unmatched_count"] == 1142
         assert any("quality gate" in reason.lower() for reason in xg_entries[0]["rejection_reasons"])
+        assert any("jointure externe insuffisante" in reason.lower() for reason in xg_entries[0]["rejection_reasons"])
 
         quality_path.write_text(json.dumps({
             "status": "ok",

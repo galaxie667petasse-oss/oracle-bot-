@@ -88,3 +88,16 @@ Un signal xG Understat reste `lab_only` tant que toutes les conditions suivantes
 - aucune degradation recente et aucun seuil choisi sur test.
 
 Le nouvel export EPL 2020-2025 a vocation a corriger l'ancien export 1520 lignes incomplet, mais un dataset propre ne suffit pas a promouvoir un signal. Meme si le xG ameliore legerement la probabilite, il reste observation si le ROI test est negatif ou si la CLV est absente.
+
+## V7.3 Jointure multi-ligues
+
+La promotion est bloquee si la jointure externe est insuffisante. Un dataset Understat complet mais mal joint peut produire des features sur les mauvais matchs ou reduire le test a un sous-echantillon non representatif.
+
+Seuils :
+
+- `excellent` : join rate >= 90% ;
+- `exploitable_prudent` : 75% a 90% ;
+- `fragile` : 50% a 75% ;
+- `insuffisant` : moins de 50%, modeling bloque.
+
+Pour La Liga, un join rate autour de 39.89% impose `join_quality=insuffisant`, `modeling_allowed_by_join_quality=false` et `join_blocks_promotion=true`. Les alias peuvent ameliorer la jointure, mais ils doivent etre documentes et audites. Une suggestion fuzzy ne suffit pas a promouvoir un signal.

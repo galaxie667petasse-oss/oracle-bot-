@@ -75,7 +75,12 @@ def main():
         assert evaluation["matches_with_xg"] == 3
         assert evaluation["matches_with_xg_and_xgabora_odds"] == 3
         assert evaluation["covers_2024_plus"] is True
+        assert evaluation["join_quality"] == "exploitable_prudent"
+        assert evaluation["modeling_allowed_by_join_quality"] is True
         assert evaluation["verdict"] in {"dataset utile seulement laboratoire", "integration fragile"}
+        alias_report = root / "reports" / "alias_report.json"
+        written_alias = external_xg_lab.write_alias_report(str(xgabora), str(external), str(alias_report), league="EPL")
+        assert written_alias.exists()
 
         preview = root / "reports" / "external_xg_preview.csv"
         result = external_xg_lab.build_preview(str(xgabora), str(external), str(preview))

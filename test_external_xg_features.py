@@ -38,6 +38,7 @@ def main():
         external = root / "external.csv"
         xgabora = root / "features.csv"
         output = root / "reports" / "xg_features.csv"
+        alias_report = root / "reports" / "alias_report.json"
         oracle_db = root / "oracle_db.json"
         matches_csv = root / "data" / "MATCHES.csv"
         oracle_db.write_text("{}", encoding="utf-8")
@@ -67,9 +68,12 @@ def main():
                 {"date": "2024-08-07", "home": "Alpha", "away": "Beta", "market_type": "h2h", "pari": "Victoire Alpha", "result": "loss", "odds": "1.8", "no_vig_probability": "0.55"},
             ],
         )
-        summary = build_external_xg_features(str(external), str(xgabora), str(output))
+        summary = build_external_xg_features(str(external), str(xgabora), str(output), alias_report=str(alias_report))
         assert summary["external_matches_read"] == 6
         assert summary["matched_external_matches"] == 1
+        assert summary["join_rate_before_alias"] == summary["join_rate_after_alias"]
+        assert summary["alias_matches_gained"] == 0
+        assert alias_report.exists()
         assert summary["enriched_rows"] == 2
         rows = read_rows(output)
         assert len(rows) == 2

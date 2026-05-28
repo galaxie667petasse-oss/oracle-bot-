@@ -236,3 +236,29 @@ Lecture prudente :
 - ROI test negatif invalide l'edge ;
 - CLV absente bloque toute promotion ;
 - Telegram et Railway restent en attente.
+
+## V7.3 Multi-League Join Diagnostics
+
+Un export peut etre complet sans etre exploitable pour modele. La Liga 2020-2025 illustre ce cas : 1900 matchs et xG coverage 100%, mais une jointure observee autour de 39.89% contre xgabora/features rend l'analyse modele insuffisante. Les causes probables sont les noms d'equipes, accents, alias Understat/xgabora, dates decalees, competition differente ou calendriers manquants.
+
+Diagnostic :
+
+```bash
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/laliga_2020_2025_matches.csv --output reports/laliga_join_diagnostics.json --html reports/laliga_join_diagnostics.html
+```
+
+Le rapport se lit ainsi :
+
+- `join_rate_before_alias` : jointure stricte avant alias ;
+- `join_rate_after_alias` : jointure stricte apres alias manuel controle ;
+- `join_rate_fuzzy` : potentiel de rapprochement, jamais applique automatiquement si ambigu ;
+- `top_alias_suggestions` : pistes a valider humainement ;
+- `probable_causes` : nom equipe different, accent, abreviation, date decalee, competition differente, equipe manquante.
+
+Les alias ne doivent pas etre appliques aveuglement : un mauvais alias peut relier deux matchs differents et creer une fuite ou un signal artificiel. La regle V7.3 bloque le modele si `join_quality=insuffisant`, c'est-a-dire sous 50%. Le mode strict du pipeline stoppe sous 75% :
+
+```bash
+python understat_xg_pipeline.py --external external_data/understat_probe/laliga_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix laliga_2020_2025 --skip-benchmark --strict-join
+```
+
+EPL a une jointure proche de 98% et reste le meilleur terrain de controle. La Liga doit d'abord passer le diagnostic et les alias avant d'etre modelisee. Les autres ligues attendent pour eviter d'empiler des erreurs de jointure et du multiple testing.

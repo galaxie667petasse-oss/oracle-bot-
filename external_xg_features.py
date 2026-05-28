@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from external_xg_lab import detect_columns, first_column, parse_date, parse_float
+from join_diagnostics import build_join_diagnostics, write_json as write_join_json
 from team_name_normalizer import normalize_team_name
 
 
@@ -260,7 +261,10 @@ def write_enriched_csv(rows: List[Dict[str, Any]], fieldnames: List[str], output
     return target
 
 
-def build_external_xg_features(external_path: str, xgabora_path: str, output: str) -> Dict[str, Any]:
+def build_external_xg_features(external_path: str, xgabora_path: str, output: str, alias_report: str = "") -> Dict[str, Any]:
+    diagnostics = build_join_diagnostics(xgabora_path, external_path)
+    if alias_report:
+        write_join_json(diagnostics, alias_report)
     external_matches, external_meta = read_external_matches(external_path)
     rolling = compute_rolling_features(external_matches)
     xgabora_rows, fieldnames = read_xgabora_rows(xgabora_path)
@@ -273,7 +277,14 @@ def build_external_xg_features(external_path: str, xgabora_path: str, output: st
         "external_matches_read": len(external_matches),
         "xgabora_rows_read": len(xgabora_rows),
         "matched_external_matches": join_meta["matched_external_matches"],
+        "join_rate_before_alias": diagnostics.get("join_rate_before_alias"),
+        "join_rate_after_alias": diagnostics.get("join_rate_after_alias"),
         "join_rate": join_meta["external_join_rate"],
+        "alias_matches_gained": diagnostics.get("alias_matches_gained"),
+        "alias_applied": diagnostics.get("alias_applied"),
+        "alias_report": alias_report or "",
+        "unmatched_count": diagnostics.get("unmatched_count"),
+        "unmatched_examples": diagnostics.get("unmatched_external_examples", [])[:10],
         "enriched_rows": join_meta["enriched_rows"],
         "avg3_rows": join_meta["avg3_rows"],
         "avg5_rows": join_meta["avg5_rows"],
@@ -293,7 +304,9 @@ def print_summary(summary: Dict[str, Any]) -> None:
     print(f"- Matchs externes lus: {summary['external_matches_read']}")
     print(f"- Lignes xgabora lues: {summary['xgabora_rows_read']}")
     print(f"- Matchs externes joints: {summary['matched_external_matches']}")
-    print(f"- Taux de jointure: {summary['join_rate']}%")
+    print(f"- Taux de jointure avant alias: {summary.get('join_rate_before_alias')}%")
+    print(f"- Taux de jointure apres alias: {summary.get('join_rate_after_alias')}%")
+    print(f"- Matchs gagnes par alias: {summary.get('alias_matches_gained')}")
     print(f"- Lignes candidates enrichies: {summary['enriched_rows']}")
     print(f"- Lignes avec rolling avg3 disponible: {summary['avg3_rows']}")
     print(f"- Lignes avec rolling avg5 disponible: {summary['avg5_rows']}")
@@ -307,13 +320,14 @@ def parse_args(argv=None):
     parser.add_argument("--external", required=True, help="CSV externe match-level avec xG")
     parser.add_argument("--xgabora", required=True, help="CSV features_modern.csv")
     parser.add_argument("--output", required=True, help="CSV de sortie dans reports/")
+    parser.add_argument("--alias-report", default="", help="Rapport JSON alias/jointure dans reports/")
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
     try:
-        print_summary(build_external_xg_features(args.external, args.xgabora, args.output))
+        print_summary(build_external_xg_features(args.external, args.xgabora, args.output, alias_report=args.alias_report))
         return 0
     except Exception as exc:
         print(f"Erreur: {exc}")

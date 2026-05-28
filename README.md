@@ -46,6 +46,7 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 - `external_xg_features.py` : transformation du xG final externe en rolling features pre-match.
 - `xg_model_lab.py` : evaluation locale descriptive des rolling xG.
 - `xg_dataset_quality.py` : quality gate local pour auditer un CSV xG externe avant modeling.
+- `join_diagnostics.py` : diagnostic multi-league join diagnostics et suggestions d'alias equipe.
 - `understat_xg_pipeline.py` : orchestration locale Understat xG depuis un CSV deja telecharge.
 - `understat_probe.py` : probe optionnel Understat multi-saisons via `soccerdata`.
 - `clv_analysis.py` : mesure descriptive de Closing Line Value si des cotes closing sont disponibles.
@@ -307,6 +308,37 @@ python report_runner.py --xg-understat
 ```
 
 Tous les rapports V7.2 restent dans `reports/`. Les donnees Understat restent dans `external_data/`. Rien ne modifie `oracle_db.json`, `data/MATCHES.csv` ou `data/features_modern.csv`.
+
+## V7.3 Multi-League Join Diagnostics
+
+V7.3 ajoute une couche de diagnostic de jointure Understat/xgabora pour les ligues qui exportent bien mais joignent mal. Le cas La Liga illustre le probleme : le CSV Understat peut etre complet, avec 1900 matchs et 100% de xG, mais une jointure a environ 39.89% rend le modele inutilisable serieusement. Une mauvaise jointure peut venir des accents, alias, abreviations, competitions differentes, dates decalees, equipes promues/releguees ou calendriers manquants.
+
+EPL est fiable a 98% dans l'etat actuel, mais La Liga doit etre corrigee avant modeling. Les alias sont proposes, jamais appliques aveuglement aux CSV source. Les fichiers `data/features_modern.csv` et `external_data/` restent inchanges.
+
+Commandes :
+
+```bash
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/laliga_2020_2025_matches.csv --output reports/laliga_join_diagnostics.json --html reports/laliga_join_diagnostics.html
+python external_xg_lab.py --evaluate-join --xgabora data/features_modern.csv --external external_data/understat_probe/laliga_2020_2025_matches.csv
+python understat_xg_pipeline.py --external external_data/understat_probe/laliga_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix laliga_2020_2025 --skip-benchmark --strict-join
+```
+
+Lecture du diagnostic :
+
+- `join_rate_before_alias` mesure la jointure stricte avant alias ;
+- `join_rate_after_alias` mesure la jointure stricte apres alias manuel controle ;
+- `join_rate_fuzzy` reste une piste de diagnostic, pas une jointure automatique ;
+- `join_quality=insuffisant` bloque le modele et toute promotion ;
+- les suggestions d'alias doivent etre revues humainement avant d'ajouter un mapping.
+
+Seuils V7.3 :
+
+- 90% et plus : excellent ;
+- 75-90% : exploitable prudent ;
+- 50-75% : fragile ;
+- moins de 50% : insuffisant pour modele serieux.
+
+On ne lance pas encore toutes les ligues parce que chaque ligue doit d'abord passer son quality gate dataset, puis son quality gate jointure. Sans CLV positive et gouvernance complete, meme une jointure excellente ne cree pas d'edge jouable.
 
 ## Statistical Proof Foundation
 
