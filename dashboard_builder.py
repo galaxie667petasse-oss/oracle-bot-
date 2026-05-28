@@ -25,6 +25,8 @@ REPORT_FILES = {
     "calibration": "calibration_report.txt",
     "statistical_validation": "statistical_validation.txt",
     "understat_xg_pipeline": "understat_xg_pipeline.txt",
+    "big5_xg": "big5_xg_summary.txt",
+    "clv_readiness": "clv_readiness.txt",
 }
 
 
@@ -122,6 +124,8 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     understat_quality = read_json_candidates(report_dir, ["understat_epl_2020_2025_quality.json"])
     understat_model = read_json_candidates(report_dir, ["understat_epl_2020_2025_xg_model.json"])
     understat_pipeline = read_json_candidates(report_dir, ["understat_epl_2020_2025_pipeline_summary.json"])
+    big5_xg = read_json_candidates(report_dir, ["big5_xg_summary.json"])
+    clv_readiness = read_json_candidates(report_dir, ["clv_readiness.json"])
     pipeline_final = understat_pipeline.get("final_status") or {}
     pipeline_model = pipeline_final.get("xg_model") or {}
 
@@ -194,6 +198,17 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "understat_roi_edge_test": pipeline_model.get("roi_edge_test") or (((understat_model.get("verdict") or {}).get("selected_test") or {}).get("roi")),
         "understat_promotion_allowed": pipeline_model.get("promotion_allowed") if "promotion_allowed" in pipeline_model else (understat_model.get("verdict") or {}).get("promotion_allowed"),
         "understat_rejection_reasons": pipeline_model.get("rejection_reasons") or ((understat_model.get("verdict") or {}).get("rejection_reasons") or []),
+        "big5_leagues_available": (big5_xg.get("global") or {}).get("leagues_available"),
+        "big5_leagues_exploitable": (big5_xg.get("global") or {}).get("leagues_exploitable"),
+        "big5_roi_edge_positive": (big5_xg.get("global") or {}).get("leagues_roi_edge_positive"),
+        "big5_sample_ge_1000": (big5_xg.get("global") or {}).get("leagues_sample_ge_1000"),
+        "big5_clv_available": (big5_xg.get("global") or {}).get("leagues_clv_available"),
+        "big5_candidates": (big5_xg.get("global") or {}).get("robust_candidates"),
+        "big5_conclusion": (big5_xg.get("global") or {}).get("conclusion"),
+        "clv_readiness_status": clv_readiness.get("status"),
+        "clv_calculable": clv_readiness.get("clv_calculable"),
+        "clv_missing_columns": clv_readiness.get("missing_columns") or [],
+        "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
         "conclusion": conclusion,
         "warnings": warnings,
@@ -223,6 +238,7 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     texts = {key: read_text(report_dir, filename) for key, filename in REPORT_FILES.items()}
     summary = build_summary(report_dir)
     registry = read_model_registry(report_dir)
+    big5_xg = read_json_candidates(report_dir, ["big5_xg_summary.json"])
     parts = [
         "<!doctype html>",
         "<html lang='fr'><head><meta charset='utf-8'>",
@@ -245,6 +261,8 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         ("calibration_ece", "ECE"),
         ("stat_bootstrap_p05", "Bootstrap p05"),
         ("understat_quality_verdict", "Quality xG Understat"),
+        ("big5_leagues_available", "Ligues Big 5"),
+        ("clv_calculable", "CLV calculable"),
     ]:
         value = summary.get(key)
         parts.append(f"<div class='metric'><strong>{html.escape(label)}</strong><br>{html.escape(str(value) if value is not None else 'n/a')}</div>")
@@ -303,6 +321,51 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     if texts["understat_xg_pipeline"]:
         understat_lines.extend(_lines_matching(texts["understat_xg_pipeline"], ["Quality verdict", "Join rate", "Rolling", "Brier", "ROI edge", "Promotion", "Conclusion", "Erreur"], 24))
     parts.append(_card("Understat xG Multi-Season Lab", "\n".join(understat_lines)))
+    big5_lines = [
+        f"ligues disponibles: {summary.get('big5_leagues_available')}",
+        f"ligues exploitables: {summary.get('big5_leagues_exploitable')}",
+        f"ligues ROI edge positif: {summary.get('big5_roi_edge_positive')}",
+        f"ligues sample >= 1000: {summary.get('big5_sample_ge_1000')}",
+        f"ligues avec CLV disponible: {summary.get('big5_clv_available')}",
+        f"candidats robustes: {summary.get('big5_candidates')}",
+        f"conclusion: {summary.get('big5_conclusion')}",
+        "Rappel: aucun pick automatique.",
+    ]
+    if texts["big5_xg"]:
+        big5_lines.extend(_lines_matching(texts["big5_xg"], ["Ligues", "Brier", "ROI", "sample", "CLV", "Candidats", "Conclusion"], 24))
+    parts.append(_card("Big 5 xG Lab Summary", "\n".join(big5_lines)))
+
+    clv_readiness_lines = [
+        f"statut: {summary.get('clv_readiness_status')}",
+        f"CLV calculable: {summary.get('clv_calculable')}",
+        f"colonnes manquantes principales: {', '.join((summary.get('clv_missing_columns') or [])[:12]) or 'n/a'}",
+        f"marches: {summary.get('clv_markets')}",
+        "statut final: aucun pick automatique sans closing odds fiables.",
+    ]
+    if texts["clv_readiness"]:
+        clv_readiness_lines.extend(_lines_matching(texts["clv_readiness"], ["Statut", "CLV calculable", "Colonnes", "H2H", "Over", "BTTS", "Checklist"], 24))
+    parts.append(_card("CLV Readiness", "\n".join(clv_readiness_lines)))
+
+    league_rows = []
+    for item in (big5_xg.get("leagues") or []):
+        if not item.get("dataset_present"):
+            continue
+        league_rows.append(
+            f"{item.get('league')}: Brier marche/xG={item.get('market_brier')}/{item.get('xg_brier')}, "
+            f"log loss marche/xG={item.get('market_log_loss')}/{item.get('xg_log_loss')}, "
+            f"ROI={item.get('roi_edge_test')}, sample={item.get('sample_edge_test')}, statut={item.get('status')}"
+        )
+    parts.append(_card("League-by-league xG comparison", "\n".join(league_rows) or "Aucun rapport de ligue disponible."))
+
+    blockers = []
+    if summary.get("clv_calculable") is False:
+        blockers.append("CLV non calculable depuis la feature matrix actuelle.")
+    if summary.get("big5_candidates") in (0, None):
+        blockers.append("Aucun candidat robuste Big 5.")
+    if summary.get("big5_sample_ge_1000") in (0, None):
+        blockers.append("Sample edge test insuffisant sur les observations disponibles.")
+    blockers.append("Telegram/Railway restent en attente.")
+    parts.append(_card("Promotion blockers", "\n".join(blockers)))
     clv_lines = [
         f"statut: {summary.get('clv_status')}",
         f"CLV moyenne: {summary.get('clv_mean')}",

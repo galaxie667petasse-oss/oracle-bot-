@@ -30,6 +30,8 @@ ESSENTIAL_FILES = [
     "external_xg_lab.py",
     "team_name_normalizer.py",
     "join_diagnostics.py",
+    "multi_league_xg_aggregator.py",
+    "clv_readiness_report.py",
     "report_runner.py",
     "dashboard_builder.py",
     "model_registry.json",
@@ -56,6 +58,8 @@ MAIN_TESTS = [
     "test_external_xg_lab.py",
     "test_team_name_normalizer.py",
     "test_join_diagnostics.py",
+    "test_multi_league_xg_aggregator.py",
+    "test_clv_readiness_report.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -90,6 +94,8 @@ IMPORT_MODULES = [
     "external_xg_lab",
     "team_name_normalizer",
     "join_diagnostics",
+    "multi_league_xg_aggregator",
+    "clv_readiness_report",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -113,6 +119,8 @@ OFFLINE_COMMAND_FILES = [
     "external_xg_lab.py",
     "team_name_normalizer.py",
     "join_diagnostics.py",
+    "multi_league_xg_aggregator.py",
+    "clv_readiness_report.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [

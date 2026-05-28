@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, command_set, run_report, xg_understat_commands
+from report_runner import ReportCommand, big5_xg_commands, command_set, run_report, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -107,6 +107,26 @@ Understat xG Full Pipeline Quality Gate
                 "rejection_reasons": ["ROI test negatif", "CLV absent"],
             },
         }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "big5_xg_summary.json").write_text(json.dumps({
+            "global": {
+                "leagues_available": 3,
+                "leagues_exploitable": 3,
+                "leagues_roi_edge_positive": 2,
+                "leagues_sample_ge_1000": 0,
+                "leagues_clv_available": 0,
+                "robust_candidates": 0,
+                "conclusion": "CLV absente: observations seulement.",
+            },
+            "leagues": [
+                {"league": "Bundesliga", "dataset_present": True, "market_brier": 0.210108, "xg_brier": 0.210036, "market_log_loss": 0.608061, "xg_log_loss": 0.607923, "roi_edge_test": 2.33, "sample_edge_test": 264, "status": "watchlist maximum"}
+            ],
+        }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "clv_readiness.json").write_text(json.dumps({
+            "status": "indisponible",
+            "clv_calculable": False,
+            "missing_columns": ["C_LTH", "C_LTA"],
+            "markets": {"h2h_closing_possible": False},
+        }, ensure_ascii=False), encoding="utf-8")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -123,12 +143,20 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "CLV analysis" for command in command_set("statistical"))
         assert any(command.name == "Benchmark governance" for command in command_set("full"))
         assert any(command.name == "Understat xG Full Pipeline Quality Gate" for command in command_set("xg-understat"))
+        assert any(command.name == "Big 5 xG aggregator" for command in command_set("big5-xg"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
+        big5_commands = big5_xg_commands("features.csv", skip_benchmark=True)
+        assert any("multi_league_xg_aggregator.py" in command.args for command in big5_commands)
+        assert not any("benchmark_governance.py" in command.args for command in big5_commands)
         assert "CLV / Closing Line Value" in html
+        assert "CLV Readiness" in html
         assert "Validation statistique" in html
         assert "Understat xG Multi-Season Lab" in html
+        assert "Big 5 xG Lab Summary" in html
+        assert "League-by-league xG comparison" in html
+        assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 
         absent_manifest = run_report(

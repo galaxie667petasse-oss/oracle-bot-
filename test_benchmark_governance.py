@@ -65,6 +65,8 @@ def main():
         assert any("Calibration report" in warning for warning in benchmark["summary"]["warnings"])
         assert any("Statistical validation" in warning for warning in benchmark["summary"]["warnings"])
         assert any("XG quality report" in warning for warning in benchmark["summary"]["warnings"])
+        assert any("Big 5 xG summary" in warning for warning in benchmark["summary"]["warnings"])
+        assert any("CLV readiness" in warning for warning in benchmark["summary"]["warnings"])
         assert benchmark["registry"]
         assert all(entry.get("governance_status") != "production_allowed" for entry in benchmark["registry"])
         assert all("clv_mean" in entry for entry in benchmark["registry"])
@@ -101,6 +103,44 @@ def main():
         )
         assert benchmark_with_reports["summary"]["clv_report_available"] is False
         assert benchmark_with_reports["summary"]["robust_candidates"] == 0
+
+        big5_path = root / "reports" / "big5_xg_summary.json"
+        clv_ready_path = root / "reports" / "clv_readiness.json"
+        big5_path.write_text(json.dumps({
+            "global": {
+                "leagues_available": 3,
+                "leagues_exploitable": 3,
+                "leagues_clv_available": 0,
+                "observations": 1,
+                "watchlist": 2,
+                "robust_candidates": 0,
+            },
+            "leagues": [],
+            "lab_only": True,
+            "can_influence_picks": False,
+        }, ensure_ascii=False), encoding="utf-8")
+        clv_ready_path.write_text(json.dumps({
+            "status": "indisponible",
+            "clv_calculable": False,
+            "missing_columns": ["C_LTH", "C_LTA"],
+            "markets": {"h2h_closing_possible": False},
+            "lab_only": True,
+            "can_influence_picks": False,
+        }, ensure_ascii=False), encoding="utf-8")
+        benchmark_big5 = benchmark_governance.build_benchmark(
+            str(root / "features_absent.csv"),
+            db=synthetic_db(),
+            big5_xg_summary_path=str(big5_path),
+            clv_readiness_path=str(clv_ready_path),
+        )
+        assert benchmark_big5["summary"]["big5_xg_available"] is True
+        assert benchmark_big5["summary"]["clv_readiness_available"] is True
+        assert benchmark_big5["summary"]["clv_calculable"] is False
+        assert benchmark_big5["summary"]["big5_observation_count"] == 3
+        assert benchmark_big5["summary"]["big5_candidate_count"] == 0
+        assert "C_LTH" in benchmark_big5["summary"]["clv_missing_columns"]
+        assert any("CLV non calculable" in blocker for blocker in benchmark_big5["summary"]["promotion_blockers"])
+        assert benchmark_big5["summary"]["robust_candidates"] == 0
 
         quality_path = root / "reports" / "xg_quality.json"
         model_path = root / "reports" / "xg_model.json"

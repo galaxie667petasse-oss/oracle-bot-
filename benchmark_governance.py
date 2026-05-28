@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from decision_policy import classify_strategy, robustness_score
 
 
-GOVERNANCE_VERSION = "V7.2"
+GOVERNANCE_VERSION = "V7.5"
 DEFAULT_FEATURES = "data/features_modern.csv"
 DEFAULT_REGISTRY = "model_registry.json"
 
@@ -496,6 +496,8 @@ def _build_sections(
     statistical_report_path: str = "",
     xg_quality_path: str = "",
     xg_model_path: str = "",
+    big5_xg_summary_path: str = "",
+    clv_readiness_path: str = "",
 ) -> List[Dict[str, Any]]:
     if db is None:
         db = _load_db()
@@ -538,6 +540,8 @@ def _build_sections(
         _optional_report_section("Statistical validation", statistical_report_path),
         _optional_report_section("XG quality report", xg_quality_path),
         _optional_report_section("XG model report", xg_model_path),
+        _optional_report_section("Big 5 xG summary", big5_xg_summary_path),
+        _optional_report_section("CLV readiness", clv_readiness_path),
     ])
     return sections
 
@@ -586,6 +590,8 @@ def build_benchmark(
     statistical_report_path: str = "",
     xg_quality_path: str = "",
     xg_model_path: str = "",
+    big5_xg_summary_path: str = "",
+    clv_readiness_path: str = "",
 ) -> Dict[str, Any]:
     sections = _build_sections(
         features_path,
@@ -596,12 +602,19 @@ def build_benchmark(
         statistical_report_path=statistical_report_path,
         xg_quality_path=xg_quality_path,
         xg_model_path=xg_model_path,
+        big5_xg_summary_path=big5_xg_summary_path,
+        clv_readiness_path=clv_readiness_path,
     )
     entries = collect_registry_entries(sections)
     entries = enrich_registry_entries(entries, sections)
     available = sum(1 for section in sections if section.get("ok"))
     failed = [section for section in sections if not section.get("ok")]
     best_score = max((entry.get("robustness_score", 0) for entry in entries), default=0)
+    report_data = {section.get("name"): section.get("data") for section in sections if section.get("ok") and isinstance(section.get("data"), dict)}
+    big5_data = report_data.get("Big 5 xG summary") or {}
+    big5_global = big5_data.get("global") or {}
+    clv_readiness = report_data.get("CLV readiness") or {}
+    clv_calculable = bool(clv_readiness.get("clv_calculable")) if clv_readiness else False
     robust = [
         entry for entry in entries
         if entry.get("robustness_score", 0) >= 80
@@ -609,7 +622,8 @@ def build_benchmark(
         and entry.get("clv_mean") is not None
         and entry.get("clv_mean") > 0
     ]
-    report_data = {section.get("name"): section.get("data") for section in sections if section.get("ok") and isinstance(section.get("data"), dict)}
+    if clv_readiness and not clv_calculable:
+        robust = []
     statistical_data = report_data.get("Statistical validation") or {}
     statistical_groups = statistical_data.get("by_strategy") or {}
     statistically_interesting = sum(
@@ -620,6 +634,16 @@ def build_benchmark(
         1 for stat in statistical_groups.values()
         if isinstance(stat, dict) and (stat.get("p_value_adjusted") is not None and stat.get("p_value_adjusted") < 0.05)
     )
+    promotion_blockers: List[str] = []
+    if clv_readiness and not clv_calculable:
+        promotion_blockers.append("CLV non calculable depuis la feature matrix actuelle")
+    if big5_data and (big5_global.get("robust_candidates") or 0) == 0:
+        promotion_blockers.append("Big 5 xG sans candidat robuste")
+    if big5_data and (big5_global.get("leagues_clv_available") or 0) == 0:
+        promotion_blockers.append("Big 5 xG bloque par CLV absente")
+    if not promotion_blockers:
+        promotion_blockers.append("Gouvernance complete requise avant tout affichage decisionnel")
+
     summary = {
         "generated_at": now_iso(),
         "version": GOVERNANCE_VERSION,
@@ -627,9 +651,21 @@ def build_benchmark(
         "xg_lab_path": xg_lab_path or None,
         "xg_quality_path": xg_quality_path or None,
         "xg_model_path": xg_model_path or None,
+        "big5_xg_summary_path": big5_xg_summary_path or None,
+        "clv_readiness_path": clv_readiness_path or None,
         "xg_lab_available": any(section.get("name") == "External xG rolling lab" and section.get("ok") for section in sections),
         "xg_quality_available": any(section.get("name") == "XG quality report" and section.get("ok") for section in sections),
         "xg_model_available": any(section.get("name") == "XG model report" and section.get("ok") for section in sections),
+        "big5_xg_available": bool(big5_data),
+        "clv_readiness_available": bool(clv_readiness),
+        "clv_calculable": clv_calculable,
+        "clv_missing_columns": clv_readiness.get("missing_columns") if clv_readiness else [],
+        "clv_markets_covered": clv_readiness.get("markets") if clv_readiness else {},
+        "big5_leagues_exploitable": big5_global.get("leagues_exploitable"),
+        "big5_observation_count": (big5_global.get("observations") or 0) + (big5_global.get("watchlist") or 0),
+        "big5_candidate_count": big5_global.get("robust_candidates", 0),
+        "big5_blocked_by_clv": bool(big5_data and (big5_global.get("leagues_clv_available") or 0) == 0),
+        "promotion_blockers": promotion_blockers,
         "clv_report_available": bool((report_data.get("CLV report") or {}).get("status") == "disponible"),
         "calibration_report_available": bool((report_data.get("Calibration report") or {}).get("status") == "disponible"),
         "statistical_report_available": bool((report_data.get("Statistical validation") or {}).get("status") == "disponible"),
@@ -645,7 +681,7 @@ def build_benchmark(
         "warnings": [
             f"{section['name']}: {section.get('error', '')}"
             for section in failed
-            if section.get("name") in {"CLV report", "Calibration report", "Statistical validation", "XG quality report", "XG model report"}
+            if section.get("name") in {"CLV report", "Calibration report", "Statistical validation", "XG quality report", "XG model report", "Big 5 xG summary", "CLV readiness"}
         ],
         "conclusion": "Aucune strategie robuste positive ne doit etre activee automatiquement." if not robust else "Candidats robustes observes, validation humaine requise avant tout affichage decisionnel.",
     }
@@ -733,7 +769,16 @@ def write_html(benchmark: Dict[str, Any], path: str) -> Path:
         f"<li>Strategies survivant correction: {benchmark['summary'].get('strategies_surviving_multiple_testing')}</li>",
         f"<li>Quality gate xG disponible: {benchmark['summary'].get('xg_quality_available')}</li>",
         f"<li>Modele xG disponible: {benchmark['summary'].get('xg_model_available')}</li>",
+        f"<li>Big 5 xG summary disponible: {benchmark['summary'].get('big5_xg_available')}</li>",
+        f"<li>CLV readiness disponible: {benchmark['summary'].get('clv_readiness_available')}</li>",
+        f"<li>CLV calculable: {benchmark['summary'].get('clv_calculable')}</li>",
+        f"<li>Ligues Big 5 exploitables: {benchmark['summary'].get('big5_leagues_exploitable')}</li>",
+        f"<li>Observations Big 5: {benchmark['summary'].get('big5_observation_count')}</li>",
+        f"<li>Candidats Big 5: {benchmark['summary'].get('big5_candidate_count')}</li>",
         "</ul>",
+        "<section class='warn'><h2>Promotion blockers</h2><ul>",
+        *[f"<li>{html.escape(str(item))}</li>" for item in benchmark["summary"].get("promotion_blockers") or []],
+        "</ul></section>",
         "<section class='warn'><h2>Sections indisponibles</h2><ul>",
         failed_html,
         "</ul></section>",
@@ -763,6 +808,13 @@ def print_report(benchmark: Dict[str, Any]) -> None:
     print(f"- Strategies survivant correction multiple testing: {summary.get('strategies_surviving_multiple_testing')}")
     print(f"- Quality gate xG disponible: {summary.get('xg_quality_available')}")
     print(f"- Modele xG disponible: {summary.get('xg_model_available')}")
+    print(f"- Big 5 xG summary disponible: {summary.get('big5_xg_available')}")
+    print(f"- CLV readiness disponible: {summary.get('clv_readiness_available')}")
+    print(f"- CLV calculable: {summary.get('clv_calculable')}")
+    print(f"- Observations Big 5: {summary.get('big5_observation_count')}")
+    print(f"- Candidats Big 5: {summary.get('big5_candidate_count')}")
+    for blocker in summary.get("promotion_blockers") or []:
+        print(f"- Blocage promotion: {blocker}")
     print(f"- Meilleur score robustesse: {summary['best_robustness_score']}/100")
     print(f"- Candidats robustes: {summary['robust_candidates']}")
     print("- Top gouvernance:")
@@ -784,6 +836,8 @@ def parse_args(argv=None):
     parser.add_argument("--statistical-report", default="", help="JSON validation statistique deja genere")
     parser.add_argument("--xg-quality", default="", help="JSON quality gate xG Understat")
     parser.add_argument("--xg-model", default="", help="JSON modele xG Understat")
+    parser.add_argument("--big5-xg-summary", default="", help="JSON agregateur Big 5 xG")
+    parser.add_argument("--clv-readiness", default="", help="JSON readiness CLV")
     return parser.parse_args(argv)
 
 
@@ -797,6 +851,8 @@ def main(argv=None) -> int:
         statistical_report_path=args.statistical_report,
         xg_quality_path=args.xg_quality,
         xg_model_path=args.xg_model,
+        big5_xg_summary_path=args.big5_xg_summary,
+        clv_readiness_path=args.clv_readiness,
     )
     registry_path = write_registry(benchmark["registry"], args.registry)
     if args.summary_json:
