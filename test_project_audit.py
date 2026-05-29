@@ -79,6 +79,7 @@ def test_release_candidate_docs_exist_and_have_sections():
         "closing odds recovery",
         "partial clv pipeline",
         "closing column forensics",
+        "shadow mode",
         "statistical proof foundation",
         "clv",
         "reliability curves",

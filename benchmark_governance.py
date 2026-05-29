@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from decision_policy import classify_strategy, robustness_score
 
 
-GOVERNANCE_VERSION = "V7.7"
+GOVERNANCE_VERSION = "V8.0"
 DEFAULT_FEATURES = "data/features_modern.csv"
 DEFAULT_REGISTRY = "model_registry.json"
 
@@ -517,6 +517,7 @@ def _build_sections(
     big5_xg_summary_path: str = "",
     clv_readiness_path: str = "",
     closing_probe_path: str = "",
+    shadow_report_path: str = "",
 ) -> List[Dict[str, Any]]:
     if db is None:
         db = _load_db()
@@ -562,6 +563,7 @@ def _build_sections(
         _optional_report_section("Big 5 xG summary", big5_xg_summary_path),
         _optional_report_section("CLV readiness", clv_readiness_path),
         _optional_report_section("Closing odds probe", closing_probe_path),
+        _optional_report_section("Shadow CLV report", shadow_report_path),
     ])
     return sections
 
@@ -613,6 +615,7 @@ def build_benchmark(
     big5_xg_summary_path: str = "",
     clv_readiness_path: str = "",
     closing_probe_path: str = "",
+    shadow_report_path: str = "",
 ) -> Dict[str, Any]:
     sections = _build_sections(
         features_path,
@@ -626,6 +629,7 @@ def build_benchmark(
         big5_xg_summary_path=big5_xg_summary_path,
         clv_readiness_path=clv_readiness_path,
         closing_probe_path=closing_probe_path,
+        shadow_report_path=shadow_report_path,
     )
     entries = collect_registry_entries(sections)
     entries = enrich_registry_entries(entries, sections)
@@ -638,6 +642,7 @@ def build_benchmark(
     clv_readiness = report_data.get("CLV readiness") or {}
     closing_probe = report_data.get("Closing odds probe") or {}
     clv_report_data = report_data.get("CLV report") or {}
+    shadow_report = report_data.get("Shadow CLV report") or {}
     clv_calculable = bool(clv_readiness.get("clv_calculable")) if clv_readiness else False
     clv_calculable_now = bool(clv_readiness.get("clv_calculable_now", clv_calculable)) if clv_readiness else False
     clv_calculable_after_enrichment = bool(clv_readiness.get("clv_calculable_after_enrichment")) if clv_readiness else False
@@ -703,6 +708,15 @@ def build_benchmark(
         promotion_blockers.append("xG ne bat pas le marche sur les metriques probabilistes disponibles")
     if statistical_groups and surviving_correction == 0:
         promotion_blockers.append("Multiple testing: aucune strategie ne survit la correction")
+    if shadow_report:
+        shadow_sample = shadow_report.get("sample_size") or shadow_report.get("signals_total") or 0
+        if shadow_sample < 1000:
+            promotion_blockers.append("Shadow mode: sample inferieur a 1000")
+        if shadow_report.get("clv_mean") is None:
+            promotion_blockers.append("Shadow mode: CLV manuelle absente")
+        elif shadow_report.get("clv_mean") <= 0:
+            promotion_blockers.append("Shadow mode: CLV moyenne non positive")
+        promotion_blockers.append("Shadow mode: validation historique et revue humaine requises")
     if not promotion_blockers:
         promotion_blockers.append("Gouvernance complete requise avant tout affichage decisionnel")
 
@@ -716,12 +730,20 @@ def build_benchmark(
         "big5_xg_summary_path": big5_xg_summary_path or None,
         "clv_readiness_path": clv_readiness_path or None,
         "closing_probe_path": closing_probe_path or None,
+        "shadow_report_path": shadow_report_path or None,
         "xg_lab_available": any(section.get("name") == "External xG rolling lab" and section.get("ok") for section in sections),
         "xg_quality_available": any(section.get("name") == "XG quality report" and section.get("ok") for section in sections),
         "xg_model_available": any(section.get("name") == "XG model report" and section.get("ok") for section in sections),
         "big5_xg_available": bool(big5_data),
         "clv_readiness_available": bool(clv_readiness),
         "closing_probe_available": bool(closing_probe),
+        "shadow_report_available": bool(shadow_report),
+        "shadow_signals": shadow_report.get("signals_total"),
+        "shadow_clv_coverage": shadow_report.get("clv_coverage"),
+        "shadow_clv_mean": shadow_report.get("clv_mean"),
+        "shadow_clv_positive_rate": shadow_report.get("clv_positive_rate"),
+        "shadow_sample": shadow_report.get("sample_size") or shadow_report.get("signals_total"),
+        "shadow_verdict": shadow_report.get("verdict"),
         "clv_calculable": clv_calculable,
         "clv_calculable_now": clv_calculable_now,
         "clv_calculable_after_enrichment": clv_calculable_after_enrichment,
@@ -856,6 +878,11 @@ def write_html(benchmark: Dict[str, Any], path: str) -> Path:
         f"<li>Big 5 xG summary disponible: {benchmark['summary'].get('big5_xg_available')}</li>",
         f"<li>CLV readiness disponible: {benchmark['summary'].get('clv_readiness_available')}</li>",
         f"<li>Closing odds probe disponible: {benchmark['summary'].get('closing_probe_available')}</li>",
+        f"<li>Shadow report disponible: {benchmark['summary'].get('shadow_report_available')}</li>",
+        f"<li>Shadow signals: {benchmark['summary'].get('shadow_signals')}</li>",
+        f"<li>Shadow CLV coverage: {benchmark['summary'].get('shadow_clv_coverage')}</li>",
+        f"<li>Shadow CLV moyenne: {benchmark['summary'].get('shadow_clv_mean')}</li>",
+        f"<li>Shadow verdict: {html.escape(str(benchmark['summary'].get('shadow_verdict')))}</li>",
         f"<li>CLV calculable: {benchmark['summary'].get('clv_calculable')}</li>",
         f"<li>Scope CLV: {html.escape(str(benchmark['summary'].get('clv_scope')))}</li>",
         f"<li>Coverage CLV: {benchmark['summary'].get('clv_coverage')}</li>",
@@ -903,6 +930,11 @@ def print_report(benchmark: Dict[str, Any]) -> None:
     print(f"- Big 5 xG summary disponible: {summary.get('big5_xg_available')}")
     print(f"- CLV readiness disponible: {summary.get('clv_readiness_available')}")
     print(f"- Closing odds probe disponible: {summary.get('closing_probe_available')}")
+    print(f"- Shadow report disponible: {summary.get('shadow_report_available')}")
+    print(f"- Shadow signals: {summary.get('shadow_signals')}")
+    print(f"- Shadow CLV coverage: {summary.get('shadow_clv_coverage')}")
+    print(f"- Shadow CLV moyenne: {summary.get('shadow_clv_mean')}")
+    print(f"- Shadow verdict: {summary.get('shadow_verdict')}")
     print(f"- CLV calculable: {summary.get('clv_calculable')}")
     print(f"- Scope CLV: {summary.get('clv_scope')}")
     print(f"- Coverage CLV: {summary.get('clv_coverage')}")
@@ -939,6 +971,7 @@ def parse_args(argv=None):
     parser.add_argument("--big5-xg-summary", default="", help="JSON agregateur Big 5 xG")
     parser.add_argument("--clv-readiness", default="", help="JSON readiness CLV")
     parser.add_argument("--closing-probe", default="", help="JSON closing_odds_probe optionnel")
+    parser.add_argument("--shadow-report", default="", help="JSON shadow_clv_report optionnel")
     return parser.parse_args(argv)
 
 
@@ -955,6 +988,7 @@ def main(argv=None) -> int:
         big5_xg_summary_path=args.big5_xg_summary,
         clv_readiness_path=args.clv_readiness,
         closing_probe_path=args.closing_probe,
+        shadow_report_path=args.shadow_report,
     )
     registry_path = write_registry(benchmark["registry"], args.registry)
     if args.summary_json:

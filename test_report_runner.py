@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, run_report, xg_understat_commands
+from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, run_report, shadow_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -157,6 +157,18 @@ Understat xG Full Pipeline Quality Gate
             "summary": {"n": 2, "clv_mean": 0.01, "clv_positive_rate": 50.0},
         }, ensure_ascii=False), encoding="utf-8")
         write_report(report_dir / "clv_partial_report.txt", "Rapport CLV Oracle Bot\n- Scope CLV: partial_h2h_home_away\n- Coverage global: 50.0%\n- CLV moyenne: 0.01\n")
+        (report_dir / "shadow_clv_report.json").write_text(json.dumps({
+            "signals_total": 3,
+            "signals_with_closing": 2,
+            "clv_coverage": 66.67,
+            "clv_mean": 0.01,
+            "clv_positive_rate": 50.0,
+            "roi": -1.0,
+            "sample_size": 3,
+            "verdict": "sample_insufficient",
+            "warnings": ["sample <1000: promotion impossible"],
+        }, ensure_ascii=False), encoding="utf-8")
+        write_report(report_dir / "shadow_clv_report.txt", "Shadow CLV Report\n- Signaux shadow: 3\n- Coverage CLV: 66.67%\n- Verdict: sample_insufficient\n")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -176,6 +188,7 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Big 5 xG aggregator" for command in command_set("big5-xg"))
         assert any(command.name == "Closing odds probe" for command in command_set("closing-readiness"))
         assert any(command.name == "CLV partial analysis" for command in command_set("closing-preview"))
+        assert any(command.name == "Shadow CLV report" for command in command_set("shadow"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
@@ -189,6 +202,10 @@ Understat xG Full Pipeline Quality Gate
         preview_commands = closing_preview_commands("features.csv", "matches.csv", str(root / "reports" / "preview.csv"), skip_benchmark=True)
         assert any("features_closing_enricher.py" in command.args for command in preview_commands)
         assert not any("benchmark_governance.py" in command.args for command in preview_commands)
+        shadow_cmds = shadow_commands(str(root / "reports" / "shadow_ledger.csv"), "features.csv", skip_benchmark=False)
+        assert any("shadow_clv_report.py" in command.args for command in shadow_cmds)
+        assert any("--shadow-report" in command.args for command in shadow_cmds)
+        assert any("dashboard_builder.py" in command.args for command in shadow_cmds)
         try:
             closing_preview_commands("features.csv", "matches.csv", str(root / "data" / "preview.csv"))
             raise AssertionError("preview data non bloquee")
@@ -204,6 +221,7 @@ Understat xG Full Pipeline Quality Gate
         assert "League readiness table" in html
         assert "Closing Odds Recovery Plan" in html
         assert "CLV partielle / Closing odds" in html
+        assert "Shadow Mode Live Evidence" in html
         assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 

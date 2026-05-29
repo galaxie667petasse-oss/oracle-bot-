@@ -24,3 +24,14 @@ Cette phase ne modifie ni `data/MATCHES.csv`, ni `data/features_modern.csv`, ni 
 - Datasets Kaggle avec closing odds documentees et schema clair.
 
 Sans closing fiable, le projet reste un outil d'analyse prudent. Il ne devient pas un systeme valide de picks.
+
+## V8.0 : capture manuelle en shadow mode
+
+Comme `data/MATCHES.csv` ne fournit pas actuellement de cotes closing decimales exploitables, la voie prudente est de collecter les preuves live en shadow mode :
+
+1. noter la cote prise avec `shadow_ledger.py` ;
+2. attendre la closing line reelle ;
+3. importer cette closing line avec `closing_manual_import.py` ;
+4. relire le rapport `shadow_clv_report.py`.
+
+Cette capture manuelle ne conseille pas de pari. Elle permet seulement de savoir si les observations Oracle prenaient de meilleurs prix que le marche final. Meme une CLV positive reste insuffisante avec un petit sample.

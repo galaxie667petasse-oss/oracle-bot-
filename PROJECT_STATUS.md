@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V7.8 Closing Column Forensics.
+V8.0 Shadow Mode & Manual CLV Capture.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery et V7.7 Partial CLV Pipeline restent en place. V7.8 ajoute le profil forensique des colonnes closing : une colonne `C_*` doit maintenant prouver par ses valeurs qu'elle est une cote decimale plausible. Aucun signal robuste active. Aucun changement V7.8 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline et V7.8 Closing Column Forensics restent en place. V8.0 ajoute un mode shadow local pour collecter des observations live et des closing odds manuelles. Aucun signal robuste active. Aucun changement V8.0 ne branche Telegram, Railway ou un pick automatique.
 
 ## Etat general
 
@@ -22,12 +22,16 @@ Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full 
 - Rapport CLV readiness disponible via `clv_readiness_report.py`.
 - Probe closing odds disponible via `closing_odds_probe.py`, lecture seule.
 - Closing column forensics disponible : min/max/mediane/percentiles, exemples bruts, taux de valeurs plausibles et verdict par colonne.
+- Shadow ledger local disponible via `shadow_ledger.py`.
+- Import closing manuel disponible via `closing_manual_import.py`.
+- Rapport CLV shadow disponible via `shadow_clv_report.py`.
+- Candidats shadow quotidiens disponibles via `daily_shadow_candidates.py`.
 - Preview features closing disponible via `features_closing_enricher.py`, sortie limitee a `reports/`.
 - CLV partielle H2H home/away disponible uniquement si la closing exacte du cote joue existe.
 - CLV / Closing Line Value disponible si des cotes closing sont presentes.
 - Reliability curves disponibles via `calibration_report.py`.
 - Validation statistique disponible via `statistical_validation.py`.
-- Benchmark gouvernance V7.7 disponible.
+- Benchmark gouvernance V8.0 disponible.
 - Aucun signal robuste active et aucun candidat robuste sans CLV positive.
 - Railway/Telegram toujours en attente.
 
@@ -65,9 +69,13 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - `calibration_report.py` : Brier, log loss, ECE, MCE et reliability curves.
 - `statistical_validation.py` : IC ROI, bootstrap, Monte Carlo, drawdown, sample size et Benjamini-Hochberg.
 - `decision_policy.py` : gates CLV/calibration/statistiques/multiple testing.
-- `benchmark_governance.py` : registre enrichi V7.7 avec nulls, scope CLV et warnings si metriques absentes.
+- `benchmark_governance.py` : registre enrichi V8.0 avec CLV, shadow report, nulls prudents et warnings si metriques absentes.
 - `report_runner.py` : mode `--statistical`.
 - `dashboard_builder.py` : sections CLV, calibration, validation statistique, multiple testing et gouvernance finale.
+- `shadow_ledger.py` : journal local des observations shadow dans `reports/`.
+- `closing_manual_import.py` : import manuel de closing odds par `shadow_id`.
+- `shadow_clv_report.py` : rapport CLV/ROI shadow, observation seulement.
+- `daily_shadow_candidates.py` : preparation de candidats shadow depuis CSV live ou historique, sans conseil de pari.
 
 ## Resultats connus
 
@@ -84,7 +92,7 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - Serie A Understat 2020-2025 : export utilisateur observe a 1900 matchs, cinq saisons completes, xG coverage 100%, jointure apres alias observee a 95.79% avant correction Parma ; `Parma Calcio 1913` est maintenant mappe vers `Parma`.
 - Ligue 1 : aliases prets, export a lancer manuellement.
 - CLV sur `data/features_modern.csv` est probablement indisponible tant que les colonnes closing `C_*` ne sont pas exportees.
-- `data/MATCHES.csv` peut contenir une CLV source partielle H2H home/away via `C_LTH/C_LTA`, a confirmer par preview.
+- `data/MATCHES.csv` contient des colonnes `C_LTH/C_LTA` detectees par nom, mais V7.8 les a rejetees comme valeurs non plausibles pour des cotes decimales.
 - Rien n'est branche aux picks Telegram ou Railway.
 
 ## Ce qui est valide
@@ -115,10 +123,10 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 
 ## Prochaine vraie priorite
 
-1. Commit/push la phase locale V7.8.
-2. Lancer `closing_odds_probe.py --csv data/MATCHES.csv --sample-values --max-sample 50 --output reports/closing_odds_probe.json --html reports/closing_odds_probe.html`.
-3. Verifier les verdicts `C_LTH` et `C_LTA`.
+1. Commit/push la phase locale V8.0.
+2. Utiliser `shadow_ledger.py --init` puis ajouter les observations shadow des matchs de juin.
+3. Importer les closing odds manuelles fiables avec `closing_manual_import.py`.
 4. Lancer manuellement Ligue 1, puis `join_diagnostics.py --league "Ligue 1"` et le pipeline strict.
 5. Relancer `multi_league_xg_aggregator.py`.
-6. Si la CLV partielle H2H est interessante, preparer V7.8 H2H-only CLV governance.
+6. Relire `shadow_clv_report.py` avec sample, coverage et CLV moyenne.
 7. Sinon chercher une source closing complete fiable.

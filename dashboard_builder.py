@@ -29,6 +29,7 @@ REPORT_FILES = {
     "big5_xg": "big5_xg_summary.txt",
     "clv_readiness": "clv_readiness.txt",
     "closing_odds_probe": "closing_odds_probe.txt",
+    "shadow_clv": "shadow_clv_report.txt",
 }
 
 
@@ -130,6 +131,7 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     big5_xg = read_json_candidates(report_dir, ["big5_xg_summary.json"])
     clv_readiness = read_json_candidates(report_dir, ["clv_readiness.json"])
     closing_probe = read_json_candidates(report_dir, ["closing_odds_probe.json"])
+    shadow_clv = read_json_candidates(report_dir, ["shadow_clv_report.json"])
     pipeline_final = understat_pipeline.get("final_status") or {}
     pipeline_model = pipeline_final.get("xg_model") or {}
 
@@ -230,6 +232,15 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "closing_probe_btts": closing_probe.get("btts_closing_available"),
         "closing_probe_columns": ((closing_probe.get("detected_columns") or {}).get("all_closing") or []),
         "recommended_next_command": clv_readiness.get("recommended_next_command"),
+        "shadow_report_available": bool(shadow_clv),
+        "shadow_signals": shadow_clv.get("signals_total"),
+        "shadow_clv_coverage": shadow_clv.get("clv_coverage"),
+        "shadow_clv_mean": shadow_clv.get("clv_mean"),
+        "shadow_clv_positive_rate": shadow_clv.get("clv_positive_rate"),
+        "shadow_roi": shadow_clv.get("roi"),
+        "shadow_sample": shadow_clv.get("sample_size"),
+        "shadow_verdict": shadow_clv.get("verdict"),
+        "shadow_warnings": shadow_clv.get("warnings") or [],
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -286,6 +297,7 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         ("understat_quality_verdict", "Quality xG Understat"),
         ("big5_leagues_available", "Ligues Big 5"),
         ("clv_calculable", "CLV calculable"),
+        ("shadow_signals", "Signaux shadow"),
     ]:
         value = summary.get(key)
         parts.append(f"<div class='metric'><strong>{html.escape(label)}</strong><br>{html.escape(str(value) if value is not None else 'n/a')}</div>")
@@ -414,6 +426,22 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     if texts["clv_partial"]:
         clv_partial_lines.extend(_lines_matching(texts["clv_partial"], ["Scope", "Coverage", "CLV moyenne", "CLV positive", "partielle", "Avertissement"], 24))
     parts.append(_card("CLV partielle / Closing odds", "\n".join(clv_partial_lines)))
+
+    shadow_lines = [
+        f"rapport disponible: {summary.get('shadow_report_available')}",
+        f"signaux shadow: {summary.get('shadow_signals')}",
+        f"coverage CLV: {summary.get('shadow_clv_coverage')}%",
+        f"CLV moyenne: {summary.get('shadow_clv_mean')}",
+        f"CLV positive: {summary.get('shadow_clv_positive_rate')}%",
+        f"ROI resultats disponibles: {summary.get('shadow_roi')}",
+        f"sample: {summary.get('shadow_sample')}",
+        f"verdict: {summary.get('shadow_verdict')}",
+        f"blockers: {', '.join(summary.get('shadow_warnings') or []) or 'n/a'}",
+        "statut: observation shadow seulement, aucune mise automatique.",
+    ]
+    if texts["shadow_clv"]:
+        shadow_lines.extend(_lines_matching(texts["shadow_clv"], ["Signaux", "Coverage", "CLV moyenne", "CLV positive", "ROI", "Verdict", "Avertissement"], 24))
+    parts.append(_card("Shadow Mode Live Evidence", "\n".join(shadow_lines)))
 
     league_rows = []
     for item in (big5_xg.get("leagues") or []):

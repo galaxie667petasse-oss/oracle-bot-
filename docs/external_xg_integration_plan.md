@@ -360,3 +360,9 @@ python closing_odds_probe.py --csv data/MATCHES.csv --sample-values --max-sample
 ```
 
 Le probe ne se contente pas du nom `C_*`. Il verifie les distributions, les exemples, les percentiles et la part des valeurs plausibles en cotes decimales. Si une colonne est detectee par nom mais non plausible, la preview closing doit la rejeter. Le xG peut rester utile pour calibration, mais sans closing fiable, il ne valide aucun edge betting.
+
+## V8.0 Shadow Mode & Manual CLV Capture
+
+Le Big Five xG complet peut produire des observations techniques, mais la preuve betting doit maintenant venir d'un suivi live propre. `shadow_ledger.py` enregistre les observations, `closing_manual_import.py` ajoute les closing odds manuelles et `shadow_clv_report.py` mesure la CLV shadow.
+
+Ce mode ne lance aucune recuperation reseau et ne branche rien a Telegram. Il sert a accumuler un sample de matchs de juin, avec closing odds reelles, avant toute conclusion. Sample < 1000 ou CLV absente = observation seulement.

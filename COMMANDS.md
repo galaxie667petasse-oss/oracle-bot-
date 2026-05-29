@@ -547,13 +547,54 @@ Sorties :
 
 Le benchmark attribue un score prudent et une decision : rejected, watchlist, observation, candidate, active_shadow_only, active_decision_support ou production_allowed. Meme `production_allowed` ne signifie jamais pari automatique. Rien n'est branche aux picks Telegram.
 
-## 21. Git workflow
+## 21. V8.0 Shadow Mode & Manual CLV Capture
+
+Initialiser le ledger shadow local :
+
+```bash
+python shadow_ledger.py --init
+```
+
+Ajouter une observation shadow, sans conseil de mise :
+
+```bash
+python shadow_ledger.py --add --match-date 2026-06-01 --league EPL --home "Arsenal" --away "Chelsea" --market h2h --side home --taken-odds 2.10 --bookmaker manual --strategy-name test_signal --reason "observation shadow"
+```
+
+Importer une cote closing manuelle :
+
+```bash
+python closing_manual_import.py --ledger reports/shadow_ledger.csv --closing-csv reports/manual_closing_import.csv
+```
+
+Format du CSV manuel :
+
+```csv
+shadow_id,closing_odds,closing_source,notes
+sh_xxx,2.00,manual_close,closing observee manuellement
+```
+
+Generer le rapport CLV shadow :
+
+```bash
+python shadow_clv_report.py --ledger reports/shadow_ledger.csv --output reports/shadow_clv_report.json --html reports/shadow_clv_report.html
+```
+
+Runner shadow :
+
+```bash
+python report_runner.py --shadow
+```
+
+Rappel : ce mode collecte des preuves live. Il ne publie aucun pick, ne conseille aucune mise et ne transforme jamais une CLV positive court terme en validation.
+
+## 22. Git workflow
 
 ```bash
 git status --short
 git diff
-git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
-git commit -m "Add closing column forensics V7.8"
+git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md docs/closing_odds_forensics.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py shadow_ledger.py closing_manual_import.py shadow_clv_report.py daily_shadow_candidates.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_shadow_ledger.py test_closing_manual_import.py test_shadow_clv_report.py test_daily_shadow_candidates.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
+git commit -m "Add shadow mode manual CLV capture V8.0"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -562,7 +603,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 22. Ce qu'il ne faut pas faire
+## 23. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

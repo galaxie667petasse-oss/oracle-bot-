@@ -406,6 +406,22 @@ Les verdicts possibles sont `decimal_odds_plausible`, `numeric_but_not_odds`, `m
 
 Cette phase ne calcule pas de CLV si les valeurs ne sont pas des cotes decimales. Elle confirme que le projet reste laboratoire prudent tant qu'une source closing fiable n'est pas identifiee.
 
+## V8.0 Shadow Mode & Manual CLV Capture
+
+V8.0 cree un mode shadow local pour les matchs futurs. Le bot peut enregistrer une observation Oracle dans `reports/shadow_ledger.csv`, avec la cote prise, le marche, le cote joue, la strategie, la raison et le statut. Ce ledger ne conseille aucune mise : il sert uniquement a construire une preuve live propre.
+
+La CLV shadow n'est calculee que si une vraie cote closing decimale est fournie manuellement via `closing_manual_import.py`. Si la closing odds manque, la CLV reste non calculable. `shadow_clv_report.py` resume ensuite coverage CLV, CLV moyenne, CLV positive rate, ROI si resultats connus, sample size et verdict shadow.
+
+Regles V8.0 :
+
+- pas de Telegram agressif ;
+- pas de Railway ;
+- pas de pick automatique ;
+- pas de Kelly reel ;
+- sample < 1000 = promotion impossible ;
+- CLV positive en shadow = observation, pas garantie de rentabilite ;
+- sans closing fiable, le mode shadow reste un journal d'analyse.
+
 ## Statistical Proof Foundation
 
 La phase V7.0 ajoute la couche de preuve statistique. Elle ne cree aucun pick, ne modifie pas Telegram, ne modifie pas Railway et ne touche pas a `oracle_db.json`.
@@ -587,7 +603,7 @@ python project_audit.py
 
 ## Etat actuel : aucune strategie robuste positive
 
-Etat V7.7 Partial CLV Pipeline, H2H Closing Preview & Ligue 1 Readiness :
+Etat V8.0 Shadow Mode & Manual CLV Capture :
 
 - memoire moderne 2015-2025 ;
 - environ 528066 records regles ;
@@ -605,6 +621,10 @@ Etat V7.7 Partial CLV Pipeline, H2H Closing Preview & Ligue 1 Readiness :
 - closing odds probe disponible ;
 - preview features closing disponible uniquement dans `reports/` ;
 - CLV partielle H2H home/away disponible en diagnostic si `C_LTH/C_LTA` sont presents ;
+- V7.8 a rejete `C_LTH/C_LTA` comme `numeric_but_not_odds` dans `data/MATCHES.csv` local ;
+- shadow ledger disponible pour collecter les observations live de juin ;
+- import manuel de closing odds disponible par `shadow_id` ;
+- rapport CLV shadow disponible, observation seulement ;
 - draw, totals et BTTS restent exclus sans colonnes closing exactes ;
 - CLV, calibration et validation statistique disponibles ;
 - Scientific Benchmark et Model Governance disponibles ;
@@ -618,10 +638,10 @@ Etat V7.7 Partial CLV Pipeline, H2H Closing Preview & Ligue 1 Readiness :
 Priorite suivante :
 
 1. Commit/push les phases locales prudentes.
-2. Lancer `report_runner.py --closing-preview --skip-benchmark` pour produire la preview CLV partielle.
-3. Verifier coverage, CLV mean, CLV positive rate et sample H2H.
+2. Initialiser `shadow_ledger.py --init`.
+3. Ajouter les observations shadow des matchs de juin sans conseil de mise.
 4. Lancer manuellement Ligue 1 Understat, sans automatiser de reseau.
-5. Relancer diagnostics, pipelines stricts et agregateur Big 5.
-6. Si la CLV partielle est interessante, envisager V7.8 H2H-only CLV governance.
-7. Sinon chercher une source closing complete et fiable.
+5. Importer les closing odds manuelles fiables avec `closing_manual_import.py`.
+6. Relancer `shadow_clv_report.py` et lire sample/coverage/CLV moyenne.
+7. Chercher une source closing complete et fiable si le manuel ne suffit pas.
 8. Ne penser a Railway ou Telegram qu'apres CLV positive, preuve statistique robuste et revue humaine.

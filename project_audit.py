@@ -34,6 +34,10 @@ ESSENTIAL_FILES = [
     "clv_readiness_report.py",
     "closing_odds_probe.py",
     "features_closing_enricher.py",
+    "shadow_ledger.py",
+    "closing_manual_import.py",
+    "shadow_clv_report.py",
+    "daily_shadow_candidates.py",
     "report_runner.py",
     "dashboard_builder.py",
     "model_registry.json",
@@ -64,6 +68,10 @@ MAIN_TESTS = [
     "test_clv_readiness_report.py",
     "test_closing_odds_probe.py",
     "test_features_closing_enricher.py",
+    "test_shadow_ledger.py",
+    "test_closing_manual_import.py",
+    "test_shadow_clv_report.py",
+    "test_daily_shadow_candidates.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -102,6 +110,10 @@ IMPORT_MODULES = [
     "clv_readiness_report",
     "closing_odds_probe",
     "features_closing_enricher",
+    "shadow_ledger",
+    "closing_manual_import",
+    "shadow_clv_report",
+    "daily_shadow_candidates",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -129,6 +141,10 @@ OFFLINE_COMMAND_FILES = [
     "clv_readiness_report.py",
     "closing_odds_probe.py",
     "features_closing_enricher.py",
+    "shadow_ledger.py",
+    "closing_manual_import.py",
+    "shadow_clv_report.py",
+    "daily_shadow_candidates.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [
@@ -336,9 +352,9 @@ def check_docs(root: Path, result: AuditResult) -> None:
         result.add_ok("README.md contient les sections principales de stabilisation.")
 
     if ("v7.0" not in status and "v7.2" not in status) or ("aucune strategie robuste" not in status and "aucun signal robuste" not in status):
-        result.add_warning("PROJECT_STATUS.md doit mentionner V7.x et l'absence de strategie robuste activee.")
+        result.add_warning("PROJECT_STATUS.md doit mentionner V7/V8 et l'absence de strategie robuste activee.")
     else:
-        result.add_ok("PROJECT_STATUS.md resume l'etat prudent V7.x.")
+        result.add_ok("PROJECT_STATUS.md resume l'etat prudent V7/V8.")
 
 
 def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = True) -> AuditResult:

@@ -200,6 +200,30 @@ def main():
         assert all(entry.get("partial_clv_warning") for entry in benchmark_partial["registry"])
         assert any(entry.get("clv_blocks_promotion_reason") for entry in benchmark_partial["registry"] if "total" in entry.get("name", "").lower() or "global" in entry.get("name", "").lower())
 
+        shadow_path = root / "reports" / "shadow_clv_report.json"
+        shadow_path.write_text(json.dumps({
+            "signals_total": 25,
+            "signals_with_closing": 20,
+            "clv_coverage": 80.0,
+            "clv_mean": 0.012,
+            "clv_positive_rate": 60.0,
+            "sample_size": 25,
+            "verdict": "sample_insufficient",
+            "lab_only": True,
+            "can_influence_picks": False,
+        }, ensure_ascii=False), encoding="utf-8")
+        benchmark_shadow = benchmark_governance.build_benchmark(
+            str(root / "features_absent.csv"),
+            db=synthetic_db(),
+            shadow_report_path=str(shadow_path),
+        )
+        assert benchmark_shadow["summary"]["shadow_report_available"] is True
+        assert benchmark_shadow["summary"]["shadow_signals"] == 25
+        assert benchmark_shadow["summary"]["shadow_clv_mean"] == 0.012
+        assert benchmark_shadow["summary"]["shadow_verdict"] == "sample_insufficient"
+        assert any("Shadow mode: sample inferieur a 1000" in blocker for blocker in benchmark_shadow["summary"]["promotion_blockers"])
+        assert benchmark_shadow["summary"]["robust_candidates"] == 0
+
         quality_path = root / "reports" / "xg_quality.json"
         model_path = root / "reports" / "xg_model.json"
         quality_path.write_text(json.dumps({

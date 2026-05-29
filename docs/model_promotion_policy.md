@@ -147,3 +147,15 @@ Une strategie H2H couverte peut etre mieux observee avec cette CLV, mais elle re
 Une colonne closing detectee par nom ne suffit pas pour passer le gate CLV. `closing_odds_probe.py` doit classer la colonne `decimal_odds_plausible` apres profil des valeurs. Les verdicts `numeric_but_not_odds`, `mostly_empty`, `text_or_code` et `unknown` bloquent le calcul CLV.
 
 Si `C_LTH` ou `C_LTA` existent mais contiennent des valeurs non plausibles comme cotes decimales, `features_closing_enricher.py` doit les rejeter et `clv_readiness_report.py` doit exposer le bloqueur. Aucun signal ne peut etre promu sur une colonne closing seulement nommee, non validee.
+
+## V8.0 Shadow Mode & Manual CLV Capture
+
+Le shadow mode est un journal de preuve live, pas un systeme de picks. Un signal shadow peut etre ajoute avec une cote prise et une raison, puis complete plus tard avec une closing odds manuelle fiable. La CLV est calculee uniquement si cette closing odds est une cote decimale > 1.01.
+
+Regles de promotion :
+
+- sample shadow < 1000 : promotion impossible ;
+- CLV shadow absente ou non positive : promotion impossible ;
+- ROI shadow positif sans CLV robuste : observation seulement ;
+- CLV shadow positive avec ROI court terme negatif : observation seulement ;
+- aucune strategie shadow ne peut devenir conseil de pari sans gouvernance historique complete et revue humaine.
