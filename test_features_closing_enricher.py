@@ -74,6 +74,23 @@ def main():
         no_closing = features_closing_enricher.enrich_features_with_closing(str(features), str(source_without), str(output_without))
         assert no_closing["rows_with_closing"] == 0
         assert no_closing["source_has_closing"] is False
+
+        source_invalid = root / "matches_invalid_closing.csv"
+        output_invalid = root / "reports" / "features_invalid_closing_preview.csv"
+        write_csv(
+            source_invalid,
+            ["Date", "HomeTeam", "AwayTeam", "C_LTH", "C_LTA"],
+            [{"Date": "2024-01-01", "HomeTeam": "Alpha", "AwayTeam": "Beta", "C_LTH": "0", "C_LTA": "1"}],
+        )
+        invalid = features_closing_enricher.enrich_features_with_closing(str(features), str(source_invalid), str(output_invalid))
+        assert invalid["source_has_closing"] is True
+        assert invalid["source_closing_odds_usable"] is False
+        assert invalid["rows_with_closing"] == 0
+        assert "C_LTH" in invalid["rejected_closing_columns"]
+        invalid_rows = read_rows(output_invalid)
+        assert invalid_rows[0]["clv_available"] == "False"
+        assert invalid_rows[0]["clv_reason"] == "colonnes detectees par nom mais rejetees par profil de valeurs"
+        assert "C_LTH" in invalid_rows[0]["closing_rejected_reason"]
         try:
             features_closing_enricher.enrich_features_with_closing(str(features), str(source), str(root / "data" / "features_with_closing.csv"))
             raise AssertionError("ecriture data non bloquee")

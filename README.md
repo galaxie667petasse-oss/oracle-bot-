@@ -398,6 +398,14 @@ Le flux local est :
 
 La CLV partielle peut aider a savoir si certains signaux H2H prenaient de meilleurs prix que la closing line. Elle ne valide pas un modele global, ne valide pas les draws/totals/BTTS et ne debloque aucune promotion si le sample est trop faible ou si la gouvernance complete echoue.
 
+## V7.8 Closing Column Forensics
+
+V7.8 ajoute une analyse forensique des colonnes closing. Une colonne nommee `C_*` ne suffit plus : `closing_odds_probe.py` profile les valeurs, calcule min/max/mediane/percentiles, compte les valeurs `0-1`, les valeurs plausibles `1.01-100`, les textes et les vides, puis donne un verdict par colonne.
+
+Les verdicts possibles sont `decimal_odds_plausible`, `numeric_but_not_odds`, `mostly_empty`, `text_or_code` et `unknown`. `features_closing_enricher.py` refuse maintenant toute colonne detectee par nom mais non validee par les valeurs. `clv_readiness_report.py` expose le bloqueur exact : colonnes closing detectees par nom mais valeurs non plausibles.
+
+Cette phase ne calcule pas de CLV si les valeurs ne sont pas des cotes decimales. Elle confirme que le projet reste laboratoire prudent tant qu'une source closing fiable n'est pas identifiee.
+
 ## Statistical Proof Foundation
 
 La phase V7.0 ajoute la couche de preuve statistique. Elle ne cree aucun pick, ne modifie pas Telegram, ne modifie pas Railway et ne touche pas a `oracle_db.json`.

@@ -78,6 +78,7 @@ def test_release_candidate_docs_exist_and_have_sections():
         "clv readiness",
         "closing odds recovery",
         "partial clv pipeline",
+        "closing column forensics",
         "statistical proof foundation",
         "clv",
         "reliability curves",
@@ -100,6 +101,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v7.0 statistical proof foundation" in status
     assert "v7.2 understat xg full pipeline quality gate" in status
     assert "aucun signal robuste active" in status
+    assert (root / "docs" / "closing_odds_forensics.md").exists()
 
 
 def main():

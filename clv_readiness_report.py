@@ -119,6 +119,30 @@ def _scope_from_probe(probe: Dict[str, Any]) -> str:
     return "partial"
 
 
+def _source_forensics_from_probe(probe: Dict[str, Any]) -> Dict[str, Any]:
+    detected = ((probe.get("detected_columns") or {}).get("all_closing") or []) if probe else []
+    validated = probe.get("validated_closing_columns") if probe else []
+    if validated is None:
+        validated = []
+    rejected = probe.get("rejected_closing_columns") if probe else {}
+    if not isinstance(rejected, dict):
+        rejected = {}
+    rejection_reasons = {str(column): str(reason) for column, reason in rejected.items()}
+    detected = sorted(set(list(detected) + list(rejection_reasons.keys())))
+    blocker = ""
+    if detected and not validated:
+        blocker = "colonnes closing detectees par nom mais valeurs non plausibles"
+    elif not detected:
+        blocker = "aucune colonne closing detectee dans la source"
+    return {
+        "source_columns_detected_by_name": list(detected),
+        "source_columns_validated_as_odds": list(validated),
+        "rejected_closing_columns": sorted(rejection_reasons),
+        "rejection_reasons": rejection_reasons,
+        "clv_blocker": blocker,
+    }
+
+
 def _preview_stats(preview_path: str = "") -> Dict[str, Any]:
     if not preview_path:
         return {"present": False}
@@ -167,6 +191,7 @@ def analyze_readiness(features_path: str, closing_probe_path: str = "", preview_
     probe = _load_probe(closing_probe_path)
     preview = _preview_stats(preview_path)
     probe_scope = _scope_from_probe(probe)
+    forensics = _source_forensics_from_probe(probe)
     if not path.exists():
         return {
             "generated_at": now_iso(),
@@ -176,10 +201,11 @@ def analyze_readiness(features_path: str, closing_probe_path: str = "", preview_
             "status": "indisponible",
             "clv_calculable": False,
             "clv_calculable_now": False,
-            "clv_calculable_after_enrichment": bool(probe.get("closing_available")),
+            "clv_calculable_after_enrichment": bool(forensics["source_columns_validated_as_odds"]),
             "clv_calculable_in_preview": bool(preview.get("rows_with_clv")),
             "clv_scope": probe_scope,
             "source_has_closing": bool(probe.get("closing_available")),
+            **forensics,
             "reason": f"Fichier introuvable: {features_path}",
             "columns_available": [],
             "missing_columns": list(KNOWN_CLOSING_COLUMNS),
@@ -209,13 +235,16 @@ def analyze_readiness(features_path: str, closing_probe_path: str = "", preview_
     btts_available = bool(closing["btts"])
     clv_calculable = bool(odds_columns and closing["all"])
     source_has_closing = bool(probe.get("closing_available"))
-    clv_after_enrichment = bool(odds_columns and source_has_closing)
+    source_has_validated_closing = bool(forensics["source_columns_validated_as_odds"])
+    clv_after_enrichment = bool(odds_columns and source_has_validated_closing)
     clv_in_preview = bool(preview.get("rows_with_clv"))
     clv_scope = preview.get("clv_scope") or probe_scope
     if preview.get("present"):
         clv_after_enrichment = clv_in_preview
     if not odds_columns:
         reason = "Colonne de cote prise absente: odds/taken_odds requis."
+    elif not closing["all"] and forensics["clv_blocker"] == "colonnes closing detectees par nom mais valeurs non plausibles":
+        reason = "Colonnes closing detectees par nom dans la source, mais valeurs non plausibles comme cotes decimales."
     elif not closing["all"]:
         reason = "Aucune colonne closing odds detectee: ajouter des colonnes C_* fiables avant clv_analysis.py."
     else:
@@ -255,6 +284,7 @@ def analyze_readiness(features_path: str, closing_probe_path: str = "", preview_
         "clv_calculable_in_preview": clv_in_preview,
         "clv_scope": clv_scope,
         "source_has_closing": source_has_closing,
+        **forensics,
         "h2h_home_available": h2h_home_available,
         "h2h_away_available": h2h_away_available,
         "h2h_draw_available": h2h_draw_available,
@@ -339,6 +369,10 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         f"<tr><th>CLV calculable dans preview</th><td>{report.get('clv_calculable_in_preview')}</td></tr>",
         f"<tr><th>Scope CLV</th><td>{html.escape(str(report.get('clv_scope')))}</td></tr>",
         f"<tr><th>Source avec closing</th><td>{report.get('source_has_closing')}</td></tr>",
+        f"<tr><th>Colonnes source detectees par nom</th><td>{html.escape(', '.join(report.get('source_columns_detected_by_name') or []))}</td></tr>",
+        f"<tr><th>Colonnes source validees comme cotes</th><td>{html.escape(', '.join(report.get('source_columns_validated_as_odds') or []))}</td></tr>",
+        f"<tr><th>Colonnes source rejetees</th><td>{html.escape(', '.join(report.get('rejected_closing_columns') or []))}</td></tr>",
+        f"<tr><th>Bloqueur CLV</th><td>{html.escape(str(report.get('clv_blocker') or ''))}</td></tr>",
         f"<tr><th>Preview lignes CLV</th><td>{(report.get('preview') or {}).get('rows_with_clv')}</td></tr>",
         f"<tr><th>Preview coverage</th><td>{(report.get('preview') or {}).get('coverage')}</td></tr>",
         f"<tr><th>Colonnes odds</th><td>{html.escape(', '.join(report.get('odds_columns_detected') or []))}</td></tr>",
@@ -369,6 +403,14 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- CLV calculable dans preview: {report.get('clv_calculable_in_preview')}")
     print(f"- Scope CLV: {report.get('clv_scope')}")
     print(f"- Source avec closing: {report.get('source_has_closing')}")
+    print(f"- Colonnes source detectees par nom: {', '.join(report.get('source_columns_detected_by_name') or []) or 'aucune'}")
+    print(f"- Colonnes source validees comme cotes: {', '.join(report.get('source_columns_validated_as_odds') or []) or 'aucune'}")
+    print(f"- Colonnes source rejetees: {', '.join(report.get('rejected_closing_columns') or []) or 'aucune'}")
+    if report.get("clv_blocker"):
+        print(f"- Bloqueur CLV: {report.get('clv_blocker')}")
+    if report.get("rejection_reasons"):
+        for column, reason in (report.get("rejection_reasons") or {}).items():
+            print(f"  - {column}: {reason}")
     print(f"- Raison: {report.get('reason')}")
     print(f"- Colonnes odds detectees: {', '.join(report.get('odds_columns_detected') or []) or 'aucune'}")
     print(f"- Colonnes closing detectees: {', '.join(report.get('closing_columns_detected') or []) or 'aucune'}")

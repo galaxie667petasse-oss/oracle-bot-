@@ -350,3 +350,13 @@ python report_runner.py --closing-preview --skip-benchmark
 ```
 
 Interpretation : une CLV partielle positive sur H2H home/away peut creer une observation plus informative, mais pas une preuve globale. Elle doit etre lue avec coverage, sample, CLV positive rate, ROI test, bootstrap, calibration et multiple testing. Ligue 1 reste une execution humaine separee : aucune recuperation reseau n'est lancee par les tests.
+
+## V7.8 Closing Column Forensics
+
+La couche xG Big Five reste bloquee par la preuve CLV. V7.8 ajoute donc un diagnostic de colonnes closing avant toute nouvelle conclusion betting :
+
+```bash
+python closing_odds_probe.py --csv data/MATCHES.csv --sample-values --max-sample 50 --output reports/closing_odds_probe.json --html reports/closing_odds_probe.html
+```
+
+Le probe ne se contente pas du nom `C_*`. Il verifie les distributions, les exemples, les percentiles et la part des valeurs plausibles en cotes decimales. Si une colonne est detectee par nom mais non plausible, la preview closing doit la rejeter. Le xG peut rester utile pour calibration, mais sans closing fiable, il ne valide aucun edge betting.

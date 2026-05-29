@@ -50,12 +50,15 @@ def main():
             "total_closing_available": "none",
             "btts_closing_available": "none",
             "detected_columns": {"all_closing": ["C_LTH", "C_LTD", "C_LTA"]},
+            "validated_closing_columns": ["C_LTH", "C_LTA"],
+            "rejected_closing_columns": {},
         }, ensure_ascii=False), encoding="utf-8")
         enriched_possible = clv_readiness_report.analyze_readiness(str(no_closing), closing_probe_path=str(probe_path))
         assert enriched_possible["clv_calculable_now"] is False
         assert enriched_possible["source_has_closing"] is True
         assert enriched_possible["clv_calculable_after_enrichment"] is True
         assert enriched_possible["clv_scope"] == "partial_h2h_home_away"
+        assert enriched_possible["source_columns_validated_as_odds"] == ["C_LTH", "C_LTA"]
         assert enriched_possible["h2h_home_available"] is True
         assert enriched_possible["h2h_away_available"] is True
         assert enriched_possible["h2h_draw_available"] is False
@@ -80,6 +83,30 @@ def main():
         enriched_blocked = clv_readiness_report.analyze_readiness(str(no_closing), closing_probe_path=str(probe_without_path))
         assert enriched_blocked["source_has_closing"] is False
         assert enriched_blocked["clv_calculable_after_enrichment"] is False
+
+        probe_rejected_path = root / "reports" / "closing_odds_probe_rejected.json"
+        probe_rejected_path.write_text(json.dumps({
+            "status": "ok",
+            "closing_available": True,
+            "h2h_closing_available": "partial",
+            "h2h_home_closing_available": True,
+            "h2h_draw_closing_available": False,
+            "h2h_away_closing_available": True,
+            "total_closing_available": "none",
+            "btts_closing_available": "none",
+            "detected_columns": {"all_closing": ["C_LTH", "C_LTA"]},
+            "validated_closing_columns": [],
+            "rejected_closing_columns": {
+                "C_LTH": "La colonne est numerique, mais les valeurs ne ressemblent pas majoritairement a des cotes decimales.",
+                "C_LTA": "La colonne est numerique, mais les valeurs ne ressemblent pas majoritairement a des cotes decimales.",
+            },
+        }, ensure_ascii=False), encoding="utf-8")
+        rejected_ready = clv_readiness_report.analyze_readiness(str(no_closing), closing_probe_path=str(probe_rejected_path))
+        assert rejected_ready["source_has_closing"] is True
+        assert rejected_ready["clv_calculable_after_enrichment"] is False
+        assert rejected_ready["rejected_closing_columns"] == ["C_LTA", "C_LTH"]
+        assert rejected_ready["clv_blocker"] == "colonnes closing detectees par nom mais valeurs non plausibles"
+        assert "valeurs non plausibles" in rejected_ready["reason"]
 
         with_closing = root / "features_with_closing.csv"
         write_csv(

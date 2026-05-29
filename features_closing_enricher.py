@@ -21,6 +21,7 @@ ADDED_COLUMNS = [
     "clv_percent",
     "clv_available",
     "clv_reason",
+    "closing_rejected_reason",
 ]
 
 
@@ -143,6 +144,16 @@ def _closing_mapping_for_feature(row: Dict[str, Any], mapping: Dict[str, str]) -
     return ""
 
 
+def _rejection_reason_for_feature(row: Dict[str, Any], mapping_by_name: Dict[str, str], validated_mapping: Dict[str, str], rejected_columns: Dict[str, str]) -> str:
+    column_by_name = _closing_mapping_for_feature(row, mapping_by_name)
+    if not column_by_name:
+        return ""
+    if _closing_mapping_for_feature(row, validated_mapping):
+        return ""
+    reason = rejected_columns.get(column_by_name) or "colonne detectee par nom mais non validee comme cote decimale"
+    return f"colonne {column_by_name} rejetee: {reason}"
+
+
 def _market_available(row: Dict[str, Any], mapping: Dict[str, str]) -> bool:
     market = str(row.get("market_type") or "").lower()
     if market in {"h2h", "draw"}:
@@ -174,6 +185,9 @@ def enrich_features_with_closing(features_path: str, source_path: str, output: s
     probe = probe_csv(source_path)
     detected = ((probe.get("detected_columns") or {}).get("all_closing") or [])
     mapping = probe.get("recommended_mapping") or {}
+    mapping_by_name = probe.get("recommended_mapping_by_name") or mapping
+    rejected_columns = probe.get("rejected_closing_columns") or {}
+    validated_columns = probe.get("validated_closing_columns") or []
     final_columns = list(feature_columns)
     for column in detected:
         if column not in final_columns:
@@ -223,6 +237,7 @@ def enrich_features_with_closing(features_path: str, source_path: str, output: s
         coverage.setdefault(bucket, {"rows": 0, "with_clv": 0})
         coverage[bucket]["rows"] += 1
         closing_column = ""
+        rejected_reason = _rejection_reason_for_feature(row, mapping_by_name, mapping, rejected_columns)
         closing_odds = None
         taken_odds = parse_float(row.get("odds") or row.get("taken_odds"))
         if source:
@@ -232,6 +247,8 @@ def enrich_features_with_closing(features_path: str, source_path: str, output: s
             closing_column = _closing_mapping_for_feature(row, mapping)
             closing_odds = parse_float(source.get(closing_column)) if closing_column else None
         reason = _clv_reason(row, source, closing_column, taken_odds, closing_odds, mapping)
+        if rejected_reason and reason in {"closing du marche absent", "closing du cote home absent", "closing du cote away absent", "closing du cote draw absent"}:
+            reason = "colonnes detectees par nom mais rejetees par profil de valeurs"
         clv_available = reason == "clv disponible"
         clv_percent = round(taken_odds / closing_odds - 1.0, 8) if taken_odds and closing_odds else ""
         out["taken_odds"] = "" if taken_odds is None else taken_odds
@@ -244,6 +261,7 @@ def enrich_features_with_closing(features_path: str, source_path: str, output: s
         out["clv_percent"] = clv_percent
         out["clv_available"] = bool(clv_available)
         out["clv_reason"] = reason
+        out["closing_rejected_reason"] = rejected_reason
         if clv_available:
             with_closing += 1
             coverage[bucket]["with_clv"] += 1
@@ -280,10 +298,16 @@ def enrich_features_with_closing(features_path: str, source_path: str, output: s
         "clv_mean": round(clv_sum / with_closing, 6) if with_closing else None,
         "clv_positive_rate": round(clv_positive / with_closing * 100.0, 2) if with_closing else None,
         "source_has_closing": bool(probe.get("closing_available")),
+        "source_closing_odds_usable": bool(probe.get("closing_odds_usable")),
         "closing_scope": "partial_h2h_home_away" if probe.get("h2h_closing_available") == "partial" else probe.get("h2h_closing_available"),
         "detected_closing_columns": detected,
+        "validated_closing_columns": validated_columns,
+        "rejected_closing_columns": rejected_columns,
         "recommended_mapping": mapping,
+        "recommended_mapping_by_name": mapping_by_name,
         "warnings": (
+            ["Colonnes detectees par nom mais rejetees par profil de valeurs.", "CLV partielle: seuls les marches/cotes avec colonne closing exacte sont calcules."]
+            if rejected_columns else
             ["CLV partielle: seuls les marches/cotes avec colonne closing exacte sont calcules."]
             if probe.get("closing_available") else ["Source sans closing odds detectees: enrichissement CLV impossible."]
         ),
@@ -304,6 +328,10 @@ def print_summary(summary: Dict[str, Any]) -> None:
     print(f"- Join rate source: {summary.get('join_rate')}%")
     print(f"- Lignes avec closing exploitable: {summary.get('rows_with_closing')}")
     print(f"- Coverage closing: {summary.get('closing_coverage')}%")
+    print(f"- Colonnes closing detectees par nom: {', '.join(summary.get('detected_closing_columns') or []) or 'aucune'}")
+    print(f"- Colonnes validees comme cotes: {', '.join(summary.get('validated_closing_columns') or []) or 'aucune'}")
+    if summary.get("rejected_closing_columns"):
+        print(f"- Colonnes rejetees par profil: {', '.join((summary.get('rejected_closing_columns') or {}).keys())}")
     print(f"- Coverage H2H home: {(summary.get('coverage_by_scope') or {}).get('h2h_home', {}).get('coverage')}%")
     print(f"- Coverage H2H away: {(summary.get('coverage_by_scope') or {}).get('h2h_away', {}).get('coverage')}%")
     print(f"- Coverage H2H draw: {(summary.get('coverage_by_scope') or {}).get('h2h_draw', {}).get('coverage')}%")

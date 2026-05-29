@@ -499,7 +499,39 @@ Lecture prudente :
 - Sans colonnes BTTS exactes, BTTS est exclu.
 - Une CLV partielle ne valide pas une strategie globale.
 
-## 19. Scientific Benchmark & Model Governance
+## 19. V7.8 Closing Column Forensics
+
+Profiler les colonnes suspectes avec exemples de valeurs, sans modifier `data/MATCHES.csv` :
+
+```bash
+python closing_odds_probe.py --csv data/MATCHES.csv --sample-values --max-sample 50 --output reports/closing_odds_probe.json --html reports/closing_odds_probe.html
+```
+
+Profiler explicitement `C_LTH` et `C_LTA` :
+
+```bash
+python closing_odds_probe.py --csv data/MATCHES.csv --profile-columns C_LTH,C_LTA --sample-values --max-sample 50 --output reports/closing_odds_probe.json --html reports/closing_odds_probe.html
+```
+
+Relancer la preview apres profil forensique :
+
+```bash
+python features_closing_enricher.py --features data/features_modern.csv --source data/MATCHES.csv --output reports/features_with_closing_preview.csv
+```
+
+Relancer la readiness :
+
+```bash
+python clv_readiness_report.py --features data/features_modern.csv --closing-probe reports/closing_odds_probe.json --preview reports/features_with_closing_preview.csv --output reports/clv_readiness.json --html reports/clv_readiness.html
+```
+
+Interpretation :
+
+- `decimal_odds_plausible` est le seul verdict autorisant l'usage d'une colonne closing.
+- `numeric_but_not_odds`, `mostly_empty`, `text_or_code` et `unknown` bloquent le calcul CLV.
+- Une colonne `C_*` detectee par nom mais rejetee par les valeurs ne doit jamais etre convertie en cote.
+
+## 20. Scientific Benchmark & Model Governance
 
 Benchmark complet si `data/features_modern.csv` est disponible :
 
@@ -515,13 +547,13 @@ Sorties :
 
 Le benchmark attribue un score prudent et une decision : rejected, watchlist, observation, candidate, active_shadow_only, active_decision_support ou production_allowed. Meme `production_allowed` ne signifie jamais pari automatique. Rien n'est branche aux picks Telegram.
 
-## 20. Git workflow
+## 21. Git workflow
 
 ```bash
 git status --short
 git diff
 git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
-git commit -m "Add partial CLV pipeline V7.7"
+git commit -m "Add closing column forensics V7.8"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -530,7 +562,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 21. Ce qu'il ne faut pas faire
+## 22. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

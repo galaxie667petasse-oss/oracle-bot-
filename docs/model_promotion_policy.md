@@ -141,3 +141,9 @@ Les colonnes `C_LTH` et `C_LTA` permettent seulement une CLV partielle H2H home/
 - les strategies globales multi-marches.
 
 Une strategie H2H couverte peut etre mieux observee avec cette CLV, mais elle reste bloquee si le sample CLV est inferieur a 1000, si la CLV moyenne est non positive, si la couverture est faible, ou si les autres gates statistiques echouent. La CLV partielle ne peut jamais etre extrapolee a un marche non couvert.
+
+## V7.8 Closing Column Forensics
+
+Une colonne closing detectee par nom ne suffit pas pour passer le gate CLV. `closing_odds_probe.py` doit classer la colonne `decimal_odds_plausible` apres profil des valeurs. Les verdicts `numeric_but_not_odds`, `mostly_empty`, `text_or_code` et `unknown` bloquent le calcul CLV.
+
+Si `C_LTH` ou `C_LTA` existent mais contiennent des valeurs non plausibles comme cotes decimales, `features_closing_enricher.py` doit les rejeter et `clv_readiness_report.py` doit exposer le bloqueur. Aucun signal ne peut etre promu sur une colonne closing seulement nommee, non validee.
