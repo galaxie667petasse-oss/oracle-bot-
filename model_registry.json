@@ -1,11 +1,11 @@
 {
-  "registry_version": "V7.2",
-  "generated_at": "2026-05-26T15:08:47",
+  "registry_version": "V7.7",
+  "generated_at": "2026-05-29T19:05:44",
   "models": [
     {
       "name": "Stabilite annuelle - H2H exterieur favori",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -57,18 +57,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "stable positif",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - Favoris H2H cote 1.60-1.80",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -120,18 +124,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "stable positif",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Tranches de cotes - cote < 1.40",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -184,18 +192,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "observation seulement",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Tranches de cotes - 1.60 <= cote < 1.80",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -247,18 +259,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "observation seulement",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Forme 5 matchs - form5 defavorable",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -310,18 +326,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "robuste positif",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Forme 3 matchs - form3 favorable",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -373,18 +393,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "observation seulement",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Elo relatif au favori - elo_diff fort positif",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -436,18 +460,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "robuste positif",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Annees test - annee 2024",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -499,18 +527,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "observation seulement",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - H2H favori Elo fort positif",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -564,18 +596,22 @@
         "degradation recente 2025",
         "degradation mentionnee dans la gouvernance"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "degradation recente",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Domicile / exterieur - exterieur favori",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -627,18 +663,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "fragile",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Competition - I1",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -691,18 +731,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "fragile",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Forme 5 matchs - form5 indisponible",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -755,18 +799,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "echantillon faible",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Forme 3 matchs - form3 indisponible",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -819,190 +867,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "echantillon faible",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
-    },
-    {
-      "name": "understat_epl_2020_2025_rolling_xg_lab",
-      "type": "external_xg_lab",
-      "version": "V7.2",
-      "train_period": "2015-01-01 -> 2022-12-31",
-      "validation_period": "2023-01-01 -> 2023-12-31",
-      "test_period": "2024-01-01 -> fin",
-      "features_used": [
-        "understat_rolling_xg",
-        "market_no_vig"
       ],
-      "post_match_features_allowed": false,
-      "leak_risk": "controlled_rolling",
-      "validation_metrics": {
-        "picks": 150,
-        "roi": -17.96,
-        "profit": -26.94,
-        "winrate": 16.0,
-        "max_drawdown": 41.22,
-        "average_odds": 6.635
-      },
-      "test_metrics": {
-        "picks": 243,
-        "roi": -19.81,
-        "profit": -48.14,
-        "winrate": 14.4,
-        "max_drawdown": 56.87,
-        "average_odds": 6.309
-      },
-      "roi_test": -19.81,
-      "clv_mean": null,
-      "clv_positive_rate": null,
-      "brier": 0.200027,
-      "log_loss": 0.586173,
-      "ece": null,
-      "mce": null,
-      "bootstrap_roi_p05": null,
-      "bootstrap_roi_median": null,
-      "bootstrap_roi_p95": null,
-      "p_value": null,
-      "p_value_adjusted": null,
-      "multiple_testing_passed": null,
-      "sample_test": 243,
-      "drawdown": 56.87,
-      "robustness_score": 0,
-      "governance_status": "observation",
-      "status": "observation",
-      "decision": "observation",
-      "reason": "sample test inferieur a 300",
-      "rejection_reasons": [
-        "ROI test 2024+ non positif",
-        "sample test inferieur a 300",
-        "CLV absente ou non positive",
-        "calibration absente ou insuffisante",
-        "preuve statistique insuffisante",
-        "correction de multiple testing non validee",
-        "xG model promotion_allowed=false",
-        "CLV absente",
-        "ROI edge test non positif",
-        "sample edge test inferieur a 1000",
-        "Brier/log loss xG ne battent pas clairement le marche"
-      ],
-      "created_at": "2026-05-26T15:08:47",
-      "notes": "quality=exploitable_rolling_xg; xg_model=laboratoire xG uniquement; promotion bloquee sans preuve complete et CLV positive.; lab_only=true; can_influence_picks=false",
-      "probability_context": {
-        "brier": 0.200027,
-        "log_loss": 0.586173,
-        "brier_test": 0.200027,
-        "market_brier_test": 0.199177,
-        "log_loss_test": 0.586173,
-        "market_log_loss_test": 0.583895
-      },
-      "warnings": [
-        "CLV indisponible: candidat robuste bloque.",
-        "Calibration indisponible ou incomplete.",
-        "Validation statistique indisponible ou incomplete."
-      ],
-      "lab_only": true,
-      "can_influence_picks": false,
-      "quality_verdict": "exploitable_rolling_xg",
-      "xg_model_verdict": "laboratoire xG uniquement; promotion bloquee sans preuve complete et CLV positive.",
-      "xg_model_promotion_allowed": false,
-      "promotion_allowed": false,
-      "quality_context": {
-        "rows": 1900,
-        "xg_coverage": 100.0,
-        "missing_seasons": [],
-        "total_expected_matches": 1900,
-        "total_actual_matches": 1900
-      },
-      "xg_model_context": {
-        "xg_improves_brier": false,
-        "xg_improves_log_loss": false,
-        "edge_test_positive": false,
-        "sample_test_sufficient": false,
-        "delta_brier_xg_vs_market": 0.00085,
-        "delta_log_loss_xg_vs_market": 0.002278
-      }
-    },
-    {
-      "name": "epl_fbref_2024_2025_rolling_xg_lab",
-      "type": "external_lab",
-      "version": "V7.2",
-      "train_period": "2015-01-01 -> 2022-12-31",
-      "validation_period": "2023-01-01 -> 2023-12-31",
-      "test_period": "2025-01-01 -> 2025-05-25",
-      "features_used": [
-        "external_xg_rolling_avg3_avg5",
-        "market_no_vig"
-      ],
-      "post_match_features_allowed": false,
-      "leak_risk": "controlled_rolling",
-      "validation_metrics": {
-        "picks": 150,
-        "roi": -17.96,
-        "profit": -26.94,
-        "winrate": 16.0,
-        "max_drawdown": 41.22,
-        "average_odds": 6.635
-      },
-      "test_metrics": {
-        "picks": 243,
-        "roi": -19.81,
-        "profit": -48.14,
-        "winrate": 14.4,
-        "max_drawdown": 56.87,
-        "average_odds": 6.309
-      },
-      "roi_test": -19.81,
-      "clv_mean": null,
-      "clv_positive_rate": null,
-      "brier": 0.200027,
-      "log_loss": 0.586173,
-      "ece": null,
-      "mce": null,
-      "bootstrap_roi_p05": null,
-      "bootstrap_roi_median": null,
-      "bootstrap_roi_p95": null,
-      "p_value": null,
-      "p_value_adjusted": null,
-      "multiple_testing_passed": null,
-      "sample_test": 243,
-      "drawdown": 56.87,
-      "robustness_score": 0,
-      "governance_status": "observation",
-      "status": "observation",
-      "decision": "observation",
-      "reason": "sample test inferieur a 300",
-      "rejection_reasons": [
-        "ROI test 2024+ non positif",
-        "sample test inferieur a 300",
-        "CLV absente ou non positive",
-        "calibration absente ou insuffisante",
-        "preuve statistique insuffisante",
-        "correction de multiple testing non validee"
-      ],
-      "created_at": "2026-05-26T15:08:47",
-      "notes": "lignes rolling=3680, matchs uniques=736, laboratoire xG uniquement; promotion bloquee sans preuve complete et CLV positive.",
-      "probability_context": {
-        "brier": 0.200027,
-        "log_loss": 0.586173,
-        "brier_test": 0.200027,
-        "market_brier_test": 0.199177,
-        "log_loss_test": 0.586173,
-        "market_log_loss_test": 0.583895
-      },
-      "warnings": [
-        "CLV indisponible: candidat robuste bloque.",
-        "Calibration indisponible ou incomplete.",
-        "Validation statistique indisponible ou incomplete."
-      ]
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Totals seulement",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1056,18 +936,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Totals low/mid",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1121,18 +1005,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Totals low",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1186,18 +1074,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - Watchlist draw high",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1254,18 +1146,22 @@
         "degradation recente 2025",
         "degradation mentionnee dans la gouvernance"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "degradation recente",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - Totals seulement",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1319,18 +1215,22 @@
         "correction de multiple testing non validee",
         "degradation recente 2025"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "negatif robuste",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - Totals low/mid",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1384,18 +1284,22 @@
         "correction de multiple testing non validee",
         "degradation recente 2025"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "negatif robuste",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - Totals low",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1450,18 +1354,22 @@
         "correction de multiple testing non validee",
         "degradation recente 2025"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "negatif robuste",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - H2H domicile favori",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1517,18 +1425,22 @@
         "degradation recente 2025",
         "degradation mentionnee dans la gouvernance"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "degradation recente",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - Favoris seulement",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1583,18 +1495,22 @@
         "correction de multiple testing non validee",
         "degradation recente 2025"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "negatif robuste",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - Favoris H2H tous",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1650,18 +1566,22 @@
         "degradation recente 2025",
         "degradation mentionnee dans la gouvernance"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "degradation recente",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Stabilite annuelle - Baseline marche brut",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1715,18 +1635,22 @@
         "correction de multiple testing non validee",
         "degradation recente 2025"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "negatif robuste",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Pricing marge faible",
       "type": "market",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1779,18 +1703,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Analyse pricing globale; ne remplace pas un split test dedie.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Pricing marge elevee",
       "type": "market",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1844,18 +1772,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Analyse pricing globale; ne remplace pas un split test dedie.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Oracle strict (compat)",
       "type": "rule",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1909,18 +1841,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Oracle strict",
       "type": "rule",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -1974,18 +1910,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Oracle relaxe",
       "type": "rule",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2039,18 +1979,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Oracle equilibre",
       "type": "rule",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2104,18 +2048,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML total - Modele avec rolling pre-match - Regression logistique",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2171,7 +2119,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele prometteur mais non jouable",
       "probability_context": {
         "brier_test": 0.240995,
@@ -2183,12 +2131,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML total - Modele avec rolling pre-match - Random forest leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2243,7 +2195,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.241348,
@@ -2255,12 +2207,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML total - Modele avec rolling pre-match - Gradient boosting leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2318,7 +2274,7 @@
         "correction de multiple testing non validee",
         "edge positif seulement en validation"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.03; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.241297,
@@ -2330,12 +2286,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML total - Baseline sans rolling - Regression logistique",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2391,7 +2351,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele prometteur mais non jouable",
       "probability_context": {
         "brier_test": 0.240996,
@@ -2403,12 +2363,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML total - Baseline sans rolling - Random forest leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2463,7 +2427,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.241342,
@@ -2475,12 +2439,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML total - Baseline sans rolling - Gradient boosting leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2535,7 +2503,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.241151,
@@ -2547,12 +2515,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML h2h - Modele avec rolling pre-match - Regression logistique",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2609,7 +2581,7 @@
         "correction de multiple testing non validee",
         "edge positif seulement en validation"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.02; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable",
       "probability_context": {
         "brier_test": 0.204029,
@@ -2621,12 +2593,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML h2h - Modele avec rolling pre-match - Random forest leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2681,7 +2657,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.204994,
@@ -2693,12 +2669,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML h2h - Modele avec rolling pre-match - Gradient boosting leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2753,7 +2733,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.204118,
@@ -2765,12 +2745,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML h2h - Baseline sans rolling - Regression logistique",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2827,7 +2811,7 @@
         "correction de multiple testing non validee",
         "edge positif seulement en validation"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.02; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable",
       "probability_context": {
         "brier_test": 0.204029,
@@ -2839,12 +2823,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML h2h - Baseline sans rolling - Random forest leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2899,7 +2887,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.204589,
@@ -2911,12 +2899,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML h2h - Baseline sans rolling - Gradient boosting leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -2971,7 +2963,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.204126,
@@ -2983,12 +2975,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML global - Modele avec rolling pre-match - Regression logistique",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3046,7 +3042,7 @@
         "correction de multiple testing non validee",
         "edge positif seulement en validation"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.02; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable",
       "probability_context": {
         "brier_test": 0.213511,
@@ -3058,12 +3054,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML global - Modele avec rolling pre-match - Random forest leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3118,7 +3118,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.214296,
@@ -3130,12 +3130,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML global - Modele avec rolling pre-match - Gradient boosting leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3190,7 +3194,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.213603,
@@ -3202,12 +3206,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML global - Baseline sans rolling - Regression logistique",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3265,7 +3273,7 @@
         "correction de multiple testing non validee",
         "edge positif seulement en validation"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.02; seuil choisi sur validation avec ROI positif et volume >= 300; modele inutilisable",
       "probability_context": {
         "brier_test": 0.213509,
@@ -3277,12 +3285,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML global - Baseline sans rolling - Random forest leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3337,7 +3349,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.214238,
@@ -3349,12 +3361,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "ML global - Baseline sans rolling - Gradient boosting leger",
       "type": "ml",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3409,7 +3425,7 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Seuil validation: 0.01; aucun seuil validation robuste; meilleur seuil validation affiche seulement une observation; modele inutilisable",
       "probability_context": {
         "brier_test": 0.213598,
@@ -3421,12 +3437,16 @@
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris seulement",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3480,18 +3500,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H seulement",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3545,18 +3569,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - tous",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3611,18 +3639,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Tranches de cotes - 1.80 <= cote < 2.00",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3676,18 +3708,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Tranches de cotes - 1.40 <= cote < 1.60",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3741,18 +3777,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Forme 5 matchs - form5 neutre",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3807,18 +3847,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Forme 5 matchs - form5 favorable",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3872,18 +3916,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Forme 3 matchs - form3 neutre",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -3938,18 +3986,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Forme 3 matchs - form3 defavorable",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -4003,18 +4055,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Elo relatif au favori - elo_diff modere positif",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -4069,18 +4125,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Elo relatif au favori - elo_diff faible ou contradictoire",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -4134,18 +4194,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Domicile / exterieur - domicile favori",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -4199,18 +4263,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Competition - E2",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -4265,18 +4333,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Competition - E1",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -4331,18 +4403,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Competition - E0",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -4397,18 +4473,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "non confirme sur test",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Favoris H2H - Annees test - annee 2025",
       "type": "segment",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -4461,18 +4541,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "negatif a eviter",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "External xG Lab - non teste",
       "type": "external_lab",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "non teste",
@@ -4525,18 +4609,22 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Aucun dataset xG reel fourni; laboratoire seulement.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     },
     {
       "name": "Baseline marché brut",
       "type": "market",
-      "version": "V7.2",
+      "version": "V7.7",
       "train_period": "2015-01-01 -> 2022-12-31",
       "validation_period": "2023-01-01 -> 2023-12-31",
       "test_period": "2024-01-01 -> fin",
@@ -4590,13 +4678,17 @@
         "preuve statistique insuffisante",
         "correction de multiple testing non validee"
       ],
-      "created_at": "2026-05-26T15:08:47",
+      "created_at": "2026-05-29T19:05:44",
       "notes": "Backtest modern; aucune activation automatique.",
       "warnings": [
         "CLV indisponible: candidat robuste bloque.",
         "Calibration indisponible ou incomplete.",
         "Validation statistique indisponible ou incomplete."
-      ]
+      ],
+      "clv_scope": "none",
+      "clv_coverage": 0.0,
+      "partial_clv_warning": "",
+      "clv_blocks_promotion_reason": ""
     }
   ]
 }
