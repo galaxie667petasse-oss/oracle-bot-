@@ -640,13 +640,58 @@ python report_runner.py --daily-shadow
 
 Tous ces fichiers de sortie restent dans `reports/`. Le statut reste observation shadow, aucune mise conseillee.
 
-## 23. Git workflow
+## 23. V8.2 Operations Center, Evidence Gate et June Runbook
+
+Centre operations :
+
+```bash
+python oracle_ops.py --health
+python oracle_ops.py --daily
+```
+
+Runner operations local :
+
+```bash
+python report_runner.py --ops
+```
+
+Audit qualite shadow :
+
+```bash
+python shadow_quality_audit.py --ledger reports/shadow_ledger.csv --output reports/shadow_quality_audit.json --html reports/shadow_quality_audit.html
+```
+
+Evidence gate :
+
+```bash
+python evidence_gate.py --shadow-report reports/shadow_clv_report.json --quality-audit reports/shadow_quality_audit.json --big5-summary reports/big5_xg_summary.json --clv-readiness reports/clv_readiness.json --output reports/evidence_gate.json --html reports/evidence_gate.html
+```
+
+Simulation locale :
+
+```bash
+python shadow_simulator.py --output reports/shadow_ledger_simulated.csv --n 1000 --edge-scenario positive_clv
+```
+
+Sample size plan :
+
+```bash
+python sample_size_planner.py --shadow-report reports/shadow_clv_report.json --output reports/sample_size_plan.json --html reports/sample_size_plan.html
+```
+
+Preview message shadow, sans envoi :
+
+```bash
+python shadow_message_formatter.py --ledger reports/shadow_ledger.csv --output reports/shadow_messages_preview.txt
+```
+
+## 24. Git workflow
 
 ```bash
 git status --short
 git diff
-git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md docs/closing_odds_forensics.md docs/shadow_mode_workflow.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py shadow_ledger.py closing_manual_import.py shadow_clv_report.py daily_shadow_candidates.py shadow_templates.py results_manual_import.py shadow_workflow.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_shadow_ledger.py test_closing_manual_import.py test_shadow_clv_report.py test_daily_shadow_candidates.py test_shadow_templates.py test_results_manual_import.py test_shadow_workflow.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
-git commit -m "Add shadow daily workflow V8.1"
+git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md docs/closing_odds_forensics.md docs/shadow_mode_workflow.md docs/operations_center.md docs/evidence_gate_policy.md docs/june_shadow_runbook.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py shadow_ledger.py closing_manual_import.py shadow_clv_report.py daily_shadow_candidates.py shadow_templates.py results_manual_import.py shadow_workflow.py oracle_ops.py shadow_quality_audit.py evidence_gate.py shadow_simulator.py sample_size_planner.py shadow_message_formatter.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_shadow_ledger.py test_closing_manual_import.py test_shadow_clv_report.py test_daily_shadow_candidates.py test_shadow_templates.py test_results_manual_import.py test_shadow_workflow.py test_oracle_ops.py test_shadow_quality_audit.py test_evidence_gate.py test_shadow_simulator.py test_sample_size_planner.py test_shadow_message_formatter.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
+git commit -m "Add shadow operations center V8.2"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -655,7 +700,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 24. Ce qu'il ne faut pas faire
+## 25. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

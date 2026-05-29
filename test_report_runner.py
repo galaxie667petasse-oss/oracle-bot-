@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, run_report, shadow_commands, xg_understat_commands
+from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, ops_commands, run_report, shadow_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -175,6 +175,30 @@ Understat xG Full Pipeline Quality Gate
             "warnings": ["sample <1000: promotion impossible"],
         }, ensure_ascii=False), encoding="utf-8")
         write_report(report_dir / "shadow_clv_report.txt", "Shadow CLV Report\n- Signaux shadow: 3\n- Coverage CLV: 66.67%\n- Verdict: not_validated\n")
+        (report_dir / "shadow_quality_audit.json").write_text(json.dumps({
+            "verdict": "usable_with_warnings",
+            "rows": 3,
+            "clv_coverage": 66.67,
+            "result_coverage": 50.0,
+            "blocking_errors": [],
+            "warnings": ["Closing odds manquantes: 1"],
+        }, ensure_ascii=False), encoding="utf-8")
+        write_report(report_dir / "shadow_quality_audit.txt", "Shadow Quality Audit\n- Verdict: usable_with_warnings\n- Coverage CLV: 66.67%\n")
+        (report_dir / "evidence_gate.json").write_text(json.dumps({
+            "global_status": "insufficient_evidence",
+            "blockers": ["sample shadow < 1000"],
+            "strengths": ["Shadow workflow pret"],
+            "required_next_steps": ["collecter observations"],
+        }, ensure_ascii=False), encoding="utf-8")
+        write_report(report_dir / "evidence_gate.txt", "Evidence Gate\n- Statut global: insufficient_evidence\n- Bloquant: sample shadow < 1000\n")
+        (report_dir / "sample_size_plan.json").write_text(json.dumps({
+            "current_sample": 3,
+            "target_edge_required_sample": 38416,
+            "edge_sample_requirements": {"1.0%": 38416},
+        }, ensure_ascii=False), encoding="utf-8")
+        write_report(report_dir / "sample_size_plan.txt", "Sample Size Planner\n- Sample actuel: 3\n- Edge 1.0%: sample approx 38416\n")
+        write_report(report_dir / "oracle_ops_health.txt", "Oracle Operations Center - Health\n- Statut: OK\n- OK: Telegram non appele par ops\n")
+        write_report(report_dir / "shadow_messages_preview.txt", "Oracle Shadow Mode\nStatut: observation seulement\nRappel: aucune mise conseillee\n")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -196,6 +220,7 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "CLV partial analysis" for command in command_set("closing-preview"))
         assert any(command.name == "Shadow CLV report" for command in command_set("shadow"))
         assert any(command.name == "Shadow workflow init" for command in command_set("daily-shadow"))
+        assert any(command.name == "Oracle ops health" for command in command_set("ops"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
@@ -218,6 +243,12 @@ Understat xG Full Pipeline Quality Gate
         assert any("--summary-csv" in command.args for command in daily_cmds)
         assert not any("benchmark_governance.py" in command.args for command in daily_cmds)
         assert not any("dashboard_builder.py" in command.args for command in daily_cmds)
+        ops_cmds = ops_commands(str(root / "reports" / "shadow_ledger.csv"), skip_evidence=False, skip_quality=False, skip_sample_plan=False, skip_dashboard=True)
+        assert any("oracle_ops.py" in command.args for command in ops_cmds)
+        assert any("shadow_quality_audit.py" in command.args for command in ops_cmds)
+        assert any("evidence_gate.py" in command.args for command in ops_cmds)
+        assert any("sample_size_planner.py" in command.args for command in ops_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in ops_cmds)
         try:
             closing_preview_commands("features.csv", "matches.csv", str(root / "data" / "preview.csv"))
             raise AssertionError("preview data non bloquee")
@@ -234,6 +265,12 @@ Understat xG Full Pipeline Quality Gate
         assert "Closing Odds Recovery Plan" in html
         assert "CLV partielle / Closing odds" in html
         assert "Shadow Mode Evidence" in html
+        assert "Operations Health" in html
+        assert "Shadow Quality Audit" in html
+        assert "Evidence Gate" in html
+        assert "Sample Size Plan" in html
+        assert "Shadow Message Preview" in html
+        assert "Manual Workflow Checklist" in html
         assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 

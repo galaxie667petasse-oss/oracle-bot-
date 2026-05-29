@@ -377,3 +377,14 @@ V8.1 ne change pas le pipeline xG, mais il rend la collecte de preuve quotidienn
 - `report_runner.py --daily-shadow` regenere le rapport evidence et la gouvernance locale.
 
 Le lien avec xG reste prudent : une observation xG peut etre placee en shadow ledger, puis comparee a une closing odds manuelle. Sans CLV fiable, sans sample suffisant et sans stabilite, le xG reste une observation technique. Aucune mise, aucun Telegram et aucun Railway ne sont actives.
+
+## V8.2 Operations Center
+
+La couche V8.2 ne modifie pas les conclusions xG. Elle ajoute un controle operationnel autour des preuves :
+
+- `shadow_quality_audit.py` verifie que le ledger shadow est propre ;
+- `evidence_gate.py` bloque toute interpretation si Big 5, CLV ou shadow evidence sont insuffisants ;
+- `sample_size_planner.py` rappelle le volume necessaire ;
+- `shadow_simulator.py` permet de tester le pipeline sans vraie donnee.
+
+Le Big 5 xG complet reste une force technique, mais sans CLV live/manuelle fiable il ne valide aucun edge.

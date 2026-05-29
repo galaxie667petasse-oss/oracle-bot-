@@ -41,6 +41,12 @@ ESSENTIAL_FILES = [
     "shadow_templates.py",
     "results_manual_import.py",
     "shadow_workflow.py",
+    "oracle_ops.py",
+    "shadow_quality_audit.py",
+    "evidence_gate.py",
+    "shadow_simulator.py",
+    "sample_size_planner.py",
+    "shadow_message_formatter.py",
     "report_runner.py",
     "dashboard_builder.py",
     "model_registry.json",
@@ -78,6 +84,12 @@ MAIN_TESTS = [
     "test_shadow_templates.py",
     "test_results_manual_import.py",
     "test_shadow_workflow.py",
+    "test_oracle_ops.py",
+    "test_shadow_quality_audit.py",
+    "test_evidence_gate.py",
+    "test_shadow_simulator.py",
+    "test_sample_size_planner.py",
+    "test_shadow_message_formatter.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -123,6 +135,12 @@ IMPORT_MODULES = [
     "shadow_templates",
     "results_manual_import",
     "shadow_workflow",
+    "oracle_ops",
+    "shadow_quality_audit",
+    "evidence_gate",
+    "shadow_simulator",
+    "sample_size_planner",
+    "shadow_message_formatter",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -157,6 +175,12 @@ OFFLINE_COMMAND_FILES = [
     "shadow_templates.py",
     "results_manual_import.py",
     "shadow_workflow.py",
+    "oracle_ops.py",
+    "shadow_quality_audit.py",
+    "evidence_gate.py",
+    "shadow_simulator.py",
+    "sample_size_planner.py",
+    "shadow_message_formatter.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [

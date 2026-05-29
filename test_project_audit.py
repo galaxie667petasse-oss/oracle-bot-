@@ -81,6 +81,8 @@ def test_release_candidate_docs_exist_and_have_sections():
         "closing column forensics",
         "shadow mode",
         "shadow ux",
+        "operations center",
+        "evidence gate",
         "statistical proof foundation",
         "clv",
         "reliability curves",
@@ -103,9 +105,13 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v7.0 statistical proof foundation" in status
     assert "v7.2 understat xg full pipeline quality gate" in status
     assert "v8.1 shadow ux" in status
+    assert "v8.2" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
+    assert (root / "docs" / "operations_center.md").exists()
+    assert (root / "docs" / "evidence_gate_policy.md").exists()
+    assert (root / "docs" / "june_shadow_runbook.md").exists()
 
 
 def main():

@@ -518,6 +518,7 @@ def _build_sections(
     clv_readiness_path: str = "",
     closing_probe_path: str = "",
     shadow_report_path: str = "",
+    evidence_gate_path: str = "",
 ) -> List[Dict[str, Any]]:
     if db is None:
         db = _load_db()
@@ -564,6 +565,7 @@ def _build_sections(
         _optional_report_section("CLV readiness", clv_readiness_path),
         _optional_report_section("Closing odds probe", closing_probe_path),
         _optional_report_section("Shadow CLV report", shadow_report_path),
+        _optional_report_section("Evidence gate", evidence_gate_path),
     ])
     return sections
 
@@ -616,6 +618,7 @@ def build_benchmark(
     clv_readiness_path: str = "",
     closing_probe_path: str = "",
     shadow_report_path: str = "",
+    evidence_gate_path: str = "",
 ) -> Dict[str, Any]:
     sections = _build_sections(
         features_path,
@@ -630,6 +633,7 @@ def build_benchmark(
         clv_readiness_path=clv_readiness_path,
         closing_probe_path=closing_probe_path,
         shadow_report_path=shadow_report_path,
+        evidence_gate_path=evidence_gate_path,
     )
     entries = collect_registry_entries(sections)
     entries = enrich_registry_entries(entries, sections)
@@ -643,6 +647,7 @@ def build_benchmark(
     closing_probe = report_data.get("Closing odds probe") or {}
     clv_report_data = report_data.get("CLV report") or {}
     shadow_report = report_data.get("Shadow CLV report") or {}
+    evidence_gate = report_data.get("Evidence gate") or {}
     shadow_sample = shadow_report.get("sample_size") or shadow_report.get("signals_total") or 0
     shadow_roi = shadow_report.get("roi")
     shadow_drawdown = shadow_report.get("drawdown")
@@ -665,6 +670,8 @@ def build_benchmark(
         and entry.get("clv_mean") > 0
     ]
     if clv_readiness and not clv_calculable:
+        robust = []
+    if evidence_gate and evidence_gate.get("global_status") != "ready_for_deep_review":
         robust = []
     if shadow_report:
         shadow_blocks = []
@@ -750,6 +757,11 @@ def build_benchmark(
         if shadow_drawdown is not None and shadow_drawdown <= -10:
             promotion_blockers.append("Shadow mode: drawdown eleve")
         promotion_blockers.append("Shadow mode: validation historique et revue humaine requises")
+    if evidence_gate:
+        if evidence_gate.get("global_status") != "ready_for_deep_review":
+            promotion_blockers.append(f"Evidence gate: {evidence_gate.get('global_status')}")
+        for blocker in evidence_gate.get("blockers") or []:
+            promotion_blockers.append("Evidence gate: " + str(blocker))
     if not promotion_blockers:
         promotion_blockers.append("Gouvernance complete requise avant tout affichage decisionnel")
 
@@ -764,6 +776,7 @@ def build_benchmark(
         "clv_readiness_path": clv_readiness_path or None,
         "closing_probe_path": closing_probe_path or None,
         "shadow_report_path": shadow_report_path or None,
+        "evidence_gate_path": evidence_gate_path or None,
         "xg_lab_available": any(section.get("name") == "External xG rolling lab" and section.get("ok") for section in sections),
         "xg_quality_available": any(section.get("name") == "XG quality report" and section.get("ok") for section in sections),
         "xg_model_available": any(section.get("name") == "XG model report" and section.get("ok") for section in sections),
@@ -771,6 +784,11 @@ def build_benchmark(
         "clv_readiness_available": bool(clv_readiness),
         "closing_probe_available": bool(closing_probe),
         "shadow_report_available": bool(shadow_report),
+        "evidence_gate_available": bool(evidence_gate),
+        "evidence_gate_status": evidence_gate.get("global_status"),
+        "evidence_gate_blockers": evidence_gate.get("blockers") or [],
+        "evidence_gate_strengths": evidence_gate.get("strengths") or [],
+        "evidence_gate_next_steps": evidence_gate.get("required_next_steps") or [],
         "shadow_signals": shadow_report.get("signals_total"),
         "shadow_clv_coverage": shadow_report.get("clv_coverage"),
         "shadow_clv_mean": shadow_report.get("clv_mean"),
@@ -921,6 +939,8 @@ def write_html(benchmark: Dict[str, Any], path: str) -> Path:
         f"<li>Shadow ROI: {benchmark['summary'].get('shadow_roi')}</li>",
         f"<li>Shadow max drawdown: {benchmark['summary'].get('shadow_max_drawdown')}</li>",
         f"<li>Shadow verdict: {html.escape(str(benchmark['summary'].get('shadow_verdict')))}</li>",
+        f"<li>Evidence gate disponible: {benchmark['summary'].get('evidence_gate_available')}</li>",
+        f"<li>Evidence gate status: {html.escape(str(benchmark['summary'].get('evidence_gate_status')))}</li>",
         f"<li>CLV calculable: {benchmark['summary'].get('clv_calculable')}</li>",
         f"<li>Scope CLV: {html.escape(str(benchmark['summary'].get('clv_scope')))}</li>",
         f"<li>Coverage CLV: {benchmark['summary'].get('clv_coverage')}</li>",
@@ -975,6 +995,10 @@ def print_report(benchmark: Dict[str, Any]) -> None:
     print(f"- Shadow ROI: {summary.get('shadow_roi')}")
     print(f"- Shadow max drawdown: {summary.get('shadow_max_drawdown')}")
     print(f"- Shadow verdict: {summary.get('shadow_verdict')}")
+    print(f"- Evidence gate disponible: {summary.get('evidence_gate_available')}")
+    print(f"- Evidence gate status: {summary.get('evidence_gate_status')}")
+    for blocker in summary.get("evidence_gate_blockers") or []:
+        print(f"- Evidence blocker: {blocker}")
     print(f"- CLV calculable: {summary.get('clv_calculable')}")
     print(f"- Scope CLV: {summary.get('clv_scope')}")
     print(f"- Coverage CLV: {summary.get('clv_coverage')}")
@@ -1012,6 +1036,7 @@ def parse_args(argv=None):
     parser.add_argument("--clv-readiness", default="", help="JSON readiness CLV")
     parser.add_argument("--closing-probe", default="", help="JSON closing_odds_probe optionnel")
     parser.add_argument("--shadow-report", default="", help="JSON shadow_clv_report optionnel")
+    parser.add_argument("--evidence-gate", default="", help="JSON evidence_gate optionnel")
     return parser.parse_args(argv)
 
 
@@ -1029,6 +1054,7 @@ def main(argv=None) -> int:
         clv_readiness_path=args.clv_readiness,
         closing_probe_path=args.closing_probe,
         shadow_report_path=args.shadow_report,
+        evidence_gate_path=args.evidence_gate,
     )
     registry_path = write_registry(benchmark["registry"], args.registry)
     if args.summary_json:

@@ -480,6 +480,110 @@ def daily_shadow_commands(
     return commands
 
 
+def ops_commands(
+    ledger: str = "reports/shadow_ledger.csv",
+    skip_evidence: bool = False,
+    skip_quality: bool = False,
+    skip_sample_plan: bool = False,
+    skip_dashboard: bool = False,
+    simulated_ledger: str = "",
+) -> List[ReportCommand]:
+    active_ledger = simulated_ledger or ledger
+    commands = [
+        ReportCommand(
+            "Oracle ops health",
+            "oracle_ops_health.txt",
+            ["oracle_ops.py", "--health", "--ledger", active_ledger],
+            timeout=300,
+        )
+    ]
+    if not skip_quality:
+        commands.append(
+            ReportCommand(
+                "Shadow quality audit",
+                "shadow_quality_audit.txt",
+                [
+                    "shadow_quality_audit.py",
+                    "--ledger",
+                    active_ledger,
+                    "--output",
+                    "{report_dir}/shadow_quality_audit.json",
+                    "--html",
+                    "{report_dir}/shadow_quality_audit.html",
+                ],
+                timeout=600,
+            )
+        )
+    commands.append(
+        ReportCommand(
+            "Shadow CLV report ops",
+            "shadow_clv_report.txt",
+            [
+                "shadow_clv_report.py",
+                "--ledger",
+                active_ledger,
+                "--output",
+                "{report_dir}/shadow_clv_report.json",
+                "--html",
+                "{report_dir}/shadow_clv_report.html",
+                "--summary-csv",
+                "{report_dir}/shadow_clv_summary.csv",
+            ],
+            timeout=600,
+        )
+    )
+    if not skip_evidence:
+        commands.append(
+            ReportCommand(
+                "Evidence gate",
+                "evidence_gate.txt",
+                [
+                    "evidence_gate.py",
+                    "--shadow-report",
+                    "{report_dir}/shadow_clv_report.json",
+                    "--quality-audit",
+                    "{report_dir}/shadow_quality_audit.json",
+                    "--big5-summary",
+                    "reports/big5_xg_summary.json",
+                    "--clv-readiness",
+                    "reports/clv_readiness.json",
+                    "--output",
+                    "{report_dir}/evidence_gate.json",
+                    "--html",
+                    "{report_dir}/evidence_gate.html",
+                ],
+                timeout=600,
+            )
+        )
+    if not skip_sample_plan:
+        commands.append(
+            ReportCommand(
+                "Sample size plan",
+                "sample_size_plan.txt",
+                [
+                    "sample_size_planner.py",
+                    "--shadow-report",
+                    "{report_dir}/shadow_clv_report.json",
+                    "--output",
+                    "{report_dir}/sample_size_plan.json",
+                    "--html",
+                    "{report_dir}/sample_size_plan.html",
+                ],
+                timeout=300,
+            )
+        )
+    if not skip_dashboard:
+        commands.append(
+            ReportCommand(
+                "Dashboard ops",
+                "dashboard_builder.txt",
+                ["dashboard_builder.py", "--input", "{report_dir}"],
+                timeout=300,
+            )
+        )
+    return commands
+
+
 def timestamp() -> str:
     return datetime.now().strftime("%Y_%m_%d_%H%M%S")
 
@@ -512,6 +616,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return shadow_commands()
     if mode == "daily-shadow":
         return daily_shadow_commands()
+    if mode == "ops":
+        return ops_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -628,6 +734,7 @@ def parse_args(argv=None):
     mode.add_argument("--closing-preview", action="store_true", help="Construit la preview CLV partielle dans reports/ et l'analyse")
     mode.add_argument("--shadow", action="store_true", help="Lance le rapport shadow mode et la gouvernance locale")
     mode.add_argument("--daily-shadow", action="store_true", help="Lance le workflow quotidien shadow local")
+    mode.add_argument("--ops", action="store_true", help="Lance le centre operations shadow local")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
@@ -639,6 +746,10 @@ def parse_args(argv=None):
     parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
     parser.add_argument("--skip-benchmark", action="store_true", help="Pour --xg-understat/--big5-xg: ignore benchmark_governance")
     parser.add_argument("--skip-dashboard", action="store_true", help="Pour --daily-shadow: ignore dashboard_builder")
+    parser.add_argument("--skip-evidence", action="store_true", help="Pour --ops: ignore evidence_gate")
+    parser.add_argument("--skip-quality", action="store_true", help="Pour --ops: ignore shadow_quality_audit")
+    parser.add_argument("--skip-sample-plan", action="store_true", help="Pour --ops: ignore sample_size_planner")
+    parser.add_argument("--simulated-ledger", default="", help="Pour --ops: ledger shadow simule a utiliser")
     parser.add_argument("--skip-model", action="store_true", help="Pour --xg-understat: ignore xg_model_lab")
     parser.add_argument("--dry-run", action="store_true", help="Pour --xg-understat: affiche les etapes sans lancer le pipeline")
     return parser.parse_args(argv)
@@ -651,6 +762,7 @@ def main(argv=None) -> None:
         else "closing-preview" if args.closing_preview
         else "shadow" if args.shadow
         else "daily-shadow" if args.daily_shadow
+        else "ops" if args.ops
         else "big5-xg" if args.big5_xg
         else "xg-understat" if args.xg_understat
         else "full" if args.full
@@ -699,6 +811,15 @@ def main(argv=None) -> None:
             features=args.features or args.xgabora,
             skip_benchmark=args.skip_benchmark,
             skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "ops":
+        commands = ops_commands(
+            ledger=args.ledger,
+            skip_evidence=args.skip_evidence,
+            skip_quality=args.skip_quality,
+            skip_sample_plan=args.skip_sample_plan,
+            skip_dashboard=args.skip_dashboard,
+            simulated_ledger=args.simulated_ledger,
         )
     else:
         commands = command_set(mode)

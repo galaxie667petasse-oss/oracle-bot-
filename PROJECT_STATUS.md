@@ -2,9 +2,11 @@
 
 ## Version actuelle
 
-V8.1 Shadow UX, Daily Workflow, Evidence Dashboard & Safety Hardening.
+V8.2 Shadow Operations Center, Evidence Gate, Simulation & June Runbook.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0 Shadow Mode restent en place. V8.1 ajoute un workflow quotidien shadow, des templates CSV, l'import manuel des resultats, un dashboard evidence et des garde-fous supplementaires. Aucun signal robuste active. Aucun changement V8.1 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. Aucun signal robuste active. Aucun changement V8.2 ne branche Telegram, Railway ou un pick automatique.
+
+V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre operations et le gate de preuve.
 
 ## Etat general
 
@@ -29,6 +31,12 @@ Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full 
 - Workflow quotidien shadow disponible via `shadow_workflow.py`.
 - Rapport CLV shadow disponible via `shadow_clv_report.py`, avec ROI unite, profit, drawdown, splits et warnings sample.
 - Candidats shadow quotidiens disponibles via `daily_shadow_candidates.py`, importables vers le ledger sans automatisation.
+- Operations Center disponible via `oracle_ops.py`.
+- Audit qualite ledger disponible via `shadow_quality_audit.py`.
+- Evidence gate disponible via `evidence_gate.py`.
+- Simulateur shadow disponible via `shadow_simulator.py`.
+- Sample size planner disponible via `sample_size_planner.py`.
+- Formatter texte shadow disponible via `shadow_message_formatter.py`, sans envoi Telegram.
 - Preview features closing disponible via `features_closing_enricher.py`, sortie limitee a `reports/`.
 - CLV partielle H2H home/away disponible uniquement si la closing exacte du cote joue existe.
 - CLV / Closing Line Value disponible si des cotes closing sont presentes.
@@ -79,6 +87,12 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - `closing_manual_import.py` : import manuel de closing odds par `shadow_id`.
 - `shadow_clv_report.py` : rapport CLV/ROI shadow, observation seulement.
 - `daily_shadow_candidates.py` : preparation de candidats shadow depuis CSV live ou historique, sans recommandation de mise.
+- `oracle_ops.py` : centre de controle local health/daily/full-local.
+- `shadow_quality_audit.py` : controle colonnes, odds, CLV, doublons, dates, resultats et coverage.
+- `evidence_gate.py` : statut de preuve `not_started`, `insufficient_evidence`, `blocked` ou `ready_for_deep_review`.
+- `shadow_simulator.py` : ledgers synthetiques pour tester les workflows sans preuve reelle.
+- `sample_size_planner.py` : estimation prudente des volumes necessaires.
+- `shadow_message_formatter.py` : preview texte privee, sans API Telegram.
 
 ## Resultats connus
 
@@ -126,11 +140,12 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 
 ## Prochaine vraie priorite
 
-1. Commit/push la phase locale V8.1.
-2. Lancer `shadow_workflow.py --init`.
-3. Creer 5-10 observations shadow de test via `shadow_ledger.py --add-csv`.
-4. Importer les closing odds manuelles fiables avec `closing_manual_import.py`.
-5. Importer les resultats manuels avec `results_manual_import.py`.
-6. Relire `shadow_clv_report.py` avec sample, coverage, CLV moyenne, ROI et drawdown.
-7. Lancer manuellement Ligue 1, puis `join_diagnostics.py --league "Ligue 1"` et le pipeline strict.
-8. Sinon chercher une source closing complete fiable.
+1. Commit/push la phase locale V8.2.
+2. Lancer `oracle_ops.py --health` puis `oracle_ops.py --daily`.
+3. Creer 5-10 observations shadow reelles ou de test.
+4. Collecter les closing odds manuelles fiables.
+5. Importer les resultats manuels.
+6. Lire `shadow_quality_audit.py`, `shadow_clv_report.py` et `evidence_gate.py`.
+7. Continuer jusqu'a sample significatif.
+8. Lancer manuellement Ligue 1, puis `join_diagnostics.py --league "Ligue 1"` et le pipeline strict.
+9. Sinon chercher une source closing complete fiable.

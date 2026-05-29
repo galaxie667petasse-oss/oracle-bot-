@@ -69,7 +69,7 @@ async def run_scan(ctx, force=False):
     elif watch:
         verdict = "Aucun pari fort conseillé : uniquement des signaux en observation."
     else:
-        verdict = "Journée sans pari conseillé : le conseil refuse de forcer un ticket."
+        verdict = "Journee sans selection activee : le conseil refuse de forcer un ticket."
 
     await msg.edit_text(
         f"🧬 <b>Oracle V5.1 — Calibration</b>\n📅 {esc(day['label'])}\n🏆 Paris conseillés: <b>{len(top)}</b>\n👀 Observations: <b>{len(watch)}</b>\n🚫 Marchés refusés: <b>{len(rejected)}</b>\n\n🧾 <b>Résumé</b>\n{esc(verdict)}\n\n✅ Les éléments affichés sont enregistrés pour vérification automatique à {settings.settle_hour}h.",
@@ -83,7 +83,7 @@ async def run_scan(ctx, force=False):
             kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ GAGNÉ", callback_data=f"res:{day['key']}:{idx}:win"), InlineKeyboardButton("❌ PERDU", callback_data=f"res:{day['key']}:{idx}:loss"), InlineKeyboardButton("🚫 Annuler", callback_data=f"res:{day['key']}:{idx}:cancel")]])
             await ctx.bot.send_message(settings.chat_id, pick_card(i, p, "PARI CONSEILLÉ"), parse_mode=ParseMode.HTML, reply_markup=kb)
     else:
-        await ctx.bot.send_message(settings.chat_id, "🏆 <b>PARIS CONSEILLÉS</b>\nAucun pari conseillé aujourd'hui. Le système préfère ne rien jouer plutôt que forcer une sélection faible.", parse_mode=ParseMode.HTML)
+        await ctx.bot.send_message(settings.chat_id, "🏆 <b>OBSERVATIONS ORACLE</b>\nAucune selection activee aujourd'hui. Le systeme prefere ne rien jouer plutot que forcer une selection faible.", parse_mode=ParseMode.HTML)
 
     if watch:
         await ctx.bot.send_message(settings.chat_id, "👀 <b>OBSERVATIONS — suivi statistique, pas de mise conseillée</b>", parse_mode=ParseMode.HTML)

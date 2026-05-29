@@ -181,3 +181,26 @@ Regles V8.1 :
 - meme si CLV et ROI deviennent positifs avec un gros sample, le statut maximum est `candidat a analyse approfondie`.
 
 Le workflow quotidien ne cree aucune mise, n'utilise pas Kelly et ne publie rien sur Telegram.
+
+## V8.2 Evidence Gate
+
+V8.2 ajoute `evidence_gate.py` comme couche de decision centrale. Elle ne promeut rien automatiquement. Elle classe la preuve en :
+
+- `not_started` ;
+- `collecting_evidence` ;
+- `insufficient_evidence` ;
+- `promising_but_unvalidated` ;
+- `blocked` ;
+- `ready_for_deep_review`.
+
+Regles :
+
+- `ready_for_deep_review` signifie seulement analyse humaine approfondie ;
+- sample shadow < 1000 bloque toute promotion ;
+- CLV coverage < 80% bloque toute conclusion ;
+- CLV moyenne <= 0 bloque ;
+- ROI shadow <= 0 bloque ;
+- ledger quality `invalid` bloque ;
+- Big 5 xG sans CLV reste observation.
+
+Aucun statut V8.2 ne declenche Telegram, Railway, staking ou mise automatique.

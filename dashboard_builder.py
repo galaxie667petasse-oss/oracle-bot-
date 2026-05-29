@@ -30,6 +30,11 @@ REPORT_FILES = {
     "clv_readiness": "clv_readiness.txt",
     "closing_odds_probe": "closing_odds_probe.txt",
     "shadow_clv": "shadow_clv_report.txt",
+    "ops_health": "oracle_ops_health.txt",
+    "shadow_quality": "shadow_quality_audit.txt",
+    "evidence_gate": "evidence_gate.txt",
+    "sample_size_plan": "sample_size_plan.txt",
+    "shadow_message_preview": "shadow_messages_preview.txt",
 }
 
 
@@ -132,6 +137,9 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     clv_readiness = read_json_candidates(report_dir, ["clv_readiness.json"])
     closing_probe = read_json_candidates(report_dir, ["closing_odds_probe.json"])
     shadow_clv = read_json_candidates(report_dir, ["shadow_clv_report.json"])
+    shadow_quality = read_json_candidates(report_dir, ["shadow_quality_audit.json"])
+    evidence_gate = read_json_candidates(report_dir, ["evidence_gate.json"])
+    sample_plan = read_json_candidates(report_dir, ["sample_size_plan.json"])
     pipeline_final = understat_pipeline.get("final_status") or {}
     pipeline_model = pipeline_final.get("xg_model") or {}
 
@@ -247,6 +255,21 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "shadow_warnings": shadow_clv.get("warnings") or [],
         "shadow_top_strategies": list((shadow_clv.get("clv_by_strategy") or {}).keys())[:5],
         "shadow_top_leagues": list((shadow_clv.get("clv_by_league") or {}).keys())[:5],
+        "shadow_quality_available": bool(shadow_quality),
+        "shadow_quality_verdict": shadow_quality.get("verdict"),
+        "shadow_quality_errors": shadow_quality.get("blocking_errors") or [],
+        "shadow_quality_warnings": shadow_quality.get("warnings") or [],
+        "shadow_quality_clv_coverage": shadow_quality.get("clv_coverage"),
+        "shadow_quality_result_coverage": shadow_quality.get("result_coverage"),
+        "evidence_gate_available": bool(evidence_gate),
+        "evidence_gate_status": evidence_gate.get("global_status"),
+        "evidence_gate_blockers": evidence_gate.get("blockers") or [],
+        "evidence_gate_strengths": evidence_gate.get("strengths") or [],
+        "evidence_gate_next_steps": evidence_gate.get("required_next_steps") or [],
+        "sample_plan_available": bool(sample_plan),
+        "sample_plan_current": sample_plan.get("current_sample"),
+        "sample_plan_target_required": sample_plan.get("target_edge_required_sample"),
+        "sample_plan_edges": sample_plan.get("edge_sample_requirements") or {},
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -461,6 +484,70 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     if texts["shadow_clv"]:
         shadow_lines.extend(_lines_matching(texts["shadow_clv"], ["Signaux", "Coverage", "CLV moyenne", "CLV positive", "ROI", "Verdict", "Avertissement"], 24))
     parts.append(_card("Shadow Mode Evidence", "\n".join(shadow_lines)))
+
+    ops_lines = [
+        "statut health: voir sortie oracle_ops --health",
+        "reports/ ignore et external_data/ ignore doivent rester vrais.",
+        "aucun reseau, aucune mise, aucun Telegram.",
+    ]
+    if texts["ops_health"]:
+        ops_lines.extend(_lines_matching(texts["ops_health"], ["Statut", "OK", "warning", "bloquant", "Telegram", "Railway"], 30))
+    parts.append(_card("Operations Health", "\n".join(ops_lines)))
+
+    quality_lines = [
+        f"rapport disponible: {summary.get('shadow_quality_available')}",
+        f"verdict: {summary.get('shadow_quality_verdict')}",
+        f"coverage CLV: {summary.get('shadow_quality_clv_coverage')}%",
+        f"coverage resultats: {summary.get('shadow_quality_result_coverage')}%",
+        f"erreurs: {', '.join(summary.get('shadow_quality_errors') or []) or 'aucune'}",
+        f"warnings: {', '.join(summary.get('shadow_quality_warnings') or []) or 'aucun'}",
+    ]
+    if texts["shadow_quality"]:
+        quality_lines.extend(_lines_matching(texts["shadow_quality"], ["Verdict", "Coverage", "Bloquant", "Warning"], 24))
+    parts.append(_card("Shadow Quality Audit", "\n".join(quality_lines)))
+
+    evidence_lines = [
+        f"rapport disponible: {summary.get('evidence_gate_available')}",
+        f"statut global: {summary.get('evidence_gate_status')}",
+        f"blockers: {', '.join(summary.get('evidence_gate_blockers') or []) or 'aucun'}",
+        f"forces: {', '.join(summary.get('evidence_gate_strengths') or []) or 'aucune'}",
+        f"next actions: {', '.join(summary.get('evidence_gate_next_steps') or []) or 'n/a'}",
+        "statut final: analyse approfondie requise au maximum, aucune activation automatique.",
+    ]
+    if texts["evidence_gate"]:
+        evidence_lines.extend(_lines_matching(texts["evidence_gate"], ["Statut global", "Bloquant", "Action requise"], 24))
+    parts.append(_card("Evidence Gate", "\n".join(evidence_lines)))
+
+    sample_lines = [
+        f"rapport disponible: {summary.get('sample_plan_available')}",
+        f"sample actuel: {summary.get('sample_plan_current')}",
+        f"sample target edge: {summary.get('sample_plan_target_required')}",
+        f"edge table: {summary.get('sample_plan_edges')}",
+        "rappel: <100 bruit extreme, <500 insuffisant, <1000 non valide.",
+    ]
+    if texts["sample_size_plan"]:
+        sample_lines.extend(_lines_matching(texts["sample_size_plan"], ["Sample", "Edge", "Warning"], 24))
+    parts.append(_card("Sample Size Plan", "\n".join(sample_lines)))
+
+    message_lines = [
+        "preview texte seulement, aucun envoi Telegram.",
+        "statut: observation seulement.",
+    ]
+    if texts["shadow_message_preview"]:
+        message_lines.extend(texts["shadow_message_preview"].splitlines()[:24])
+    parts.append(_card("Shadow Message Preview", "\n".join(message_lines)))
+
+    workflow_lines = [
+        "1. Verifier les observations shadow du jour.",
+        "2. Generer les templates closing/resultats.",
+        "3. Renseigner uniquement des closing odds reelles.",
+        "4. Importer les resultats manuels.",
+        "5. Relancer shadow_clv_report.py.",
+        "6. Lire evidence_gate.py.",
+        "7. Continuer la collecte tant que sample < 1000.",
+        "Aucune mise conseillee.",
+    ]
+    parts.append(_card("Manual Workflow Checklist", "\n".join(workflow_lines)))
 
     league_rows = []
     for item in (big5_xg.get("leagues") or []):

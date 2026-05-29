@@ -629,6 +629,12 @@ Etat V8.1 Shadow UX, Daily Workflow, Evidence Dashboard & Safety Hardening :
 - import manuel de closing odds disponible par `shadow_id` ;
 - rapport CLV shadow enrichi avec ROI unite, drawdown, splits et blockers, observation seulement ;
 - dashboard shadow evidence disponible ;
+- V8.2 Operations Center disponible via `oracle_ops.py` ;
+- evidence gate disponible via `evidence_gate.py` ;
+- audit qualite ledger disponible via `shadow_quality_audit.py` ;
+- simulateur shadow synthetique disponible via `shadow_simulator.py` ;
+- sample size planner disponible via `sample_size_planner.py` ;
+- formatter texte shadow disponible sans envoi via `shadow_message_formatter.py` ;
 - draw, totals et BTTS restent exclus sans colonnes closing exactes ;
 - CLV, calibration et validation statistique disponibles ;
 - Scientific Benchmark et Model Governance disponibles ;
@@ -663,3 +669,17 @@ V8.1 transforme le shadow mode en routine quotidienne locale :
 - `report_runner.py --daily-shadow` regenere les preuves et le dashboard.
 
 Ce workflow reste un journal de preuve. Il n'utilise pas Kelly, ne cree aucune mise, ne publie rien sur Telegram et ne transforme jamais une observation shadow en recommandation active. Sans CLV manuelle fiable et sans sample largement suffisant, le verdict reste `not_validated` ou `observation_only`.
+
+## V8.2 Operations Center, Evidence Gate & June Runbook
+
+V8.2 ajoute une couche operations pour utiliser Oracle Bot au quotidien en juin :
+
+- `oracle_ops.py --health` verifie les modules, les dossiers ignores et les fichiers locaux attendus ;
+- `oracle_ops.py --daily` affiche la checklist du jour ;
+- `shadow_quality_audit.py` controle le ledger avant interpretation ;
+- `evidence_gate.py` centralise les bloqueurs de preuve ;
+- `shadow_simulator.py` genere des ledgers synthetiques pour tester le workflow ;
+- `sample_size_planner.py` rappelle pourquoi 100, 300 ou 500 observations ne suffisent pas ;
+- `shadow_message_formatter.py` prepare une preview texte privee, sans envoi Telegram.
+
+Le statut maximum reste `ready_for_deep_review`, c'est-a-dire analyse approfondie requise. Il n'y a aucune mise reelle, aucune activation automatique, aucune promesse de rentabilite.

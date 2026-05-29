@@ -233,6 +233,26 @@ def main():
         assert all(entry.get("shadow_available") is True for entry in benchmark_shadow["registry"])
         assert all(entry.get("shadow_blocks_promotion") is True for entry in benchmark_shadow["registry"])
 
+        evidence_path = root / "reports" / "evidence_gate.json"
+        evidence_path.write_text(json.dumps({
+            "global_status": "insufficient_evidence",
+            "blockers": ["sample shadow < 1000"],
+            "strengths": ["Shadow workflow pret"],
+            "required_next_steps": ["collecter observations"],
+            "lab_only": True,
+            "can_influence_picks": False,
+        }, ensure_ascii=False), encoding="utf-8")
+        benchmark_evidence = benchmark_governance.build_benchmark(
+            str(root / "features_absent.csv"),
+            db=synthetic_db(),
+            shadow_report_path=str(shadow_path),
+            evidence_gate_path=str(evidence_path),
+        )
+        assert benchmark_evidence["summary"]["evidence_gate_available"] is True
+        assert benchmark_evidence["summary"]["evidence_gate_status"] == "insufficient_evidence"
+        assert any("Evidence gate" in blocker for blocker in benchmark_evidence["summary"]["promotion_blockers"])
+        assert benchmark_evidence["summary"]["robust_candidates"] == 0
+
         quality_path = root / "reports" / "xg_quality.json"
         model_path = root / "reports" / "xg_model.json"
         quality_path.write_text(json.dumps({

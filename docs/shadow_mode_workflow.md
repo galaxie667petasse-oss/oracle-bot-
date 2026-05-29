@@ -116,3 +116,23 @@ Avant ces conditions, le verdict reste `not_validated`, `observation_only` ou `w
 7. Ne conclure qu'apres un sample significatif.
 
 Aucun Telegram, aucun Railway, aucune mise automatique.
+
+## V8.2 Operations Center
+
+Pour eviter de memoriser toutes les commandes, utiliser :
+
+```bash
+python oracle_ops.py --health
+python oracle_ops.py --daily
+python report_runner.py --ops
+```
+
+Le workflow V8.2 ajoute :
+
+- audit qualite ledger ;
+- evidence gate ;
+- sample size planner ;
+- preview texte sans envoi ;
+- runbook de juin.
+
+Le statut final reste non valide tant que sample, CLV, resultats et qualite ledger ne sont pas suffisants.
