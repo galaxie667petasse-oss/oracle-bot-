@@ -197,6 +197,69 @@ def big5_xg_commands(
     return commands
 
 
+def closing_readiness_commands(
+    features: str = "data/features_modern.csv",
+    source_csv: str = "data/MATCHES.csv",
+    skip_benchmark: bool = False,
+) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "Closing odds probe",
+            "closing_odds_probe.txt",
+            [
+                "closing_odds_probe.py",
+                "--csv",
+                source_csv,
+                "--output",
+                "{report_dir}/closing_odds_probe.json",
+                "--html",
+                "{report_dir}/closing_odds_probe.html",
+            ],
+            timeout=900,
+        ),
+        ReportCommand(
+            "CLV readiness enrichi",
+            "clv_readiness.txt",
+            [
+                "clv_readiness_report.py",
+                "--features",
+                features,
+                "--closing-probe",
+                "{report_dir}/closing_odds_probe.json",
+                "--output",
+                "{report_dir}/clv_readiness.json",
+                "--html",
+                "{report_dir}/clv_readiness.html",
+            ],
+            timeout=900,
+        ),
+    ]
+    if not skip_benchmark:
+        commands.append(
+            ReportCommand(
+                "Benchmark governance closing readiness",
+                "benchmark_governance_closing.txt",
+                [
+                    "benchmark_governance.py",
+                    "--features",
+                    features,
+                    "--clv-readiness",
+                    "{report_dir}/clv_readiness.json",
+                    "--closing-probe",
+                    "{report_dir}/closing_odds_probe.json",
+                    "--summary-json",
+                    "{report_dir}/benchmark_summary.json",
+                    "--html",
+                    "{report_dir}/benchmark_governance.html",
+                    "--registry",
+                    "{report_dir}/model_registry.json",
+                ],
+                timeout=1800,
+            )
+        )
+    return commands
+
+
 def timestamp() -> str:
     return datetime.now().strftime("%Y_%m_%d_%H%M%S")
 
@@ -221,6 +284,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return xg_understat_commands()
     if mode == "big5-xg":
         return big5_xg_commands()
+    if mode == "closing-readiness":
+        return closing_readiness_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -333,9 +398,11 @@ def parse_args(argv=None):
     mode.add_argument("--statistical", action="store_true", help="Lance CLV, calibration, validation statistique et gouvernance")
     mode.add_argument("--xg-understat", action="store_true", help="Lance le pipeline local Understat xG multi-saisons")
     mode.add_argument("--big5-xg", action="store_true", help="Lance l'agregateur Big 5 xG et CLV readiness sans reseau")
+    mode.add_argument("--closing-readiness", action="store_true", help="Inspecte les closing odds source et met a jour la readiness CLV")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
+    parser.add_argument("--closing-source", default="data/MATCHES.csv", help="CSV source closing odds pour --closing-readiness")
     parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
     parser.add_argument("--skip-benchmark", action="store_true", help="Pour --xg-understat/--big5-xg: ignore benchmark_governance")
     parser.add_argument("--skip-model", action="store_true", help="Pour --xg-understat: ignore xg_model_lab")
@@ -345,7 +412,14 @@ def parse_args(argv=None):
 
 def main(argv=None) -> None:
     args = parse_args(argv)
-    mode = "big5-xg" if args.big5_xg else ("xg-understat" if args.xg_understat else ("full" if args.full else ("statistical" if args.statistical else "quick")))
+    mode = (
+        "closing-readiness" if args.closing_readiness
+        else "big5-xg" if args.big5_xg
+        else "xg-understat" if args.xg_understat
+        else "full" if args.full
+        else "statistical" if args.statistical
+        else "quick"
+    )
     report_dir = resolve_report_dir(args.output)
     report_dir.mkdir(parents=True, exist_ok=True)
     print("Rapport central local Oracle Bot")
@@ -363,6 +437,12 @@ def main(argv=None) -> None:
         )
     elif mode == "big5-xg":
         commands = big5_xg_commands(features=args.xgabora, skip_benchmark=args.skip_benchmark)
+    elif mode == "closing-readiness":
+        commands = closing_readiness_commands(
+            features=args.xgabora,
+            source_csv=args.closing_source,
+            skip_benchmark=args.skip_benchmark,
+        )
     else:
         commands = command_set(mode)
     manifest = run_report(commands, report_dir, Path.cwd())

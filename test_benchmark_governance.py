@@ -67,6 +67,7 @@ def main():
         assert any("XG quality report" in warning for warning in benchmark["summary"]["warnings"])
         assert any("Big 5 xG summary" in warning for warning in benchmark["summary"]["warnings"])
         assert any("CLV readiness" in warning for warning in benchmark["summary"]["warnings"])
+        assert any("Closing odds probe" in warning for warning in benchmark["summary"]["warnings"])
         assert benchmark["registry"]
         assert all(entry.get("governance_status") != "production_allowed" for entry in benchmark["registry"])
         assert all("clv_mean" in entry for entry in benchmark["registry"])
@@ -106,11 +107,19 @@ def main():
 
         big5_path = root / "reports" / "big5_xg_summary.json"
         clv_ready_path = root / "reports" / "clv_readiness.json"
+        closing_probe_path = root / "reports" / "closing_odds_probe.json"
         big5_path.write_text(json.dumps({
             "global": {
+                "total_leagues_expected": 5,
+                "total_leagues_available": 3,
+                "missing_leagues": ["SerieA", "Ligue1"],
+                "ready_for_big5_conclusion": False,
+                "clv_blocker": True,
                 "leagues_available": 3,
                 "leagues_exploitable": 3,
                 "leagues_clv_available": 0,
+                "leagues_sample_ge_1000": 0,
+                "leagues_roi_edge_positive": 2,
                 "observations": 1,
                 "watchlist": 2,
                 "robust_candidates": 0,
@@ -122,8 +131,19 @@ def main():
         clv_ready_path.write_text(json.dumps({
             "status": "indisponible",
             "clv_calculable": False,
+            "clv_calculable_now": False,
+            "clv_calculable_after_enrichment": True,
+            "source_has_closing": True,
             "missing_columns": ["C_LTH", "C_LTA"],
             "markets": {"h2h_closing_possible": False},
+            "recommended_next_command": "python features_closing_enricher.py --features data/features_modern.csv --source data/MATCHES.csv --output reports/features_with_closing_preview.csv",
+            "lab_only": True,
+            "can_influence_picks": False,
+        }, ensure_ascii=False), encoding="utf-8")
+        closing_probe_path.write_text(json.dumps({
+            "status": "ok",
+            "closing_available": True,
+            "detected_columns": {"all_closing": ["C_LTH", "C_LTD", "C_LTA"]},
             "lab_only": True,
             "can_influence_picks": False,
         }, ensure_ascii=False), encoding="utf-8")
@@ -132,14 +152,23 @@ def main():
             db=synthetic_db(),
             big5_xg_summary_path=str(big5_path),
             clv_readiness_path=str(clv_ready_path),
+            closing_probe_path=str(closing_probe_path),
         )
         assert benchmark_big5["summary"]["big5_xg_available"] is True
         assert benchmark_big5["summary"]["clv_readiness_available"] is True
+        assert benchmark_big5["summary"]["closing_probe_available"] is True
         assert benchmark_big5["summary"]["clv_calculable"] is False
+        assert benchmark_big5["summary"]["clv_calculable_after_enrichment"] is True
+        assert benchmark_big5["summary"]["source_has_closing"] is True
+        assert benchmark_big5["summary"]["big5_ready_for_conclusion"] is False
+        assert benchmark_big5["summary"]["big5_missing_leagues"] == ["SerieA", "Ligue1"]
+        assert "C_LTH" in benchmark_big5["summary"]["closing_probe_detected_columns"]
         assert benchmark_big5["summary"]["big5_observation_count"] == 3
         assert benchmark_big5["summary"]["big5_candidate_count"] == 0
         assert "C_LTH" in benchmark_big5["summary"]["clv_missing_columns"]
         assert any("CLV non calculable" in blocker for blocker in benchmark_big5["summary"]["promotion_blockers"])
+        assert any("Enrichissement closing requis" in blocker for blocker in benchmark_big5["summary"]["promotion_blockers"])
+        assert any("Big 5 incomplet" in blocker for blocker in benchmark_big5["summary"]["promotion_blockers"])
         assert benchmark_big5["summary"]["robust_candidates"] == 0
 
         quality_path = root / "reports" / "xg_quality.json"

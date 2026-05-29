@@ -76,6 +76,7 @@ def test_release_candidate_docs_exist_and_have_sections():
         "bundesliga team alias expansion",
         "big five xg completion",
         "clv readiness",
+        "closing odds recovery",
         "statistical proof foundation",
         "clv",
         "reliability curves",

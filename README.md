@@ -371,6 +371,19 @@ python report_runner.py --big5-xg --skip-benchmark
 
 Telegram et Railway restent en attente. Avant toute aide decisionnelle, il faut des closing odds fiables, une CLV positive, un ROI test recent positif, un sample suffisant, bootstrap favorable, calibration correcte, correction multiple testing et gouvernance complete.
 
+## V7.6 Big Five Completion & Closing Odds Recovery
+
+V7.6 finalise les derniers alias utiles avant completion Big Five et ajoute le plan concret de recuperation des closing odds. Serie A conserve un export propre de 1900 matchs avec 100% xG ; le diagnostic a montre une jointure deja excellente mais encore penalisee par `Parma Calcio 1913`, maintenant mappe vers `Parma`. Bundesliga conserve les aliases longs/courts et ajoute les cas restants `St. Pauli` et `Holstein Kiel`. Ligue 1 est prete pour execution humaine, sans lancement reseau automatique.
+
+La nouvelle couche closing odds est volontairement separee :
+
+- `closing_odds_probe.py` lit seulement le header et un echantillon de `data/MATCHES.csv` pour savoir si des colonnes closing existent ;
+- `features_closing_enricher.py` peut produire une preview dans `reports/features_with_closing_preview.csv`, jamais dans `data/` ;
+- `clv_readiness_report.py` distingue maintenant CLV calculable maintenant et CLV calculable apres enrichissement ;
+- `report_runner.py --closing-readiness` lance le probe, la readiness enrichie et la gouvernance locale.
+
+Cette phase ne modifie ni `data/MATCHES.csv`, ni `data/features_modern.csv`, ni la DB. Meme si xG ameliore legerement Brier/log loss, cela reste une observation technique sans CLV fiable, sample suffisant et validation statistique complete.
+
 ## Statistical Proof Foundation
 
 La phase V7.0 ajoute la couche de preuve statistique. Elle ne cree aucun pick, ne modifie pas Telegram, ne modifie pas Railway et ne touche pas a `oracle_db.json`.
@@ -552,7 +565,7 @@ python project_audit.py
 
 ## Etat actuel : aucune strategie robuste positive
 
-Etat V7.5 Big Five xG Completion & CLV Readiness :
+Etat V7.6 Big Five Completion & Closing Odds Recovery :
 
 - memoire moderne 2015-2025 ;
 - environ 528066 records regles ;
@@ -567,6 +580,8 @@ Etat V7.5 Big Five xG Completion & CLV Readiness :
 - diagnostics multi-ligues et aliases Big Five disponibles ;
 - agregateur Big 5 xG disponible ;
 - CLV readiness disponible ;
+- closing odds probe disponible ;
+- preview features closing disponible uniquement dans `reports/` ;
 - CLV, calibration et validation statistique disponibles ;
 - Scientific Benchmark et Model Governance disponibles ;
 - rapport central local disponible ;
@@ -579,7 +594,9 @@ Etat V7.5 Big Five xG Completion & CLV Readiness :
 Priorite suivante :
 
 1. Commit/push les phases locales prudentes.
-2. Lancer manuellement Serie A puis Ligue 1 Understat, sans automatiser de reseau.
-3. Relancer diagnostics, pipelines stricts et agregateur Big 5.
-4. Ajouter des closing odds fiables dans une feature matrix enrichie.
-5. Ne penser a Railway ou Telegram qu'apres CLV positive, preuve statistique robuste et revue humaine.
+2. Relancer Serie A apres alias Parma si le CSV local existe.
+3. Lancer manuellement Ligue 1 Understat, sans automatiser de reseau.
+4. Relancer diagnostics, pipelines stricts et agregateur Big 5.
+5. Inspecter `data/MATCHES.csv` avec `closing_odds_probe.py`.
+6. Si closing fiable existe, generer une preview `reports/features_with_closing_preview.csv`.
+7. Ne penser a Railway ou Telegram qu'apres CLV positive, preuve statistique robuste et revue humaine.

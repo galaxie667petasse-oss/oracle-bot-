@@ -14,6 +14,24 @@ DEFAULT_LEAGUES = {
     "Ligue1": "ligue1_2020_2025",
 }
 
+REPORT_ALIASES = {
+    "EPL": {
+        "join": ["epl_join_diagnostics.json", "understat_epl_join_diagnostics.json"],
+    },
+    "LaLiga": {
+        "join": ["laliga_join_diagnostics.json"],
+    },
+    "Bundesliga": {
+        "join": ["bundesliga_join_diagnostics.json"],
+    },
+    "SerieA": {
+        "join": ["seriea_join_diagnostics.json"],
+    },
+    "Ligue1": {
+        "join": ["ligue1_join_diagnostics.json"],
+    },
+}
+
 
 def now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
@@ -56,6 +74,13 @@ def _sibling(path: Path, suffix: str) -> Path:
     return path.with_name(f"{path.stem}_{suffix}.json")
 
 
+def _first_existing(default_path: Path, alternates: Iterable[Path]) -> Path:
+    for path in [default_path, *list(alternates)]:
+        if path.exists():
+            return path
+    return default_path
+
+
 def _report_paths(reports_dir: Path, league: str, prefix: str, model_path: str = "") -> Dict[str, Path]:
     if model_path:
         model = Path(model_path)
@@ -65,9 +90,12 @@ def _report_paths(reports_dir: Path, league: str, prefix: str, model_path: str =
             "model": model,
             "pipeline": _sibling(model, "pipeline_summary"),
         }
+    aliases = REPORT_ALIASES.get(league, {})
+    join_default = reports_dir / f"{prefix}_join_diagnostics.json"
+    join_alternates = [reports_dir / name for name in aliases.get("join", [])]
     return {
         "quality": reports_dir / f"{prefix}_quality.json",
-        "join": reports_dir / f"{prefix}_join_diagnostics.json",
+        "join": _first_existing(join_default, join_alternates),
         "model": reports_dir / f"{prefix}_xg_model.json",
         "pipeline": reports_dir / f"{prefix}_pipeline_summary.json",
     }
@@ -227,6 +255,7 @@ def parse_league_reports(values: Iterable[str]) -> Dict[str, str]:
 def build_summary(reports_dir: str = "reports", league_reports: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     root = Path(reports_dir)
     explicit = league_reports or {}
+    expected_leagues = list(DEFAULT_LEAGUES.keys())
     league_items: List[Dict[str, Any]] = []
     for league, prefix in DEFAULT_LEAGUES.items():
         paths = _report_paths(root, league, prefix, explicit.get(league, ""))
@@ -237,6 +266,8 @@ def build_summary(reports_dir: str = "reports", league_reports: Optional[Dict[st
         league_items.append(build_league_summary(league, _report_paths(root, league, league.lower(), path)))
 
     available = [item for item in league_items if item.get("dataset_present")]
+    available_names = {item.get("league") for item in available}
+    missing_leagues = [league for league in expected_leagues if league not in available_names]
     exploitable = [item for item in available if item.get("quality_verdict") == "exploitable_rolling_xg" and item.get("join_quality") in {"excellent", "exploitable_prudent"}]
     improves_brier = [item for item in available if item.get("xg_improves_brier") or ((item.get("delta_brier") or 0) < 0)]
     improves_log = [item for item in available if item.get("xg_improves_log_loss") or ((item.get("delta_log_loss") or 0) < 0)]
@@ -247,8 +278,14 @@ def build_summary(reports_dir: str = "reports", league_reports: Optional[Dict[st
         item for item in available
         if item.get("promotion_allowed") and item.get("clv_available") and (item.get("sample_edge_test") or 0) >= 1000
     ]
-    if not clv_ok:
-        conclusion = "CLV absente sur les ligues disponibles: aucun candidat robuste, observations seulement."
+    ready_for_big5 = len(missing_leagues) == 0
+    clv_blocker = len(clv_ok) == 0
+    if not ready_for_big5:
+        conclusion = "Conclusion partielle Big 5: ligues manquantes, aucun candidat robuste."
+        if clv_blocker:
+            conclusion += " CLV absente sur les ligues disponibles."
+    elif clv_blocker:
+        conclusion = "Big 5 complet mais CLV absente: aucun candidat robuste, observations seulement."
     elif not candidates:
         conclusion = "Aucun candidat robuste Big 5: verifier CLV, sample, jointure et stabilite avant toute promotion."
     else:
@@ -259,6 +296,12 @@ def build_summary(reports_dir: str = "reports", league_reports: Optional[Dict[st
         "reports_dir": str(root),
         "leagues": league_items,
         "global": {
+            "total_leagues_expected": len(expected_leagues),
+            "total_leagues_available": len(available),
+            "expected_leagues": expected_leagues,
+            "missing_leagues": missing_leagues,
+            "ready_for_big5_conclusion": ready_for_big5,
+            "clv_blocker": clv_blocker,
             "leagues_available": len(available),
             "leagues_exploitable": len(exploitable),
             "leagues_xg_improves_brier": len(improves_brier),
@@ -312,7 +355,9 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         "<h1>Big 5 xG Lab Summary</h1>",
         f"<p>{html.escape(str(global_data.get('conclusion')))}</p>",
         "<ul>",
+        f"<li>Big 5 complet: {global_data.get('ready_for_big5_conclusion')}</li>",
         f"<li>Ligues disponibles: {global_data.get('leagues_available')}</li>",
+        f"<li>Ligues manquantes: {html.escape(', '.join(global_data.get('missing_leagues') or []) or 'aucune')}</li>",
         f"<li>Ligues exploitables: {global_data.get('leagues_exploitable')}</li>",
         f"<li>Ligues avec ROI edge positif: {global_data.get('leagues_roi_edge_positive')}</li>",
         f"<li>Ligues avec CLV disponible: {global_data.get('leagues_clv_available')}</li>",
@@ -331,13 +376,16 @@ def print_report(report: Dict[str, Any]) -> None:
     global_data = report.get("global") or {}
     print("Big 5 xG Lab Summary")
     print(f"- Dossier rapports: {report.get('reports_dir')}")
+    print(f"- Big 5 complet: {global_data.get('ready_for_big5_conclusion')}")
     print(f"- Ligues disponibles: {global_data.get('leagues_available')}")
+    print(f"- Ligues manquantes: {', '.join(global_data.get('missing_leagues') or []) or 'aucune'}")
     print(f"- Ligues exploitables: {global_data.get('leagues_exploitable')}")
     print(f"- Ligues avec Brier xG meilleur: {global_data.get('leagues_xg_improves_brier')}")
     print(f"- Ligues avec log loss xG meilleur: {global_data.get('leagues_xg_improves_log_loss')}")
     print(f"- Ligues ROI edge positif: {global_data.get('leagues_roi_edge_positive')}")
     print(f"- Ligues sample >= 1000: {global_data.get('leagues_sample_ge_1000')}")
     print(f"- Ligues avec CLV disponible: {global_data.get('leagues_clv_available')}")
+    print(f"- Bloqueur CLV: {global_data.get('clv_blocker')}")
     print(f"- Candidats robustes: {global_data.get('robust_candidates')}")
     for item in report.get("leagues") or []:
         if item.get("dataset_present"):

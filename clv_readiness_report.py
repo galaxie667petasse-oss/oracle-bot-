@@ -66,14 +66,32 @@ def _missing_for_market(present: Sequence[str], expected: Sequence[str]) -> List
     return [item for item in expected if item.upper() not in present_upper]
 
 
-def analyze_readiness(features_path: str) -> Dict[str, Any]:
+def _load_probe(path: str = "") -> Dict[str, Any]:
+    if not path:
+        return {}
+    target = Path(path)
+    if not target.exists():
+        return {"status": "absent", "error": f"Probe closing absent: {path}"}
+    try:
+        data = json.loads(target.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"status": "erreur", "error": str(exc)}
+    return data if isinstance(data, dict) else {}
+
+
+def analyze_readiness(features_path: str, closing_probe_path: str = "") -> Dict[str, Any]:
     path = Path(features_path)
+    probe = _load_probe(closing_probe_path)
     if not path.exists():
         return {
             "generated_at": now_iso(),
             "features_path": str(path),
+            "closing_probe_path": closing_probe_path or "",
             "status": "indisponible",
             "clv_calculable": False,
+            "clv_calculable_now": False,
+            "clv_calculable_after_enrichment": bool(probe.get("closing_available")),
+            "source_has_closing": bool(probe.get("closing_available")),
             "reason": f"Fichier introuvable: {features_path}",
             "columns_available": [],
             "missing_columns": list(KNOWN_CLOSING_COLUMNS),
@@ -102,6 +120,8 @@ def analyze_readiness(features_path: str) -> Dict[str, Any]:
     ou_available = bool(closing["over_under"])
     btts_available = bool(closing["btts"])
     clv_calculable = bool(odds_columns and closing["all"])
+    source_has_closing = bool(probe.get("closing_available"))
+    clv_after_enrichment = bool(odds_columns and source_has_closing)
     if not odds_columns:
         reason = "Colonne de cote prise absente: odds/taken_odds requis."
     elif not closing["all"]:
@@ -124,8 +144,25 @@ def analyze_readiness(features_path: str) -> Dict[str, Any]:
     return {
         "generated_at": now_iso(),
         "features_path": str(path),
+        "closing_probe_path": closing_probe_path or "",
         "status": "partiel" if clv_calculable else "indisponible",
         "clv_calculable": clv_calculable,
+        "clv_calculable_now": clv_calculable,
+        "clv_calculable_after_enrichment": clv_after_enrichment,
+        "source_has_closing": source_has_closing,
+        "source_probe_status": probe.get("status") if probe else "non fourni",
+        "source_probe_markets": {
+            "h2h_closing_available": probe.get("h2h_closing_available"),
+            "total_closing_available": probe.get("total_closing_available"),
+            "btts_closing_available": probe.get("btts_closing_available"),
+        } if probe else {},
+        "recommended_next_command": (
+            "python features_closing_enricher.py --features data/features_modern.csv --source data/MATCHES.csv --output reports/features_with_closing_preview.csv"
+            if clv_after_enrichment and not clv_calculable
+            else "python clv_analysis.py --features reports/features_with_closing_preview.csv --output reports/clv_report.json --html reports/clv_report.html"
+            if clv_calculable
+            else "Verifier une source fiable de closing odds avant tout calcul CLV."
+        ),
         "reason": reason,
         "rows_sampled_for_markets": rows_checked,
         "columns_count": len(fieldnames),
@@ -135,6 +172,7 @@ def analyze_readiness(features_path: str) -> Dict[str, Any]:
         "closing_columns_detected": closing["all"],
         "closing_c_columns_detected": closing["c_columns"],
         "closing_generic_columns_detected": closing["generic"],
+        "source_closing_columns_detected": ((probe.get("detected_columns") or {}).get("all_closing") or []) if probe else [],
         "missing_columns": missing_columns,
         "markets": markets,
         "checklist": _checklist(),
@@ -151,7 +189,8 @@ def analyze_readiness(features_path: str) -> Dict[str, Any]:
 def _checklist() -> List[str]:
     return [
         "Verifier si data/MATCHES.csv contient des colonnes C_* fiables sans modifier le fichier source.",
-        "Enrichir feature_builder.py pour propager les colonnes closing necessaires vers un nouvel export de features.",
+        "Generer une preview reports/features_with_closing_preview.csv avec features_closing_enricher.py avant tout changement durable.",
+        "Si la preview est valide, planifier ensuite une propagation explicite des colonnes closing vers un nouvel export de features.",
         "Verifier la validite de la source Football-Data apres 2025-07-23, surtout Pinnacle.",
         "Ne pas utiliser de closing douteux ni incomplet pour promouvoir un signal.",
         "Relancer clv_analysis.py uniquement apres ajout explicite des closing odds.",
@@ -178,12 +217,17 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         f"<p>Statut: {html.escape(str(report.get('status')))}. Calculable: {report.get('clv_calculable')}.</p>",
         f"<p>{html.escape(str(report.get('reason')))}</p>",
         "<table><tbody>",
+        f"<tr><th>CLV calculable maintenant</th><td>{report.get('clv_calculable_now')}</td></tr>",
+        f"<tr><th>CLV calculable apres enrichissement</th><td>{report.get('clv_calculable_after_enrichment')}</td></tr>",
+        f"<tr><th>Source avec closing</th><td>{report.get('source_has_closing')}</td></tr>",
         f"<tr><th>Colonnes odds</th><td>{html.escape(', '.join(report.get('odds_columns_detected') or []))}</td></tr>",
         f"<tr><th>Colonnes closing</th><td>{html.escape(', '.join(report.get('closing_columns_detected') or []))}</td></tr>",
+        f"<tr><th>Colonnes closing source</th><td>{html.escape(', '.join(report.get('source_closing_columns_detected') or []))}</td></tr>",
         f"<tr><th>H2H closing possible</th><td>{markets.get('h2h_closing_possible')}</td></tr>",
         f"<tr><th>Over/Under closing possible</th><td>{markets.get('over_under_closing_possible')}</td></tr>",
         f"<tr><th>BTTS closing possible</th><td>{markets.get('btts_closing_possible')}</td></tr>",
         "</tbody></table>",
+        f"<p><strong>Commande suivante recommandee:</strong> {html.escape(str(report.get('recommended_next_command') or ''))}</p>",
         "<section class='warn'><h2>Checklist</h2><ul>",
         checklist,
         "</ul></section>",
@@ -199,9 +243,13 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Features: {report.get('features_path')}")
     print(f"- Statut: {report.get('status')}")
     print(f"- CLV calculable: {report.get('clv_calculable')}")
+    print(f"- CLV calculable maintenant: {report.get('clv_calculable_now')}")
+    print(f"- CLV calculable apres enrichissement: {report.get('clv_calculable_after_enrichment')}")
+    print(f"- Source avec closing: {report.get('source_has_closing')}")
     print(f"- Raison: {report.get('reason')}")
     print(f"- Colonnes odds detectees: {', '.join(report.get('odds_columns_detected') or []) or 'aucune'}")
     print(f"- Colonnes closing detectees: {', '.join(report.get('closing_columns_detected') or []) or 'aucune'}")
+    print(f"- Colonnes closing source: {', '.join(report.get('source_closing_columns_detected') or []) or 'aucune'}")
     print(f"- Marches detectes: {', '.join(markets.get('detected_market_types') or []) or 'non echantillonnes'}")
     print(f"- H2H closing possible: {markets.get('h2h_closing_possible')}")
     print(f"- Over/Under closing possible: {markets.get('over_under_closing_possible')}")
@@ -211,12 +259,14 @@ def print_report(report: Dict[str, Any]) -> None:
         print(f"  - {item}")
     for warning in report.get("warnings") or []:
         print(f"- Avertissement: {warning}")
+    print(f"- Commande suivante recommandee: {report.get('recommended_next_command')}")
     print("- Aucun pick automatique et aucune modification DB/data.")
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Rapport local de readiness CLV, sans calculer de closing invente.")
     parser.add_argument("--features", required=True, help="CSV de features a inspecter")
+    parser.add_argument("--closing-probe", default="", help="JSON closing_odds_probe optionnel")
     parser.add_argument("--output", default="", help="Rapport JSON dans reports/")
     parser.add_argument("--html", default="", help="Rapport HTML dans reports/")
     return parser.parse_args(argv)
@@ -225,7 +275,7 @@ def parse_args(argv=None):
 def main(argv=None) -> int:
     args = parse_args(argv)
     try:
-        report = analyze_readiness(args.features)
+        report = analyze_readiness(args.features, closing_probe_path=args.closing_probe)
         if args.output:
             path = write_json(report, args.output)
             print(f"- Rapport JSON CLV readiness ecrit: {path}")

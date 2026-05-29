@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V7.5 Big Five xG Completion & CLV Readiness.
+V7.6 Big Five Completion, Alias Finalization & Closing Odds Recovery.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics et V7.4 Bundesliga Team Alias Expansion restent en place. V7.5 ajoute les aliases Serie A/Ligue 1, l'agregateur Big Five xG et le rapport CLV readiness. Aucun signal robuste active. Aucun changement V7.5 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion et V7.5 Big Five xG Aggregation restent en place. V7.6 finalise des aliases Serie A/Bundesliga/Ligue 1, ajoute `closing_odds_probe.py`, prepare une preview `features_closing_enricher.py` et enrichit la readiness CLV. Aucun signal robuste active. Aucun changement V7.6 ne branche Telegram, Railway ou un pick automatique.
 
 ## Etat general
 
@@ -20,10 +20,12 @@ Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full 
 - Pipeline local Understat xG disponible via `understat_xg_pipeline.py`.
 - Agregateur multi-ligue Big 5 disponible via `multi_league_xg_aggregator.py`.
 - Rapport CLV readiness disponible via `clv_readiness_report.py`.
+- Probe closing odds disponible via `closing_odds_probe.py`, lecture seule.
+- Preview features closing disponible via `features_closing_enricher.py`, sortie limitee a `reports/`.
 - CLV / Closing Line Value disponible si des cotes closing sont presentes.
 - Reliability curves disponibles via `calibration_report.py`.
 - Validation statistique disponible via `statistical_validation.py`.
-- Benchmark gouvernance V7.5 disponible.
+- Benchmark gouvernance V7.6 disponible.
 - Aucun signal robuste active et aucun candidat robuste sans CLV positive.
 - Railway/Telegram toujours en attente.
 
@@ -38,8 +40,10 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - CLV + preuve statistique + stabilite annuelle restent necessaires meme si xG ameliore Brier/log loss ;
 - xG multi-saisons Understat doit etre transforme en rolling pre-match sans fuite ;
 - Bundesliga exportait correctement mais jointait trop faiblement a xgabora avant alias, ce qui justifiait le blocage strict ;
-- Serie A et Ligue 1 doivent encore etre exportees et diagnostiquees manuellement ;
+- Serie A est exportee localement chez l'utilisateur et doit etre relancee apres alias Parma si le CSV est present ;
+- Ligue 1 doit encore etre exportee et diagnostiquee manuellement ;
 - CLV readiness confirme que les colonnes closing fiables restent le passage oblige ;
+- `data/MATCHES.csv` doit etre inspecte en lecture seule pour savoir si des closing odds fiables existent ;
 - absence de validation humaine complete.
 
 ## Etat des modules
@@ -50,12 +54,14 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - `team_name_normalizer.py` : alias manuels controles, dont La Liga, Bundesliga, Serie A et Ligue 1, sans modification des CSV source.
 - `understat_xg_pipeline.py` : orchestration locale quality, jointure, rolling features, xG model et gouvernance optionnelle.
 - `multi_league_xg_aggregator.py` : synthese Big 5 des rapports xG existants, sans recuperation reseau.
-- `clv_readiness_report.py` : inspection des colonnes closing manquantes, sans inventer de CLV.
+- `closing_odds_probe.py` : inspection lecture seule du CSV source pour colonnes closing H2H, total et BTTS.
+- `features_closing_enricher.py` : preview dans `reports/` pour joindre features actuelles et colonnes closing source, sans ecrire dans `data/`.
+- `clv_readiness_report.py` : inspection des colonnes closing manquantes, avec distinction calculable maintenant/apres enrichissement, sans inventer de CLV.
 - `clv_analysis.py` : CLV descriptive, verdict indisponible si cotes closing absentes.
 - `calibration_report.py` : Brier, log loss, ECE, MCE et reliability curves.
 - `statistical_validation.py` : IC ROI, bootstrap, Monte Carlo, drawdown, sample size et Benjamini-Hochberg.
 - `decision_policy.py` : gates CLV/calibration/statistiques/multiple testing.
-- `benchmark_governance.py` : registre enrichi V7.5 avec nulls et warnings si metriques absentes.
+- `benchmark_governance.py` : registre enrichi V7.6 avec nulls et warnings si metriques absentes.
 - `report_runner.py` : mode `--statistical`.
 - `dashboard_builder.py` : sections CLV, calibration, validation statistique, multiple testing et gouvernance finale.
 
@@ -71,7 +77,8 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - EPL Understat 2020-2025 : jointure autour de 98%, quality exploitable, mais xG ne bat pas le marche.
 - La Liga Understat 2020-2025 : export complet, jointure avant alias autour de 39.89%, apres alias autour de 99.89%, observation seulement.
 - Bundesliga Understat 2020-2025 : export complet 1530 matchs, cinq saisons de 306 matchs, xG coverage 100%, jointure initiale autour de 24.12% avant alias et autour de 99.93% apres alias.
-- Serie A et Ligue 1 : aliases prets, exports a lancer manuellement.
+- Serie A Understat 2020-2025 : export utilisateur observe a 1900 matchs, cinq saisons completes, xG coverage 100%, jointure apres alias observee a 95.79% avant correction Parma ; `Parma Calcio 1913` est maintenant mappe vers `Parma`.
+- Ligue 1 : aliases prets, export a lancer manuellement.
 - CLV sur `data/features_modern.csv` est probablement indisponible tant que les colonnes closing `C_*` ne sont pas exportees.
 - Rien n'est branche aux picks Telegram ou Railway.
 
@@ -103,8 +110,10 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 
 ## Prochaine vraie priorite
 
-1. Commit/push la phase locale V7.5.
-2. Lancer manuellement Serie A, puis `join_diagnostics.py --league "Serie A"` et le pipeline strict.
+1. Commit/push la phase locale V7.6.
+2. Relancer Serie A si `external_data/understat_probe/seriea_2020_2025_matches.csv` existe, puis le pipeline strict.
 3. Lancer manuellement Ligue 1, puis `join_diagnostics.py --league "Ligue 1"` et le pipeline strict.
-4. Relancer `multi_league_xg_aggregator.py` et `clv_readiness_report.py`.
-5. Travailler ensuite sur des closing odds fiables avant toute promotion.
+4. Relancer `multi_league_xg_aggregator.py`.
+5. Lancer `closing_odds_probe.py` sur `data/MATCHES.csv`.
+6. Si closing fiable existe, generer uniquement une preview `reports/features_with_closing_preview.csv`.
+7. Travailler ensuite sur CLV fiable avant toute promotion.

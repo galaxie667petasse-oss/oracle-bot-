@@ -1,4 +1,5 @@
 import csv
+import json
 import tempfile
 from pathlib import Path
 
@@ -31,9 +32,33 @@ def main():
         )
         report = clv_readiness_report.analyze_readiness(str(no_closing))
         assert report["clv_calculable"] is False
+        assert report["clv_calculable_now"] is False
+        assert report["clv_calculable_after_enrichment"] is False
         assert report["status"] == "indisponible"
         assert "C_*" in report["reason"]
         assert report["markets"]["h2h_closing_possible"] is False
+
+        probe_path = root / "reports" / "closing_odds_probe.json"
+        probe_path.parent.mkdir(parents=True, exist_ok=True)
+        probe_path.write_text(json.dumps({
+            "status": "ok",
+            "closing_available": True,
+            "h2h_closing_available": True,
+            "total_closing_available": False,
+            "btts_closing_available": False,
+            "detected_columns": {"all_closing": ["C_LTH", "C_LTD", "C_LTA"]},
+        }, ensure_ascii=False), encoding="utf-8")
+        enriched_possible = clv_readiness_report.analyze_readiness(str(no_closing), closing_probe_path=str(probe_path))
+        assert enriched_possible["clv_calculable_now"] is False
+        assert enriched_possible["source_has_closing"] is True
+        assert enriched_possible["clv_calculable_after_enrichment"] is True
+        assert "features_closing_enricher.py" in enriched_possible["recommended_next_command"]
+
+        probe_without_path = root / "reports" / "closing_odds_probe_empty.json"
+        probe_without_path.write_text(json.dumps({"status": "ok", "closing_available": False}, ensure_ascii=False), encoding="utf-8")
+        enriched_blocked = clv_readiness_report.analyze_readiness(str(no_closing), closing_probe_path=str(probe_without_path))
+        assert enriched_blocked["source_has_closing"] is False
+        assert enriched_blocked["clv_calculable_after_enrichment"] is False
 
         with_closing = root / "features_with_closing.csv"
         write_csv(
@@ -43,6 +68,7 @@ def main():
         )
         ready = clv_readiness_report.analyze_readiness(str(with_closing))
         assert ready["clv_calculable"] is True
+        assert ready["clv_calculable_now"] is True
         assert ready["status"] == "partiel"
         assert ready["markets"]["h2h_closing_possible"] is True
         assert ready["markets"]["over_under_closing_possible"] is False

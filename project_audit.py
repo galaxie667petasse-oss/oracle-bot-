@@ -32,6 +32,8 @@ ESSENTIAL_FILES = [
     "join_diagnostics.py",
     "multi_league_xg_aggregator.py",
     "clv_readiness_report.py",
+    "closing_odds_probe.py",
+    "features_closing_enricher.py",
     "report_runner.py",
     "dashboard_builder.py",
     "model_registry.json",
@@ -60,6 +62,8 @@ MAIN_TESTS = [
     "test_join_diagnostics.py",
     "test_multi_league_xg_aggregator.py",
     "test_clv_readiness_report.py",
+    "test_closing_odds_probe.py",
+    "test_features_closing_enricher.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -96,6 +100,8 @@ IMPORT_MODULES = [
     "join_diagnostics",
     "multi_league_xg_aggregator",
     "clv_readiness_report",
+    "closing_odds_probe",
+    "features_closing_enricher",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -121,6 +127,8 @@ OFFLINE_COMMAND_FILES = [
     "join_diagnostics.py",
     "multi_league_xg_aggregator.py",
     "clv_readiness_report.py",
+    "closing_odds_probe.py",
+    "features_closing_enricher.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [

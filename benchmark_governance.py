@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from decision_policy import classify_strategy, robustness_score
 
 
-GOVERNANCE_VERSION = "V7.5"
+GOVERNANCE_VERSION = "V7.6"
 DEFAULT_FEATURES = "data/features_modern.csv"
 DEFAULT_REGISTRY = "model_registry.json"
 
@@ -498,6 +498,7 @@ def _build_sections(
     xg_model_path: str = "",
     big5_xg_summary_path: str = "",
     clv_readiness_path: str = "",
+    closing_probe_path: str = "",
 ) -> List[Dict[str, Any]]:
     if db is None:
         db = _load_db()
@@ -542,6 +543,7 @@ def _build_sections(
         _optional_report_section("XG model report", xg_model_path),
         _optional_report_section("Big 5 xG summary", big5_xg_summary_path),
         _optional_report_section("CLV readiness", clv_readiness_path),
+        _optional_report_section("Closing odds probe", closing_probe_path),
     ])
     return sections
 
@@ -592,6 +594,7 @@ def build_benchmark(
     xg_model_path: str = "",
     big5_xg_summary_path: str = "",
     clv_readiness_path: str = "",
+    closing_probe_path: str = "",
 ) -> Dict[str, Any]:
     sections = _build_sections(
         features_path,
@@ -604,6 +607,7 @@ def build_benchmark(
         xg_model_path=xg_model_path,
         big5_xg_summary_path=big5_xg_summary_path,
         clv_readiness_path=clv_readiness_path,
+        closing_probe_path=closing_probe_path,
     )
     entries = collect_registry_entries(sections)
     entries = enrich_registry_entries(entries, sections)
@@ -614,7 +618,14 @@ def build_benchmark(
     big5_data = report_data.get("Big 5 xG summary") or {}
     big5_global = big5_data.get("global") or {}
     clv_readiness = report_data.get("CLV readiness") or {}
+    closing_probe = report_data.get("Closing odds probe") or {}
     clv_calculable = bool(clv_readiness.get("clv_calculable")) if clv_readiness else False
+    clv_calculable_now = bool(clv_readiness.get("clv_calculable_now", clv_calculable)) if clv_readiness else False
+    clv_calculable_after_enrichment = bool(clv_readiness.get("clv_calculable_after_enrichment")) if clv_readiness else False
+    source_has_closing = bool(
+        clv_readiness.get("source_has_closing")
+        or closing_probe.get("closing_available")
+    )
     robust = [
         entry for entry in entries
         if entry.get("robustness_score", 0) >= 80
@@ -637,10 +648,32 @@ def build_benchmark(
     promotion_blockers: List[str] = []
     if clv_readiness and not clv_calculable:
         promotion_blockers.append("CLV non calculable depuis la feature matrix actuelle")
+    if clv_calculable_after_enrichment and not clv_calculable_now:
+        promotion_blockers.append("Enrichissement closing requis avant analyse CLV")
+    if closing_probe and not source_has_closing:
+        promotion_blockers.append("Source MATCHES sans closing odds fiable detectee")
     if big5_data and (big5_global.get("robust_candidates") or 0) == 0:
         promotion_blockers.append("Big 5 xG sans candidat robuste")
     if big5_data and (big5_global.get("leagues_clv_available") or 0) == 0:
         promotion_blockers.append("Big 5 xG bloque par CLV absente")
+    if big5_data and not big5_global.get("ready_for_big5_conclusion", True):
+        missing = ", ".join(big5_global.get("missing_leagues") or [])
+        promotion_blockers.append(f"Big 5 incomplet: {missing or 'ligues manquantes'}")
+    if big5_data and (big5_global.get("leagues_sample_ge_1000") or 0) == 0:
+        promotion_blockers.append("Sample edge test Big 5 insuffisant")
+    blocked_join = [
+        item.get("league")
+        for item in (big5_data.get("leagues") or [])
+        if item.get("dataset_present") and item.get("join_quality") == "insuffisant"
+    ]
+    if blocked_join:
+        promotion_blockers.append("Jointure externe insuffisante: " + ", ".join(str(item) for item in blocked_join))
+    if big5_data and (big5_global.get("leagues_roi_edge_positive") or 0) == 0:
+        promotion_blockers.append("ROI edge test non positif sur les ligues disponibles")
+    if big5_data and (big5_global.get("leagues_xg_improves_brier") or 0) == 0 and (big5_global.get("leagues_xg_improves_log_loss") or 0) == 0:
+        promotion_blockers.append("xG ne bat pas le marche sur les metriques probabilistes disponibles")
+    if statistical_groups and surviving_correction == 0:
+        promotion_blockers.append("Multiple testing: aucune strategie ne survit la correction")
     if not promotion_blockers:
         promotion_blockers.append("Gouvernance complete requise avant tout affichage decisionnel")
 
@@ -653,14 +686,26 @@ def build_benchmark(
         "xg_model_path": xg_model_path or None,
         "big5_xg_summary_path": big5_xg_summary_path or None,
         "clv_readiness_path": clv_readiness_path or None,
+        "closing_probe_path": closing_probe_path or None,
         "xg_lab_available": any(section.get("name") == "External xG rolling lab" and section.get("ok") for section in sections),
         "xg_quality_available": any(section.get("name") == "XG quality report" and section.get("ok") for section in sections),
         "xg_model_available": any(section.get("name") == "XG model report" and section.get("ok") for section in sections),
         "big5_xg_available": bool(big5_data),
         "clv_readiness_available": bool(clv_readiness),
+        "closing_probe_available": bool(closing_probe),
         "clv_calculable": clv_calculable,
+        "clv_calculable_now": clv_calculable_now,
+        "clv_calculable_after_enrichment": clv_calculable_after_enrichment,
+        "source_has_closing": source_has_closing,
+        "recommended_next_command": clv_readiness.get("recommended_next_command") if clv_readiness else None,
         "clv_missing_columns": clv_readiness.get("missing_columns") if clv_readiness else [],
         "clv_markets_covered": clv_readiness.get("markets") if clv_readiness else {},
+        "closing_probe_detected_columns": ((closing_probe.get("detected_columns") or {}).get("all_closing") or []) if closing_probe else [],
+        "big5_total_leagues_expected": big5_global.get("total_leagues_expected"),
+        "big5_total_leagues_available": big5_global.get("total_leagues_available"),
+        "big5_missing_leagues": big5_global.get("missing_leagues") or [],
+        "big5_ready_for_conclusion": big5_global.get("ready_for_big5_conclusion"),
+        "big5_clv_blocker": big5_global.get("clv_blocker"),
         "big5_leagues_exploitable": big5_global.get("leagues_exploitable"),
         "big5_observation_count": (big5_global.get("observations") or 0) + (big5_global.get("watchlist") or 0),
         "big5_candidate_count": big5_global.get("robust_candidates", 0),
@@ -681,7 +726,7 @@ def build_benchmark(
         "warnings": [
             f"{section['name']}: {section.get('error', '')}"
             for section in failed
-            if section.get("name") in {"CLV report", "Calibration report", "Statistical validation", "XG quality report", "XG model report", "Big 5 xG summary", "CLV readiness"}
+            if section.get("name") in {"CLV report", "Calibration report", "Statistical validation", "XG quality report", "XG model report", "Big 5 xG summary", "CLV readiness", "Closing odds probe"}
         ],
         "conclusion": "Aucune strategie robuste positive ne doit etre activee automatiquement." if not robust else "Candidats robustes observes, validation humaine requise avant tout affichage decisionnel.",
     }
@@ -771,7 +816,12 @@ def write_html(benchmark: Dict[str, Any], path: str) -> Path:
         f"<li>Modele xG disponible: {benchmark['summary'].get('xg_model_available')}</li>",
         f"<li>Big 5 xG summary disponible: {benchmark['summary'].get('big5_xg_available')}</li>",
         f"<li>CLV readiness disponible: {benchmark['summary'].get('clv_readiness_available')}</li>",
+        f"<li>Closing odds probe disponible: {benchmark['summary'].get('closing_probe_available')}</li>",
         f"<li>CLV calculable: {benchmark['summary'].get('clv_calculable')}</li>",
+        f"<li>CLV calculable apres enrichissement: {benchmark['summary'].get('clv_calculable_after_enrichment')}</li>",
+        f"<li>Source avec closing: {benchmark['summary'].get('source_has_closing')}</li>",
+        f"<li>Big 5 complet: {benchmark['summary'].get('big5_ready_for_conclusion')}</li>",
+        f"<li>Ligues Big 5 manquantes: {html.escape(', '.join(benchmark['summary'].get('big5_missing_leagues') or []) or 'aucune')}</li>",
         f"<li>Ligues Big 5 exploitables: {benchmark['summary'].get('big5_leagues_exploitable')}</li>",
         f"<li>Observations Big 5: {benchmark['summary'].get('big5_observation_count')}</li>",
         f"<li>Candidats Big 5: {benchmark['summary'].get('big5_candidate_count')}</li>",
@@ -810,7 +860,12 @@ def print_report(benchmark: Dict[str, Any]) -> None:
     print(f"- Modele xG disponible: {summary.get('xg_model_available')}")
     print(f"- Big 5 xG summary disponible: {summary.get('big5_xg_available')}")
     print(f"- CLV readiness disponible: {summary.get('clv_readiness_available')}")
+    print(f"- Closing odds probe disponible: {summary.get('closing_probe_available')}")
     print(f"- CLV calculable: {summary.get('clv_calculable')}")
+    print(f"- CLV calculable apres enrichissement: {summary.get('clv_calculable_after_enrichment')}")
+    print(f"- Source avec closing: {summary.get('source_has_closing')}")
+    print(f"- Big 5 complet: {summary.get('big5_ready_for_conclusion')}")
+    print(f"- Ligues Big 5 manquantes: {', '.join(summary.get('big5_missing_leagues') or []) or 'aucune'}")
     print(f"- Observations Big 5: {summary.get('big5_observation_count')}")
     print(f"- Candidats Big 5: {summary.get('big5_candidate_count')}")
     for blocker in summary.get("promotion_blockers") or []:
@@ -838,6 +893,7 @@ def parse_args(argv=None):
     parser.add_argument("--xg-model", default="", help="JSON modele xG Understat")
     parser.add_argument("--big5-xg-summary", default="", help="JSON agregateur Big 5 xG")
     parser.add_argument("--clv-readiness", default="", help="JSON readiness CLV")
+    parser.add_argument("--closing-probe", default="", help="JSON closing_odds_probe optionnel")
     return parser.parse_args(argv)
 
 
@@ -853,6 +909,7 @@ def main(argv=None) -> int:
         xg_model_path=args.xg_model,
         big5_xg_summary_path=args.big5_xg_summary,
         clv_readiness_path=args.clv_readiness,
+        closing_probe_path=args.closing_probe,
     )
     registry_path = write_registry(benchmark["registry"], args.registry)
     if args.summary_json:

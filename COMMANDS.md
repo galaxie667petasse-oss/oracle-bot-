@@ -404,7 +404,61 @@ Lecture prudente :
 - ROI edge positif avec sample faible reste observation.
 - CLV fiable reste le bloqueur principal.
 
-## 17. Scientific Benchmark & Model Governance
+## 17. V7.6 Big Five Completion & Closing Odds Recovery
+
+Verifier les closing odds disponibles dans le CSV source, sans modifier `data/MATCHES.csv` :
+
+```bash
+python closing_odds_probe.py --csv data/MATCHES.csv --output reports/closing_odds_probe.json --html reports/closing_odds_probe.html
+```
+
+CLV readiness enrichi avec le probe source :
+
+```bash
+python clv_readiness_report.py --features data/features_modern.csv --closing-probe reports/closing_odds_probe.json --output reports/clv_readiness.json --html reports/clv_readiness.html
+```
+
+Mode runner closing readiness :
+
+```bash
+python report_runner.py --closing-readiness
+```
+
+Preview de features avec closing odds, uniquement dans `reports/` si les colonnes source sont fiables :
+
+```bash
+python features_closing_enricher.py --features data/features_modern.csv --source data/MATCHES.csv --output reports/features_with_closing_preview.csv
+```
+
+Serie A apres alias Parma :
+
+```bash
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/seriea_2020_2025_matches.csv --output reports/seriea_join_diagnostics.json --html reports/seriea_join_diagnostics.html --league "Serie A"
+python understat_xg_pipeline.py --external external_data/understat_probe/seriea_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix seriea_2020_2025 --skip-benchmark --strict-join
+```
+
+Ligue 1 manuel, sans lancement automatique :
+
+```bash
+python understat_probe.py --league "Ligue 1" --seasons 2020-2021,2021-2022,2022-2023,2023-2024,2024-2025 --output external_data/understat_probe/ligue1_2020_2025_matches.csv
+python join_diagnostics.py --xgabora data/features_modern.csv --external external_data/understat_probe/ligue1_2020_2025_matches.csv --output reports/ligue1_join_diagnostics.json --html reports/ligue1_join_diagnostics.html --league "Ligue 1"
+python understat_xg_pipeline.py --external external_data/understat_probe/ligue1_2020_2025_matches.csv --xgabora data/features_modern.csv --out-prefix ligue1_2020_2025 --skip-benchmark --strict-join
+```
+
+Agregateur Big 5 apres diagnostics/pipelines disponibles :
+
+```bash
+python multi_league_xg_aggregator.py --reports-dir reports --output reports/big5_xg_summary.json --html reports/big5_xg_summary.html
+```
+
+Lecture prudente :
+
+- `closing_odds_probe.py` ne calcule pas de CLV ; il verifie seulement si les colonnes existent.
+- `features_closing_enricher.py` ne doit produire qu'une preview dans `reports/`.
+- `data/features_modern.csv` et `data/MATCHES.csv` restent inchanges.
+- Sans CLV fiable, aucun signal xG Big Five ne peut etre promu.
+
+## 18. Scientific Benchmark & Model Governance
 
 Benchmark complet si `data/features_modern.csv` est disponible :
 
@@ -420,13 +474,13 @@ Sorties :
 
 Le benchmark attribue un score prudent et une decision : rejected, watchlist, observation, candidate, active_shadow_only, active_decision_support ou production_allowed. Meme `production_allowed` ne signifie jamais pari automatique. Rien n'est branche aux picks Telegram.
 
-## 18. Git workflow
+## 19. Git workflow
 
 ```bash
 git status --short
 git diff
-git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
-git commit -m "Add Big Five xG CLV readiness V7.5"
+git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
+git commit -m "Add Big Five closing odds recovery V7.6"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -435,7 +489,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 19. Ce qu'il ne faut pas faire
+## 20. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

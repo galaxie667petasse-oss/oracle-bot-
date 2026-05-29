@@ -27,6 +27,7 @@ REPORT_FILES = {
     "understat_xg_pipeline": "understat_xg_pipeline.txt",
     "big5_xg": "big5_xg_summary.txt",
     "clv_readiness": "clv_readiness.txt",
+    "closing_odds_probe": "closing_odds_probe.txt",
 }
 
 
@@ -126,6 +127,7 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     understat_pipeline = read_json_candidates(report_dir, ["understat_epl_2020_2025_pipeline_summary.json"])
     big5_xg = read_json_candidates(report_dir, ["big5_xg_summary.json"])
     clv_readiness = read_json_candidates(report_dir, ["clv_readiness.json"])
+    closing_probe = read_json_candidates(report_dir, ["closing_odds_probe.json"])
     pipeline_final = understat_pipeline.get("final_status") or {}
     pipeline_model = pipeline_final.get("xg_model") or {}
 
@@ -199,6 +201,11 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "understat_promotion_allowed": pipeline_model.get("promotion_allowed") if "promotion_allowed" in pipeline_model else (understat_model.get("verdict") or {}).get("promotion_allowed"),
         "understat_rejection_reasons": pipeline_model.get("rejection_reasons") or ((understat_model.get("verdict") or {}).get("rejection_reasons") or []),
         "big5_leagues_available": (big5_xg.get("global") or {}).get("leagues_available"),
+        "big5_total_leagues_expected": (big5_xg.get("global") or {}).get("total_leagues_expected"),
+        "big5_total_leagues_available": (big5_xg.get("global") or {}).get("total_leagues_available"),
+        "big5_missing_leagues": (big5_xg.get("global") or {}).get("missing_leagues") or [],
+        "big5_ready_for_conclusion": (big5_xg.get("global") or {}).get("ready_for_big5_conclusion"),
+        "big5_clv_blocker": (big5_xg.get("global") or {}).get("clv_blocker"),
         "big5_leagues_exploitable": (big5_xg.get("global") or {}).get("leagues_exploitable"),
         "big5_roi_edge_positive": (big5_xg.get("global") or {}).get("leagues_roi_edge_positive"),
         "big5_sample_ge_1000": (big5_xg.get("global") or {}).get("leagues_sample_ge_1000"),
@@ -207,6 +214,15 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "big5_conclusion": (big5_xg.get("global") or {}).get("conclusion"),
         "clv_readiness_status": clv_readiness.get("status"),
         "clv_calculable": clv_readiness.get("clv_calculable"),
+        "clv_calculable_now": clv_readiness.get("clv_calculable_now"),
+        "clv_calculable_after_enrichment": clv_readiness.get("clv_calculable_after_enrichment"),
+        "source_has_closing": clv_readiness.get("source_has_closing") if "source_has_closing" in clv_readiness else closing_probe.get("closing_available"),
+        "closing_probe_available": bool(closing_probe),
+        "closing_probe_h2h": closing_probe.get("h2h_closing_available"),
+        "closing_probe_total": closing_probe.get("total_closing_available"),
+        "closing_probe_btts": closing_probe.get("btts_closing_available"),
+        "closing_probe_columns": ((closing_probe.get("detected_columns") or {}).get("all_closing") or []),
+        "recommended_next_command": clv_readiness.get("recommended_next_command"),
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -322,7 +338,10 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         understat_lines.extend(_lines_matching(texts["understat_xg_pipeline"], ["Quality verdict", "Join rate", "Rolling", "Brier", "ROI edge", "Promotion", "Conclusion", "Erreur"], 24))
     parts.append(_card("Understat xG Multi-Season Lab", "\n".join(understat_lines)))
     big5_lines = [
+        f"Big 5 complet: {summary.get('big5_ready_for_conclusion')}",
         f"ligues disponibles: {summary.get('big5_leagues_available')}",
+        f"ligues attendues/disponibles: {summary.get('big5_total_leagues_expected')} / {summary.get('big5_total_leagues_available')}",
+        f"ligues manquantes: {', '.join(summary.get('big5_missing_leagues') or []) or 'aucune'}",
         f"ligues exploitables: {summary.get('big5_leagues_exploitable')}",
         f"ligues ROI edge positif: {summary.get('big5_roi_edge_positive')}",
         f"ligues sample >= 1000: {summary.get('big5_sample_ge_1000')}",
@@ -335,16 +354,44 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         big5_lines.extend(_lines_matching(texts["big5_xg"], ["Ligues", "Brier", "ROI", "sample", "CLV", "Candidats", "Conclusion"], 24))
     parts.append(_card("Big 5 xG Lab Summary", "\n".join(big5_lines)))
 
+    big5_completion_lines = [
+        f"attendues: {summary.get('big5_total_leagues_expected')}",
+        f"disponibles: {summary.get('big5_total_leagues_available')}",
+        f"manquantes: {', '.join(summary.get('big5_missing_leagues') or []) or 'aucune'}",
+        f"pret pour conclusion Big 5: {summary.get('big5_ready_for_conclusion')}",
+        f"bloqueur CLV: {summary.get('big5_clv_blocker')}",
+        "statut final: laboratoire, aucun pick automatique.",
+    ]
+    parts.append(_card("Big 5 Completion Status", "\n".join(big5_completion_lines)))
+
     clv_readiness_lines = [
         f"statut: {summary.get('clv_readiness_status')}",
         f"CLV calculable: {summary.get('clv_calculable')}",
+        f"CLV calculable maintenant: {summary.get('clv_calculable_now')}",
+        f"CLV calculable apres enrichissement: {summary.get('clv_calculable_after_enrichment')}",
+        f"source avec closing: {summary.get('source_has_closing')}",
         f"colonnes manquantes principales: {', '.join((summary.get('clv_missing_columns') or [])[:12]) or 'n/a'}",
         f"marches: {summary.get('clv_markets')}",
+        f"commande suivante: {summary.get('recommended_next_command')}",
         "statut final: aucun pick automatique sans closing odds fiables.",
     ]
     if texts["clv_readiness"]:
         clv_readiness_lines.extend(_lines_matching(texts["clv_readiness"], ["Statut", "CLV calculable", "Colonnes", "H2H", "Over", "BTTS", "Checklist"], 24))
     parts.append(_card("CLV Readiness", "\n".join(clv_readiness_lines)))
+
+    closing_recovery_lines = [
+        f"probe disponible: {summary.get('closing_probe_available')}",
+        f"source avec closing: {summary.get('source_has_closing')}",
+        f"H2H closing: {summary.get('closing_probe_h2h')}",
+        f"Over/Under closing: {summary.get('closing_probe_total')}",
+        f"BTTS closing: {summary.get('closing_probe_btts')}",
+        f"colonnes source: {', '.join(summary.get('closing_probe_columns') or []) or 'aucune'}",
+        f"commande suivante: {summary.get('recommended_next_command')}",
+        "Ce plan ne calcule pas la CLV et ne modifie pas data/features_modern.csv.",
+    ]
+    if texts["closing_odds_probe"]:
+        closing_recovery_lines.extend(_lines_matching(texts["closing_odds_probe"], ["Closing", "H2H", "Total", "BTTS", "Colonnes", "Mapping", "Avertissement"], 24))
+    parts.append(_card("Closing Odds Recovery Plan", "\n".join(closing_recovery_lines)))
 
     league_rows = []
     for item in (big5_xg.get("leagues") or []):
@@ -356,6 +403,15 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
             f"ROI={item.get('roi_edge_test')}, sample={item.get('sample_edge_test')}, statut={item.get('status')}"
         )
     parts.append(_card("League-by-league xG comparison", "\n".join(league_rows) or "Aucun rapport de ligue disponible."))
+
+    readiness_rows = []
+    for item in (big5_xg.get("leagues") or []):
+        readiness_rows.append(
+            f"{item.get('league')}: present={item.get('dataset_present')}, quality={item.get('quality_verdict')}, "
+            f"join={item.get('join_rate')} ({item.get('join_quality')}), sample={item.get('sample_edge_test')}, "
+            f"CLV={item.get('clv_available')}, promotion={item.get('promotion_allowed')}"
+        )
+    parts.append(_card("League readiness table", "\n".join(readiness_rows) or "Aucune table Big 5 disponible."))
 
     blockers = []
     if summary.get("clv_calculable") is False:

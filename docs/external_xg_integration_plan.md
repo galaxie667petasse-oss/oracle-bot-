@@ -308,3 +308,24 @@ python clv_readiness_report.py --features data/features_modern.csv --output repo
 ```
 
 Interpretation : une ligue peut afficher un ROI edge positif mais rester bloquee par sample < 1000 ou CLV absente. Une legere amelioration Brier/log loss est une observation technique, pas une preuve de rentabilite. Telegram et Railway restent hors scope.
+
+## V7.6 Big Five Completion & Closing Odds Recovery
+
+V7.6 ferme les trous d'alias observes apres les premieres executions Big Five. Serie A exporte proprement 1900 matchs avec 100% xG, mais `Parma Calcio 1913` restait une cause visible de non-jointure ; l'alias pointe maintenant vers `Parma`. Bundesliga garde les mappings longs/courts et couvre `St. Pauli` / `Holstein Kiel`. Ligue 1 est preparee avec des aliases plus explicites avant execution humaine.
+
+La completion Big Five reste descriptive :
+
+- `multi_league_xg_aggregator.py` signale les ligues disponibles, manquantes, exploitables et bloquees par CLV/sample/jointure ;
+- Big Five incomplet produit une conclusion partielle ;
+- Big Five complet sans CLV fiable produit toujours zero candidat robuste ;
+- xG meilleur en Brier/log loss reste une observation technique si ROI test, sample ou CLV ne suivent pas.
+
+La recuperation closing odds est volontairement separee du pipeline xG :
+
+```bash
+python closing_odds_probe.py --csv data/MATCHES.csv --output reports/closing_odds_probe.json --html reports/closing_odds_probe.html
+python clv_readiness_report.py --features data/features_modern.csv --closing-probe reports/closing_odds_probe.json --output reports/clv_readiness.json --html reports/clv_readiness.html
+python features_closing_enricher.py --features data/features_modern.csv --source data/MATCHES.csv --output reports/features_with_closing_preview.csv
+```
+
+`features_closing_enricher.py` ne doit jamais ecrire dans `data/`. Si les colonnes closing sont absentes ou douteuses, le projet reste un outil d'analyse prudent. Si elles existent, la prochaine etape est une preview verifiee, puis seulement ensuite une analyse CLV descriptive.

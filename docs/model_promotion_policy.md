@@ -119,3 +119,14 @@ Regles supplementaires :
 - CLV readiness `indisponible` bloque tout candidat robuste.
 
 Les aliases Serie A et Ligue 1 servent uniquement a fiabiliser la jointure future. Ils ne creent aucun signal. Un statut `production_allowed`, s'il existe un jour, resterait une aide decisionnelle explicable, jamais un pari automatique.
+
+## V7.6 Closing odds recovery
+
+La recuperation closing odds devient un gate explicite :
+
+- `closing_odds_probe.py` peut confirmer si le CSV source contient des colonnes closing, sans calculer de CLV ;
+- `clv_readiness_report.py --closing-probe` distingue la CLV calculable maintenant de la CLV calculable apres enrichissement ;
+- `features_closing_enricher.py` ne peut produire qu'une preview dans `reports/`, jamais remplacer `data/features_modern.csv` ;
+- si la source closing est absente, douteuse ou non mappee au marche pris, toute promotion reste bloquee.
+
+Un xG qui ameliore legerement Brier/log loss peut etre utile pour la calibration, mais il ne prouve pas un edge betting. Sans CLV positive fiable, ROI test positif, sample suffisant, bootstrap favorable, calibration correcte, correction multiple testing et stabilite annuelle, le statut maximum reste observation/watchlist. Telegram, Railway et tout pick automatique restent exclus.

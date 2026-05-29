@@ -53,6 +53,10 @@ def main():
 
         empty = aggregator.build_summary(str(reports))
         assert empty["global"]["leagues_available"] == 0
+        assert empty["global"]["total_leagues_expected"] == 5
+        assert empty["global"]["total_leagues_available"] == 0
+        assert empty["global"]["ready_for_big5_conclusion"] is False
+        assert "SerieA" in empty["global"]["missing_leagues"]
         assert empty["global"]["robust_candidates"] == 0
 
         write_json(reports / "understat_epl_2020_2025_quality.json", quality_payload())
@@ -61,6 +65,8 @@ def main():
         one = aggregator.build_summary(str(reports))
         epl = next(item for item in one["leagues"] if item["league"] == "EPL")
         assert one["global"]["leagues_available"] == 1
+        assert one["global"]["clv_blocker"] is True
+        assert one["global"]["ready_for_big5_conclusion"] is False
         assert epl["status"] == "observation technique"
         assert epl["promotion_allowed"] is False
 
@@ -83,10 +89,28 @@ def main():
         assert bundes["promotion_allowed"] is False
         assert "jointure externe insuffisante" in bundes["rejection_reasons"]
 
+        write_json(reports / "seriea_2020_2025_quality.json", quality_payload())
+        write_json(reports / "seriea_join_diagnostics.json", join_payload(95.79, "excellent"))
+        write_json(reports / "seriea_2020_2025_xg_model.json", model_payload(roi=-2.63, picks=700, clv=False))
+        with_seriea = aggregator.build_summary(str(reports))
+        seriea = next(item for item in with_seriea["leagues"] if item["league"] == "SerieA")
+        assert seriea["dataset_present"] is True
+        assert seriea["join_rate"] == 95.79
+        assert with_seriea["global"]["total_leagues_available"] == 4
+        assert with_seriea["global"]["missing_leagues"] == ["Ligue1"]
+
+        write_json(reports / "ligue1_2020_2025_quality.json", quality_payload())
+        write_json(reports / "ligue1_join_diagnostics.json", join_payload(92.0, "excellent"))
+        write_json(reports / "ligue1_2020_2025_xg_model.json", model_payload(roi=1.0, picks=400, clv=False))
+        complete = aggregator.build_summary(str(reports))
+        assert complete["global"]["ready_for_big5_conclusion"] is True
+        assert complete["global"]["missing_leagues"] == []
+        assert complete["global"]["clv_blocker"] is False  # Bundesliga synthetic has CLV true even if blocked by join.
+
         out_json = reports / "big5_xg_summary.json"
         out_html = reports / "big5_xg_summary.html"
-        aggregator.write_json(blocked, str(out_json))
-        aggregator.write_html(blocked, str(out_html))
+        aggregator.write_json(complete, str(out_json))
+        aggregator.write_html(complete, str(out_html))
         assert out_json.exists()
         assert out_html.exists()
         assert "Big 5 xG Lab Summary" in out_html.read_text(encoding="utf-8")

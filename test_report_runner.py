@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, big5_xg_commands, command_set, run_report, xg_understat_commands
+from report_runner import ReportCommand, big5_xg_commands, closing_readiness_commands, command_set, run_report, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -109,6 +109,11 @@ Understat xG Full Pipeline Quality Gate
         }, ensure_ascii=False), encoding="utf-8")
         (report_dir / "big5_xg_summary.json").write_text(json.dumps({
             "global": {
+                "total_leagues_expected": 5,
+                "total_leagues_available": 3,
+                "missing_leagues": ["SerieA", "Ligue1"],
+                "ready_for_big5_conclusion": False,
+                "clv_blocker": True,
                 "leagues_available": 3,
                 "leagues_exploitable": 3,
                 "leagues_roi_edge_positive": 2,
@@ -124,9 +129,21 @@ Understat xG Full Pipeline Quality Gate
         (report_dir / "clv_readiness.json").write_text(json.dumps({
             "status": "indisponible",
             "clv_calculable": False,
+            "clv_calculable_now": False,
+            "clv_calculable_after_enrichment": True,
+            "source_has_closing": True,
             "missing_columns": ["C_LTH", "C_LTA"],
             "markets": {"h2h_closing_possible": False},
+            "recommended_next_command": "python features_closing_enricher.py --features data/features_modern.csv --source data/MATCHES.csv --output reports/features_with_closing_preview.csv",
         }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "closing_odds_probe.json").write_text(json.dumps({
+            "closing_available": True,
+            "h2h_closing_available": True,
+            "total_closing_available": False,
+            "btts_closing_available": False,
+            "detected_columns": {"all_closing": ["C_LTH", "C_LTD", "C_LTA"]},
+        }, ensure_ascii=False), encoding="utf-8")
+        write_report(report_dir / "closing_odds_probe.txt", "Closing Odds Probe\n- H2H closing disponible: True\n- Colonnes closing detectees: C_LTH, C_LTD, C_LTA\n")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -144,18 +161,26 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Benchmark governance" for command in command_set("full"))
         assert any(command.name == "Understat xG Full Pipeline Quality Gate" for command in command_set("xg-understat"))
         assert any(command.name == "Big 5 xG aggregator" for command in command_set("big5-xg"))
+        assert any(command.name == "Closing odds probe" for command in command_set("closing-readiness"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
         big5_commands = big5_xg_commands("features.csv", skip_benchmark=True)
         assert any("multi_league_xg_aggregator.py" in command.args for command in big5_commands)
         assert not any("benchmark_governance.py" in command.args for command in big5_commands)
+        closing_commands = closing_readiness_commands("features.csv", "matches.csv", skip_benchmark=False)
+        assert any("closing_odds_probe.py" in command.args for command in closing_commands)
+        assert any("--closing-probe" in command.args for command in closing_commands)
+        assert any("benchmark_governance.py" in command.args for command in closing_commands)
         assert "CLV / Closing Line Value" in html
         assert "CLV Readiness" in html
         assert "Validation statistique" in html
         assert "Understat xG Multi-Season Lab" in html
         assert "Big 5 xG Lab Summary" in html
+        assert "Big 5 Completion Status" in html
         assert "League-by-league xG comparison" in html
+        assert "League readiness table" in html
+        assert "Closing Odds Recovery Plan" in html
         assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 

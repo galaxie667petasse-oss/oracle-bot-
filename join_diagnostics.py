@@ -225,6 +225,34 @@ def _alias_usage(matches: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     ]
 
 
+def _alias_impacts(
+    gained_matches: Iterable[Dict[str, Any]],
+    x_alias_keys: Dict[Tuple[str, str, str], List[Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
+    counter: Counter = Counter()
+    for match in gained_matches:
+        candidates = x_alias_keys.get(match["key"]) or []
+        x_match = candidates[0] if candidates else {}
+        for side in ("home", "away"):
+            basic_key = f"{side}_basic"
+            norm_key = f"{side}_norm"
+            if match.get(basic_key) == match.get(norm_key):
+                continue
+            matched_name = ""
+            if x_match:
+                matched_name = str(x_match.get(side) or "")
+            counter[(match.get(side, ""), match.get(norm_key, ""), matched_name)] += 1
+    return [
+        {
+            "external_name": external_name,
+            "normalized_name": normalized_name,
+            "matched_name": matched_name,
+            "matches_gained": count,
+        }
+        for (external_name, normalized_name, matched_name), count in counter.most_common(30)
+    ]
+
+
 def _team_candidate_suggestions(unmatched_by_team: Counter, xgabora_names: Iterable[str], league: str) -> List[Dict[str, Any]]:
     xgabora_list = sorted({str(name or "").strip() for name in xgabora_names if str(name or "").strip()})
     suggestions: List[Dict[str, Any]] = []
@@ -280,6 +308,8 @@ def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = 
 
     exact_before = [match for match in e_basic["matches"] if match["basic_key"] in x_basic_keys]
     exact_after = [match for match in e_alias["matches"] if match["key"] in x_alias_keys]
+    exact_before_indices = {match["index"] for match in exact_before}
+    gained_by_alias = [match for match in exact_after if match["index"] not in exact_before_indices]
     exact_after_keys = {match["key"] for match in exact_after}
     fuzzy: List[Dict[str, Any]] = []
     ambiguous_fuzzy: List[Dict[str, Any]] = []
@@ -330,6 +360,8 @@ def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = 
 
     quality = classify_join_quality(exact_rate_after)
     unmatched_limit = max(0, int(show_unmatched or 0))
+    alias_used = _alias_usage(e_alias["matches"])
+    top_alias_impacts = _alias_impacts(gained_by_alias, x_alias_keys)
     return {
         "xgabora_path": xgabora_path,
         "external_path": external_path,
@@ -342,15 +374,19 @@ def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = 
         "xgabora_match_level_unique": len({match["key"] for match in x_alias["matches"]}),
         "join_rate_before_alias": exact_rate_before,
         "join_rate_after_alias": exact_rate_after,
+        "join_rate_gain": round(exact_rate_after - exact_rate_before, 2),
         "join_rate_exact_date_home_away": exact_rate_after,
         "join_rate_fuzzy": fuzzy_rate,
         "exact_matches_before_alias": len(exact_before),
         "exact_matches_after_alias": len(exact_after),
         "alias_matches_gained": max(0, len(exact_after) - len(exact_before)),
+        "alias_applied_count_by_team": alias_used,
+        "top_alias_impacts": top_alias_impacts,
         "fuzzy_matches_possible": len(fuzzy),
         "ambiguous_fuzzy_matches": len(ambiguous_fuzzy),
         "unmatched_count": len(unmatched),
         "unmatched_external_examples": _examples(unmatched, unmatched_limit),
+        "unmatched_csv_rows": _examples(unmatched, len(unmatched)),
         "unrecognized_external_teams": [
             {"team": team, "count": count}
             for team, count in unmatched_by_team.most_common(30)
@@ -359,7 +395,7 @@ def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = 
         "top_alias_suggestions": suggestions[:20],
         "xgabora_candidates_by_team": candidate_suggestions,
         "recommended_aliases": candidate_suggestions,
-        "alias_used": _alias_usage(e_alias["matches"]),
+        "alias_used": alias_used,
         "distribution_by_season": dict(sorted(by_season.items())),
         "unmatched_by_season": dict(sorted(unmatched_by_season.items())),
         "distribution_by_team": [
@@ -387,7 +423,7 @@ def build_join_diagnostics(xgabora_path: str, external_path: str, league: str = 
         "modeling_allowed_by_join_quality": quality["modeling_allowed_by_join_quality"],
         "join_quality_reason": quality["reason"],
         "join_blocks_promotion": quality["join_blocks_promotion"],
-        "alias_applied": bool(len(exact_after) != len(exact_before) or _alias_usage(e_alias["matches"])),
+        "alias_applied": bool(len(exact_after) != len(exact_before) or alias_used),
         "lab_only": True,
         "can_influence_picks": False,
     }
@@ -410,6 +446,10 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         f"<li>{html.escape(item['date'])}: {html.escape(item['home'])} - {html.escape(item['away'])}</li>"
         for item in report.get("unmatched_external_examples", [])[:display_limit]
     ) or "<li>Aucun exemple.</li>"
+    impacts = "".join(
+        f"<li>{html.escape(str(item.get('external_name')))} -> {html.escape(str(item.get('normalized_name')))} ({item.get('matches_gained')} matchs gagnes)</li>"
+        for item in report.get("top_alias_impacts", [])[:20]
+    ) or "<li>Aucun gain direct par alias.</li>"
     target.write_text("\n".join([
         "<!doctype html>",
         "<html lang='fr'><head><meta charset='utf-8'>",
@@ -422,6 +462,7 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         f"<tr><th>Matchs xgabora uniques</th><td>{report.get('xgabora_match_level_unique')}</td></tr>",
         f"<tr><th>Join rate avant alias</th><td>{report.get('join_rate_before_alias')}%</td></tr>",
         f"<tr><th>Join rate apres alias</th><td>{report.get('join_rate_after_alias')}%</td></tr>",
+        f"<tr><th>Gain alias</th><td>{report.get('join_rate_gain')} points</td></tr>",
         f"<tr><th>Join rate fuzzy potentiel</th><td>{report.get('join_rate_fuzzy')}%</td></tr>",
         f"<tr><th>Qualite jointure</th><td>{html.escape(str(report.get('join_quality')))}</td></tr>",
         f"<tr><th>Modeling allowed</th><td>{report.get('modeling_allowed_by_join_quality')}</td></tr>",
@@ -432,12 +473,27 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         "<h2>Suggestions alias a valider</h2><ul>",
         suggestions,
         "</ul>",
+        "<h2>Top impacts alias</h2><ul>",
+        impacts,
+        "</ul>",
         "<h2>Exemples non joints</h2><ul>",
         unmatched,
         "</ul>",
         "<p>Rapport local descriptif: aucun alias applique automatiquement aux CSV source, aucun pick automatique.</p>",
         "</body></html>",
     ]), encoding="utf-8")
+    return target
+
+
+def write_unmatched_csv(report: Dict[str, Any], path: str) -> Path:
+    target = ensure_report_path(path)
+    fieldnames = ["date", "season", "competition", "home", "away", "home_norm", "away_norm"]
+    rows = report.get("unmatched_csv_rows") or report.get("unmatched_external_examples") or []
+    with target.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: row.get(key, "") for key in fieldnames})
     return target
 
 
@@ -449,6 +505,7 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Matchs xgabora uniques: {report.get('xgabora_match_level_unique')}")
     print(f"- Join rate avant alias: {report.get('join_rate_before_alias')}%")
     print(f"- Join rate apres alias: {report.get('join_rate_after_alias')}%")
+    print(f"- Gain alias: {report.get('join_rate_gain')} points")
     print(f"- Join rate fuzzy potentiel: {report.get('join_rate_fuzzy')}%")
     print(f"- Matchs gagnes par alias: {report.get('alias_matches_gained')}")
     print(f"- Matchs externes non joints: {report.get('unmatched_count')}")
@@ -466,6 +523,9 @@ def print_report(report: Dict[str, Any]) -> None:
     for suggestion in suggestions[:8]:
         target = suggestion.get("recommended_target") or suggestion.get("suggested_xgabora_name")
         print(f"  - {suggestion['external_name']} -> {target} ({suggestion['similarity']}, {suggestion.get('status', 'suggestion_a_valider')})")
+    print("- Top impacts alias:")
+    for item in (report.get("top_alias_impacts") or [])[:8]:
+        print(f"  - {item.get('external_name')} -> {item.get('normalized_name')} ({item.get('matches_gained')} matchs gagnes)")
     for warning in report.get("warnings", []):
         print(f"- Avertissement: {warning}")
     print("- Rappel: aucun alias n'est applique automatiquement aux fichiers source.")
@@ -479,6 +539,7 @@ def parse_args(argv=None):
     parser.add_argument("--show-unmatched", type=int, default=20, help="Nombre d'exemples non joints a afficher")
     parser.add_argument("--output", default="", help="Rapport JSON dans reports/")
     parser.add_argument("--html", default="", help="Rapport HTML dans reports/")
+    parser.add_argument("--export-unmatched-csv", default="", help="Export CSV optionnel des matchs non joints dans reports/")
     return parser.parse_args(argv)
 
 
@@ -492,6 +553,9 @@ def main(argv=None) -> int:
         if args.html:
             path = write_html(report, args.html)
             print(f"- Rapport HTML jointure ecrit: {path}")
+        if args.export_unmatched_csv:
+            path = write_unmatched_csv(report, args.export_unmatched_csv)
+            print(f"- CSV matchs non joints ecrit: {path}")
         print_report(report)
         return 0
     except Exception as exc:
