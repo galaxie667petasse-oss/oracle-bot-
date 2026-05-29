@@ -37,7 +37,25 @@ LEDGER_COLUMNS = [
     "notes",
 ]
 VALID_STATUS = {"observation", "watchlist", "rejected", "pending_result", "settled"}
-VALID_RESULT = {"win", "loss", "push", "unknown"}
+VALID_RESULT = {"win", "loss", "push", "void", "unknown"}
+CANDIDATE_IMPORT_COLUMNS = [
+    "match_date",
+    "league",
+    "home_team",
+    "away_team",
+    "market_type",
+    "side",
+    "taken_odds",
+    "bookmaker",
+    "strategy_name",
+    "reason",
+    "confidence_label",
+    "model_probability",
+    "market_probability",
+    "no_vig_probability",
+    "edge_probability",
+    "notes",
+]
 
 
 def now_iso() -> str:
@@ -155,6 +173,114 @@ def add_shadow_entry(path: str = DEFAULT_LEDGER, **kwargs: Any) -> Dict[str, Any
     return entry
 
 
+def _dedupe_key(row: Dict[str, Any]) -> tuple:
+    return (
+        str(row.get("match_date") or "").strip().lower(),
+        str(row.get("league") or "").strip().lower(),
+        str(row.get("home_team") or row.get("home") or "").strip().lower(),
+        str(row.get("away_team") or row.get("away") or "").strip().lower(),
+        str(row.get("market_type") or row.get("market") or "").strip().lower(),
+        str(row.get("side") or "").strip().lower(),
+        str(row.get("taken_odds") or "").strip().replace(",", "."),
+    )
+
+
+def _status_from_import(row: Dict[str, Any]) -> str:
+    reason = str(row.get("reason") or "").lower()
+    confidence = str(row.get("confidence_label") or "").lower()
+    if "rejected" in reason or "refuse" in reason or "refus" in reason or "rejet" in reason:
+        return "rejected"
+    if "watchlist" in confidence:
+        return "watchlist"
+    return "observation"
+
+
+def add_csv_entries(path: str, csv_path: str, allow_duplicates: bool = False) -> Dict[str, Any]:
+    init_ledger(path)
+    source = Path(csv_path)
+    if not source.exists():
+        raise FileNotFoundError(f"CSV observations shadow introuvable: {csv_path}")
+    existing_rows = read_ledger(path)
+    existing_keys = {_dedupe_key(row) for row in existing_rows}
+    rows_read = 0
+    added = 0
+    duplicates = 0
+    errors: List[str] = []
+    with source.open(newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        for idx, row in enumerate(reader, start=2):
+            rows_read += 1
+            try:
+                for required in ("match_date", "market_type", "side", "taken_odds"):
+                    if not str(row.get(required) or "").strip():
+                        raise ValueError(f"{required} obligatoire")
+                key = _dedupe_key(row)
+                if key in existing_keys and not allow_duplicates:
+                    duplicates += 1
+                    continue
+                entry = add_shadow_entry(
+                    path,
+                    match_date=row.get("match_date"),
+                    league=row.get("league"),
+                    home_team=row.get("home_team"),
+                    away_team=row.get("away_team"),
+                    market_type=row.get("market_type"),
+                    side=row.get("side"),
+                    taken_odds=row.get("taken_odds"),
+                    bookmaker=row.get("bookmaker"),
+                    strategy_name=row.get("strategy_name"),
+                    reason=row.get("reason"),
+                    confidence_label=row.get("confidence_label"),
+                    signal_probability=row.get("model_probability"),
+                    market_probability=row.get("market_probability"),
+                    no_vig_probability=row.get("no_vig_probability"),
+                    edge_probability=row.get("edge_probability"),
+                    notes=row.get("notes"),
+                    status=_status_from_import(row),
+                )
+                existing_keys.add(_dedupe_key(entry))
+                added += 1
+            except Exception as exc:
+                errors.append(f"Ligne {idx}: {exc}")
+    return {
+        "ledger": path,
+        "csv_path": csv_path,
+        "rows_read": rows_read,
+        "rows_added": added,
+        "duplicates_ignored": duplicates,
+        "errors": errors,
+        "lab_only": True,
+        "can_influence_picks": False,
+    }
+
+
+def pending_closing(path: str = DEFAULT_LEDGER) -> List[Dict[str, str]]:
+    return [row for row in read_ledger(path) if not str(row.get("closing_odds") or "").strip()]
+
+
+def pending_results(path: str = DEFAULT_LEDGER) -> List[Dict[str, str]]:
+    return [row for row in read_ledger(path) if str(row.get("result") or "unknown").lower() == "unknown"]
+
+
+def set_result(path: str, shadow_id: str, result: str) -> Dict[str, Any]:
+    result = str(result or "").strip().lower()
+    if result not in VALID_RESULT:
+        raise ValueError(f"result invalide: {result}")
+    rows = read_ledger(path)
+    updated = False
+    for row in rows:
+        if row.get("shadow_id") == shadow_id:
+            row["result"] = result
+            if result in {"win", "loss", "push", "void"}:
+                row["status"] = "settled"
+            updated = True
+            break
+    if not updated:
+        raise ValueError(f"shadow_id introuvable: {shadow_id}")
+    write_ledger(rows, path)
+    return {"shadow_id": shadow_id, "result": result, "updated": True}
+
+
 def summarize_ledger(path: str = DEFAULT_LEDGER) -> Dict[str, Any]:
     rows = read_ledger(path)
     clvs = []
@@ -214,14 +340,32 @@ def print_summary(summary: Dict[str, Any]) -> None:
     print("- Observation seulement: aucune mise, aucun pick automatique.")
 
 
+def print_import_summary(summary: Dict[str, Any]) -> None:
+    print("Import CSV observations shadow Oracle Bot")
+    print(f"- CSV: {summary.get('csv_path')}")
+    print(f"- Lignes lues: {summary.get('rows_read')}")
+    print(f"- Lignes ajoutees: {summary.get('rows_added')}")
+    print(f"- Doublons ignores: {summary.get('duplicates_ignored')}")
+    print(f"- Erreurs: {len(summary.get('errors') or [])}")
+    for error in summary.get("errors") or []:
+        print(f"  - {error}")
+    print("- Mode shadow : observation seulement, aucune mise conseillee.")
+
+
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description="Journal local des signaux shadow Oracle Bot, sans conseil de pari.")
+    parser = argparse.ArgumentParser(description="Journal local des signaux shadow Oracle Bot, sans recommandation de mise.")
     parser.add_argument("--ledger", default=DEFAULT_LEDGER, help="Chemin du ledger CSV, par defaut reports/shadow_ledger.csv")
     parser.add_argument("--init", action="store_true", help="Initialise le ledger")
     parser.add_argument("--add", action="store_true", help="Ajoute un signal shadow")
+    parser.add_argument("--add-csv", default="", help="Ajoute plusieurs observations depuis un CSV")
+    parser.add_argument("--allow-duplicates", action="store_true", help="Autorise les doublons lors de --add-csv")
     parser.add_argument("--list", action="store_true", help="Liste les signaux shadow")
     parser.add_argument("--summary", action="store_true", help="Resume le ledger")
     parser.add_argument("--export", default="", help="Exporte le ledger vers un CSV dans reports/")
+    parser.add_argument("--pending-closing", action="store_true", help="Liste les observations sans closing odds")
+    parser.add_argument("--pending-results", action="store_true", help="Liste les observations sans resultat")
+    parser.add_argument("--set-result", action="store_true", help="Met a jour le resultat d'une observation")
+    parser.add_argument("--shadow-id", default="", help="shadow_id pour --set-result")
     parser.add_argument("--match-date", default="")
     parser.add_argument("--league", default="")
     parser.add_argument("--home", default="")
@@ -256,14 +400,24 @@ def main(argv=None) -> int:
             entry = add_shadow_entry(args.ledger, **vars(args))
             print(f"- Signal shadow ajoute: {entry['shadow_id']}")
             print("- Observation seulement: aucune mise, aucun pick automatique.")
+        if args.add_csv:
+            print_import_summary(add_csv_entries(args.ledger, args.add_csv, allow_duplicates=args.allow_duplicates))
         if args.list:
             print_rows(read_ledger(args.ledger))
+        if args.pending_closing:
+            print_rows(pending_closing(args.ledger))
+        if args.pending_results:
+            print_rows(pending_results(args.ledger))
+        if args.set_result:
+            updated = set_result(args.ledger, args.shadow_id, args.result)
+            print(f"- Resultat mis a jour: {updated['shadow_id']} -> {updated['result']}")
+            print("- Mode shadow : observation seulement, aucune mise conseillee.")
         if args.summary:
             print_summary(summarize_ledger(args.ledger))
         if args.export:
             path = export_ledger(args.ledger, args.export)
             print(f"- Export shadow ledger ecrit: {path}")
-        if not any((args.init, args.add, args.list, args.summary, args.export)):
+        if not any((args.init, args.add, args.add_csv, args.list, args.summary, args.export, args.pending_closing, args.pending_results, args.set_result)):
             print_summary(summarize_ledger(args.ledger))
         return 0
     except Exception as exc:

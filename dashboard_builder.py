@@ -234,13 +234,19 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "recommended_next_command": clv_readiness.get("recommended_next_command"),
         "shadow_report_available": bool(shadow_clv),
         "shadow_signals": shadow_clv.get("signals_total"),
+        "shadow_pending_closing": shadow_clv.get("pending_closing"),
+        "shadow_pending_results": shadow_clv.get("pending_results"),
         "shadow_clv_coverage": shadow_clv.get("clv_coverage"),
         "shadow_clv_mean": shadow_clv.get("clv_mean"),
         "shadow_clv_positive_rate": shadow_clv.get("clv_positive_rate"),
         "shadow_roi": shadow_clv.get("roi"),
+        "shadow_profit": shadow_clv.get("profit"),
+        "shadow_max_drawdown": shadow_clv.get("drawdown"),
         "shadow_sample": shadow_clv.get("sample_size"),
         "shadow_verdict": shadow_clv.get("verdict"),
         "shadow_warnings": shadow_clv.get("warnings") or [],
+        "shadow_top_strategies": list((shadow_clv.get("clv_by_strategy") or {}).keys())[:5],
+        "shadow_top_leagues": list((shadow_clv.get("clv_by_league") or {}).keys())[:5],
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -427,21 +433,34 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         clv_partial_lines.extend(_lines_matching(texts["clv_partial"], ["Scope", "Coverage", "CLV moyenne", "CLV positive", "partielle", "Avertissement"], 24))
     parts.append(_card("CLV partielle / Closing odds", "\n".join(clv_partial_lines)))
 
-    shadow_lines = [
-        f"rapport disponible: {summary.get('shadow_report_available')}",
-        f"signaux shadow: {summary.get('shadow_signals')}",
-        f"coverage CLV: {summary.get('shadow_clv_coverage')}%",
-        f"CLV moyenne: {summary.get('shadow_clv_mean')}",
-        f"CLV positive: {summary.get('shadow_clv_positive_rate')}%",
-        f"ROI resultats disponibles: {summary.get('shadow_roi')}",
-        f"sample: {summary.get('shadow_sample')}",
-        f"verdict: {summary.get('shadow_verdict')}",
-        f"blockers: {', '.join(summary.get('shadow_warnings') or []) or 'n/a'}",
-        "statut: observation shadow seulement, aucune mise automatique.",
-    ]
+    if summary.get("shadow_signals") in (None, 0):
+        shadow_lines = [
+            f"rapport disponible: {summary.get('shadow_report_available')}",
+            "Aucun signal shadow enregistre.",
+            "statut: shadow mode uniquement, aucune mise conseillee.",
+        ]
+    else:
+        shadow_lines = [
+            f"rapport disponible: {summary.get('shadow_report_available')}",
+            f"signaux shadow: {summary.get('shadow_signals')}",
+            f"pending closing: {summary.get('shadow_pending_closing')}",
+            f"pending resultats: {summary.get('shadow_pending_results')}",
+            f"coverage CLV: {summary.get('shadow_clv_coverage')}%",
+            f"CLV moyenne: {summary.get('shadow_clv_mean')}",
+            f"CLV positive: {summary.get('shadow_clv_positive_rate')}%",
+            f"ROI resultats disponibles: {summary.get('shadow_roi')}",
+            f"profit unite: {summary.get('shadow_profit')}",
+            f"max drawdown: {summary.get('shadow_max_drawdown')}",
+            f"sample: {summary.get('shadow_sample')}",
+            f"verdict: {summary.get('shadow_verdict')}",
+            f"top strategies: {', '.join(summary.get('shadow_top_strategies') or []) or 'n/a'}",
+            f"top ligues: {', '.join(summary.get('shadow_top_leagues') or []) or 'n/a'}",
+            f"blockers: {', '.join(summary.get('shadow_warnings') or []) or 'n/a'}",
+            "statut: shadow mode uniquement, aucune mise conseillee.",
+        ]
     if texts["shadow_clv"]:
         shadow_lines.extend(_lines_matching(texts["shadow_clv"], ["Signaux", "Coverage", "CLV moyenne", "CLV positive", "ROI", "Verdict", "Avertissement"], 24))
-    parts.append(_card("Shadow Mode Live Evidence", "\n".join(shadow_lines)))
+    parts.append(_card("Shadow Mode Evidence", "\n".join(shadow_lines)))
 
     league_rows = []
     for item in (big5_xg.get("leagues") or []):

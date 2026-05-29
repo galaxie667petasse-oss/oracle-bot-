@@ -118,7 +118,7 @@ Les dimensions comparees sont :
 - ROI train minimum ;
 - volume minimum.
 
-Une regle positive sur train mais negative sur test est marquee fragile. Elle ne doit pas devenir un pick conseille.
+Une regle positive sur train mais negative sur test est marquee fragile. Elle ne doit pas devenir une selection activee.
 
 ## Conclusion prudente
 

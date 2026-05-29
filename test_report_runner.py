@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, run_report, shadow_commands, xg_understat_commands
+from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, run_report, shadow_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -160,15 +160,21 @@ Understat xG Full Pipeline Quality Gate
         (report_dir / "shadow_clv_report.json").write_text(json.dumps({
             "signals_total": 3,
             "signals_with_closing": 2,
+            "pending_closing": 1,
+            "pending_results": 1,
             "clv_coverage": 66.67,
             "clv_mean": 0.01,
             "clv_positive_rate": 50.0,
             "roi": -1.0,
+            "profit": -0.2,
+            "drawdown": -1.0,
             "sample_size": 3,
-            "verdict": "sample_insufficient",
+            "verdict": "not_validated",
+            "clv_by_strategy": {"s1": {"n": 2}},
+            "clv_by_league": {"EPL": {"n": 2}},
             "warnings": ["sample <1000: promotion impossible"],
         }, ensure_ascii=False), encoding="utf-8")
-        write_report(report_dir / "shadow_clv_report.txt", "Shadow CLV Report\n- Signaux shadow: 3\n- Coverage CLV: 66.67%\n- Verdict: sample_insufficient\n")
+        write_report(report_dir / "shadow_clv_report.txt", "Shadow CLV Report\n- Signaux shadow: 3\n- Coverage CLV: 66.67%\n- Verdict: not_validated\n")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -189,6 +195,7 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Closing odds probe" for command in command_set("closing-readiness"))
         assert any(command.name == "CLV partial analysis" for command in command_set("closing-preview"))
         assert any(command.name == "Shadow CLV report" for command in command_set("shadow"))
+        assert any(command.name == "Shadow workflow init" for command in command_set("daily-shadow"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
@@ -206,6 +213,11 @@ Understat xG Full Pipeline Quality Gate
         assert any("shadow_clv_report.py" in command.args for command in shadow_cmds)
         assert any("--shadow-report" in command.args for command in shadow_cmds)
         assert any("dashboard_builder.py" in command.args for command in shadow_cmds)
+        daily_cmds = daily_shadow_commands(str(root / "reports" / "shadow_ledger.csv"), "features.csv", skip_benchmark=True, skip_dashboard=True)
+        assert any("shadow_workflow.py" in command.args for command in daily_cmds)
+        assert any("--summary-csv" in command.args for command in daily_cmds)
+        assert not any("benchmark_governance.py" in command.args for command in daily_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in daily_cmds)
         try:
             closing_preview_commands("features.csv", "matches.csv", str(root / "data" / "preview.csv"))
             raise AssertionError("preview data non bloquee")
@@ -221,7 +233,7 @@ Understat xG Full Pipeline Quality Gate
         assert "League readiness table" in html
         assert "Closing Odds Recovery Plan" in html
         assert "CLV partielle / Closing odds" in html
-        assert "Shadow Mode Live Evidence" in html
+        assert "Shadow Mode Evidence" in html
         assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 

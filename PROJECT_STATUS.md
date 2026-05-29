@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V8.0 Shadow Mode & Manual CLV Capture.
+V8.1 Shadow UX, Daily Workflow, Evidence Dashboard & Safety Hardening.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline et V7.8 Closing Column Forensics restent en place. V8.0 ajoute un mode shadow local pour collecter des observations live et des closing odds manuelles. Aucun signal robuste active. Aucun changement V8.0 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0 Shadow Mode restent en place. V8.1 ajoute un workflow quotidien shadow, des templates CSV, l'import manuel des resultats, un dashboard evidence et des garde-fous supplementaires. Aucun signal robuste active. Aucun changement V8.1 ne branche Telegram, Railway ou un pick automatique.
 
 ## Etat general
 
@@ -24,8 +24,11 @@ Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full 
 - Closing column forensics disponible : min/max/mediane/percentiles, exemples bruts, taux de valeurs plausibles et verdict par colonne.
 - Shadow ledger local disponible via `shadow_ledger.py`.
 - Import closing manuel disponible via `closing_manual_import.py`.
-- Rapport CLV shadow disponible via `shadow_clv_report.py`.
-- Candidats shadow quotidiens disponibles via `daily_shadow_candidates.py`.
+- Import resultats manuel disponible via `results_manual_import.py`.
+- Templates CSV shadow disponibles via `shadow_templates.py`.
+- Workflow quotidien shadow disponible via `shadow_workflow.py`.
+- Rapport CLV shadow disponible via `shadow_clv_report.py`, avec ROI unite, profit, drawdown, splits et warnings sample.
+- Candidats shadow quotidiens disponibles via `daily_shadow_candidates.py`, importables vers le ledger sans automatisation.
 - Preview features closing disponible via `features_closing_enricher.py`, sortie limitee a `reports/`.
 - CLV partielle H2H home/away disponible uniquement si la closing exacte du cote joue existe.
 - CLV / Closing Line Value disponible si des cotes closing sont presentes.
@@ -69,13 +72,13 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - `calibration_report.py` : Brier, log loss, ECE, MCE et reliability curves.
 - `statistical_validation.py` : IC ROI, bootstrap, Monte Carlo, drawdown, sample size et Benjamini-Hochberg.
 - `decision_policy.py` : gates CLV/calibration/statistiques/multiple testing.
-- `benchmark_governance.py` : registre enrichi V8.0 avec CLV, shadow report, nulls prudents et warnings si metriques absentes.
-- `report_runner.py` : mode `--statistical`.
-- `dashboard_builder.py` : sections CLV, calibration, validation statistique, multiple testing et gouvernance finale.
+- `benchmark_governance.py` : registre enrichi V8.1 avec CLV, shadow report, ROI/drawdown shadow, nulls prudents et warnings si metriques absentes.
+- `report_runner.py` : modes `--statistical`, `--shadow` et `--daily-shadow`.
+- `dashboard_builder.py` : sections CLV, calibration, validation statistique, multiple testing, gouvernance finale et Shadow Mode Evidence.
 - `shadow_ledger.py` : journal local des observations shadow dans `reports/`.
 - `closing_manual_import.py` : import manuel de closing odds par `shadow_id`.
 - `shadow_clv_report.py` : rapport CLV/ROI shadow, observation seulement.
-- `daily_shadow_candidates.py` : preparation de candidats shadow depuis CSV live ou historique, sans conseil de pari.
+- `daily_shadow_candidates.py` : preparation de candidats shadow depuis CSV live ou historique, sans recommandation de mise.
 
 ## Resultats connus
 
@@ -112,7 +115,7 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 
 ## Ce qui reste invalide ou non confirme
 
-- Transformer un ROI court terme en pick conseille.
+- Transformer un ROI court terme en selection activee.
 - Promouvoir un signal sans CLV positive.
 - Promouvoir un signal si la correction multiple testing echoue.
 - Promouvoir un signal si le bootstrap ROI p05 est inferieur ou egal a 0.
@@ -123,10 +126,11 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 
 ## Prochaine vraie priorite
 
-1. Commit/push la phase locale V8.0.
-2. Utiliser `shadow_ledger.py --init` puis ajouter les observations shadow des matchs de juin.
-3. Importer les closing odds manuelles fiables avec `closing_manual_import.py`.
-4. Lancer manuellement Ligue 1, puis `join_diagnostics.py --league "Ligue 1"` et le pipeline strict.
-5. Relancer `multi_league_xg_aggregator.py`.
-6. Relire `shadow_clv_report.py` avec sample, coverage et CLV moyenne.
-7. Sinon chercher une source closing complete fiable.
+1. Commit/push la phase locale V8.1.
+2. Lancer `shadow_workflow.py --init`.
+3. Creer 5-10 observations shadow de test via `shadow_ledger.py --add-csv`.
+4. Importer les closing odds manuelles fiables avec `closing_manual_import.py`.
+5. Importer les resultats manuels avec `results_manual_import.py`.
+6. Relire `shadow_clv_report.py` avec sample, coverage, CLV moyenne, ROI et drawdown.
+7. Lancer manuellement Ligue 1, puis `join_diagnostics.py --league "Ligue 1"` et le pipeline strict.
+8. Sinon chercher une source closing complete fiable.

@@ -643,6 +643,9 @@ def build_benchmark(
     closing_probe = report_data.get("Closing odds probe") or {}
     clv_report_data = report_data.get("CLV report") or {}
     shadow_report = report_data.get("Shadow CLV report") or {}
+    shadow_sample = shadow_report.get("sample_size") or shadow_report.get("signals_total") or 0
+    shadow_roi = shadow_report.get("roi")
+    shadow_drawdown = shadow_report.get("drawdown")
     clv_calculable = bool(clv_readiness.get("clv_calculable")) if clv_readiness else False
     clv_calculable_now = bool(clv_readiness.get("clv_calculable_now", clv_calculable)) if clv_readiness else False
     clv_calculable_after_enrichment = bool(clv_readiness.get("clv_calculable_after_enrichment")) if clv_readiness else False
@@ -663,6 +666,31 @@ def build_benchmark(
     ]
     if clv_readiness and not clv_calculable:
         robust = []
+    if shadow_report:
+        shadow_blocks = []
+        if shadow_sample < 1000:
+            shadow_blocks.append("sample shadow inferieur a 1000")
+        if shadow_report.get("clv_mean") is None:
+            shadow_blocks.append("CLV shadow absente")
+        elif shadow_report.get("clv_mean") <= 0:
+            shadow_blocks.append("CLV shadow non positive")
+        if shadow_roi is None:
+            shadow_blocks.append("ROI shadow indisponible")
+        elif shadow_roi <= 0:
+            shadow_blocks.append("ROI shadow non positif")
+        if shadow_drawdown is not None and shadow_drawdown <= -10:
+            shadow_blocks.append("drawdown shadow eleve")
+        shadow_blocks.append("validation historique incomplete")
+        for entry in entries:
+            entry["shadow_available"] = True
+            entry["shadow_sample"] = shadow_sample
+            entry["shadow_verdict"] = shadow_report.get("verdict")
+            entry["shadow_blocks_promotion"] = True
+            if not isinstance(entry.get("rejection_reasons"), list):
+                entry["rejection_reasons"] = []
+            for reason in shadow_blocks:
+                if reason not in entry["rejection_reasons"]:
+                    entry["rejection_reasons"].append(reason)
     statistical_data = report_data.get("Statistical validation") or {}
     statistical_groups = statistical_data.get("by_strategy") or {}
     statistically_interesting = sum(
@@ -709,13 +737,18 @@ def build_benchmark(
     if statistical_groups and surviving_correction == 0:
         promotion_blockers.append("Multiple testing: aucune strategie ne survit la correction")
     if shadow_report:
-        shadow_sample = shadow_report.get("sample_size") or shadow_report.get("signals_total") or 0
         if shadow_sample < 1000:
             promotion_blockers.append("Shadow mode: sample inferieur a 1000")
         if shadow_report.get("clv_mean") is None:
             promotion_blockers.append("Shadow mode: CLV manuelle absente")
         elif shadow_report.get("clv_mean") <= 0:
             promotion_blockers.append("Shadow mode: CLV moyenne non positive")
+        if shadow_roi is None:
+            promotion_blockers.append("Shadow mode: ROI indisponible")
+        elif shadow_roi <= 0:
+            promotion_blockers.append("Shadow mode: ROI non positif")
+        if shadow_drawdown is not None and shadow_drawdown <= -10:
+            promotion_blockers.append("Shadow mode: drawdown eleve")
         promotion_blockers.append("Shadow mode: validation historique et revue humaine requises")
     if not promotion_blockers:
         promotion_blockers.append("Gouvernance complete requise avant tout affichage decisionnel")
@@ -742,6 +775,9 @@ def build_benchmark(
         "shadow_clv_coverage": shadow_report.get("clv_coverage"),
         "shadow_clv_mean": shadow_report.get("clv_mean"),
         "shadow_clv_positive_rate": shadow_report.get("clv_positive_rate"),
+        "shadow_roi": shadow_roi,
+        "shadow_profit": shadow_report.get("profit"),
+        "shadow_max_drawdown": shadow_drawdown,
         "shadow_sample": shadow_report.get("sample_size") or shadow_report.get("signals_total"),
         "shadow_verdict": shadow_report.get("verdict"),
         "clv_calculable": clv_calculable,
@@ -882,6 +918,8 @@ def write_html(benchmark: Dict[str, Any], path: str) -> Path:
         f"<li>Shadow signals: {benchmark['summary'].get('shadow_signals')}</li>",
         f"<li>Shadow CLV coverage: {benchmark['summary'].get('shadow_clv_coverage')}</li>",
         f"<li>Shadow CLV moyenne: {benchmark['summary'].get('shadow_clv_mean')}</li>",
+        f"<li>Shadow ROI: {benchmark['summary'].get('shadow_roi')}</li>",
+        f"<li>Shadow max drawdown: {benchmark['summary'].get('shadow_max_drawdown')}</li>",
         f"<li>Shadow verdict: {html.escape(str(benchmark['summary'].get('shadow_verdict')))}</li>",
         f"<li>CLV calculable: {benchmark['summary'].get('clv_calculable')}</li>",
         f"<li>Scope CLV: {html.escape(str(benchmark['summary'].get('clv_scope')))}</li>",
@@ -934,6 +972,8 @@ def print_report(benchmark: Dict[str, Any]) -> None:
     print(f"- Shadow signals: {summary.get('shadow_signals')}")
     print(f"- Shadow CLV coverage: {summary.get('shadow_clv_coverage')}")
     print(f"- Shadow CLV moyenne: {summary.get('shadow_clv_mean')}")
+    print(f"- Shadow ROI: {summary.get('shadow_roi')}")
+    print(f"- Shadow max drawdown: {summary.get('shadow_max_drawdown')}")
     print(f"- Shadow verdict: {summary.get('shadow_verdict')}")
     print(f"- CLV calculable: {summary.get('clv_calculable')}")
     print(f"- Scope CLV: {summary.get('clv_scope')}")

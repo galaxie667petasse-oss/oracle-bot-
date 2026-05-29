@@ -207,8 +207,11 @@ def main():
             "clv_coverage": 80.0,
             "clv_mean": 0.012,
             "clv_positive_rate": 60.0,
+            "roi": -2.0,
+            "profit": -0.5,
+            "drawdown": -1.5,
             "sample_size": 25,
-            "verdict": "sample_insufficient",
+            "verdict": "observation_only",
             "lab_only": True,
             "can_influence_picks": False,
         }, ensure_ascii=False), encoding="utf-8")
@@ -220,9 +223,15 @@ def main():
         assert benchmark_shadow["summary"]["shadow_report_available"] is True
         assert benchmark_shadow["summary"]["shadow_signals"] == 25
         assert benchmark_shadow["summary"]["shadow_clv_mean"] == 0.012
-        assert benchmark_shadow["summary"]["shadow_verdict"] == "sample_insufficient"
+        assert benchmark_shadow["summary"]["shadow_roi"] == -2.0
+        assert benchmark_shadow["summary"]["shadow_profit"] == -0.5
+        assert benchmark_shadow["summary"]["shadow_max_drawdown"] == -1.5
+        assert benchmark_shadow["summary"]["shadow_verdict"] == "observation_only"
         assert any("Shadow mode: sample inferieur a 1000" in blocker for blocker in benchmark_shadow["summary"]["promotion_blockers"])
+        assert any("Shadow mode: ROI non positif" in blocker for blocker in benchmark_shadow["summary"]["promotion_blockers"])
         assert benchmark_shadow["summary"]["robust_candidates"] == 0
+        assert all(entry.get("shadow_available") is True for entry in benchmark_shadow["registry"])
+        assert all(entry.get("shadow_blocks_promotion") is True for entry in benchmark_shadow["registry"])
 
         quality_path = root / "reports" / "xg_quality.json"
         model_path = root / "reports" / "xg_model.json"

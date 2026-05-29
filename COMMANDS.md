@@ -1,6 +1,6 @@
 # Commandes Oracle Football Bot
 
-Ce fichier sert de pense-bete local pour tester, auditer et comprendre le projet. Les commandes ci-dessous ne doivent pas rendre le bot plus agressif et ne doivent pas transformer un signal fragile en pick conseille.
+Ce fichier sert de pense-bete local pour tester, auditer et comprendre le projet. Les commandes ci-dessous ne doivent pas rendre le bot plus agressif et ne doivent pas transformer un signal fragile en selection activee.
 
 ## 1. Setup local
 
@@ -555,7 +555,7 @@ Initialiser le ledger shadow local :
 python shadow_ledger.py --init
 ```
 
-Ajouter une observation shadow, sans conseil de mise :
+Ajouter une observation shadow, sans recommandation de mise :
 
 ```bash
 python shadow_ledger.py --add --match-date 2026-06-01 --league EPL --home "Arsenal" --away "Chelsea" --market h2h --side home --taken-odds 2.10 --bookmaker manual --strategy-name test_signal --reason "observation shadow"
@@ -586,15 +586,67 @@ Runner shadow :
 python report_runner.py --shadow
 ```
 
-Rappel : ce mode collecte des preuves live. Il ne publie aucun pick, ne conseille aucune mise et ne transforme jamais une CLV positive court terme en validation.
+Rappel : ce mode collecte des preuves live. Il ne publie aucun pick, ne recommande aucune mise et ne transforme jamais une CLV positive court terme en validation.
 
-## 22. Git workflow
+## 22. V8.1 Shadow UX et workflow quotidien
+
+Initialiser le workflow quotidien :
+
+```bash
+python shadow_workflow.py --init
+```
+
+Creer le template d'observations manuelles :
+
+```bash
+python shadow_templates.py --candidates-template reports/shadow_candidates_template.csv
+```
+
+Importer plusieurs observations shadow depuis CSV :
+
+```bash
+python shadow_ledger.py --add-csv reports/shadow_candidates_manual.csv
+```
+
+Creer le template de closing odds a remplir manuellement :
+
+```bash
+python shadow_workflow.py --make-closing-template
+```
+
+Importer les closing odds manuelles :
+
+```bash
+python closing_manual_import.py --ledger reports/shadow_ledger.csv --closing-csv reports/manual_closing_import.csv
+```
+
+Importer les resultats manuels :
+
+```bash
+python results_manual_import.py --ledger reports/shadow_ledger.csv --results-csv reports/manual_results_import.csv
+```
+
+Generer le rapport shadow evidence :
+
+```bash
+python shadow_clv_report.py --ledger reports/shadow_ledger.csv --output reports/shadow_clv_report.json --html reports/shadow_clv_report.html
+```
+
+Runner quotidien complet, local et sans reseau :
+
+```bash
+python report_runner.py --daily-shadow
+```
+
+Tous ces fichiers de sortie restent dans `reports/`. Le statut reste observation shadow, aucune mise conseillee.
+
+## 23. Git workflow
 
 ```bash
 git status --short
 git diff
-git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md docs/closing_odds_forensics.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py shadow_ledger.py closing_manual_import.py shadow_clv_report.py daily_shadow_candidates.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_shadow_ledger.py test_closing_manual_import.py test_shadow_clv_report.py test_daily_shadow_candidates.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
-git commit -m "Add shadow mode manual CLV capture V8.0"
+git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md docs/closing_odds_forensics.md docs/shadow_mode_workflow.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py shadow_ledger.py closing_manual_import.py shadow_clv_report.py daily_shadow_candidates.py shadow_templates.py results_manual_import.py shadow_workflow.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_shadow_ledger.py test_closing_manual_import.py test_shadow_clv_report.py test_daily_shadow_candidates.py test_shadow_templates.py test_results_manual_import.py test_shadow_workflow.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
+git commit -m "Add shadow daily workflow V8.1"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -603,14 +655,14 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 23. Ce qu'il ne faut pas faire
+## 24. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.
 - Ne pas lancer Railway maintenant.
 - Ne pas rendre Telegram plus agressif.
 - Ne pas utiliser les stats post-match pour predire le meme match.
-- Ne pas transformer un edge validation ou un favori H2H fragile en pick conseille.
+- Ne pas transformer un edge validation ou un favori H2H fragile en selection activee.
 - Ne pas scraper FBref, Understat ou Kaggle automatiquement.
 - Ne pas utiliser un preview xG comme dataset d'entrainement production.
 - Ne pas promouvoir une strategie sans test 2024+ positif et gouvernance OK.

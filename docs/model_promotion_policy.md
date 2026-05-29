@@ -150,7 +150,7 @@ Si `C_LTH` ou `C_LTA` existent mais contiennent des valeurs non plausibles comme
 
 ## V8.0 Shadow Mode & Manual CLV Capture
 
-Le shadow mode est un journal de preuve live, pas un systeme de picks. Un signal shadow peut etre ajoute avec une cote prise et une raison, puis complete plus tard avec une closing odds manuelle fiable. La CLV est calculee uniquement si cette closing odds est une cote decimale > 1.01.
+Le shadow mode est un journal de preuve live, pas un systeme d'activation. Un signal shadow peut etre ajoute avec une cote prise et une raison, puis complete plus tard avec une closing odds manuelle fiable. La CLV est calculee uniquement si cette closing odds est une cote decimale > 1.01.
 
 Regles de promotion :
 
@@ -158,4 +158,26 @@ Regles de promotion :
 - CLV shadow absente ou non positive : promotion impossible ;
 - ROI shadow positif sans CLV robuste : observation seulement ;
 - CLV shadow positive avec ROI court terme negatif : observation seulement ;
-- aucune strategie shadow ne peut devenir conseil de pari sans gouvernance historique complete et revue humaine.
+- aucune strategie shadow ne peut devenir recommandation active sans gouvernance historique complete et revue humaine.
+
+## V8.1 Shadow UX, Daily Workflow & Evidence Dashboard
+
+V8.1 rend le shadow mode utilisable au quotidien, mais ne change pas les gates de promotion :
+
+- `shadow_workflow.py` orchestre init, templates, rapport et benchmark ;
+- `shadow_ledger.py --add-csv` permet d'ajouter plusieurs observations en une fois ;
+- `shadow_templates.py` cree les CSV candidats, closing et resultats ;
+- `results_manual_import.py` complete les resultats sans toucher aux closing odds ;
+- `shadow_clv_report.py` ajoute ROI unite, profit, max drawdown et splits par ligue, marche, side, strategie, bookmaker et mois ;
+- `dashboard_builder.py` affiche la section Shadow Mode Evidence.
+
+Regles V8.1 :
+
+- sample shadow inferieur a 1000 : `not_validated` ou `observation_only` ;
+- CLV absente : `not_validated` ;
+- CLV moyenne non positive : promotion bloquee ;
+- ROI shadow non positif : promotion bloquee ;
+- drawdown eleve : analyse humaine obligatoire ;
+- meme si CLV et ROI deviennent positifs avec un gros sample, le statut maximum est `candidat a analyse approfondie`.
+
+Le workflow quotidien ne cree aucune mise, n'utilise pas Kelly et ne publie rien sur Telegram.

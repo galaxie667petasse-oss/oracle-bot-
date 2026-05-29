@@ -366,3 +366,14 @@ Le probe ne se contente pas du nom `C_*`. Il verifie les distributions, les exem
 Le Big Five xG complet peut produire des observations techniques, mais la preuve betting doit maintenant venir d'un suivi live propre. `shadow_ledger.py` enregistre les observations, `closing_manual_import.py` ajoute les closing odds manuelles et `shadow_clv_report.py` mesure la CLV shadow.
 
 Ce mode ne lance aucune recuperation reseau et ne branche rien a Telegram. Il sert a accumuler un sample de matchs de juin, avec closing odds reelles, avant toute conclusion. Sample < 1000 ou CLV absente = observation seulement.
+
+## V8.1 Shadow UX & Daily Workflow
+
+V8.1 ne change pas le pipeline xG, mais il rend la collecte de preuve quotidienne plus exploitable :
+
+- `shadow_workflow.py` initialise le ledger, genere les templates et relance le rapport ;
+- `shadow_templates.py` fournit les CSV candidats, closing et resultats ;
+- `results_manual_import.py` ajoute les resultats apres match ;
+- `report_runner.py --daily-shadow` regenere le rapport evidence et la gouvernance locale.
+
+Le lien avec xG reste prudent : une observation xG peut etre placee en shadow ledger, puis comparee a une closing odds manuelle. Sans CLV fiable, sans sample suffisant et sans stabilite, le xG reste une observation technique. Aucune mise, aucun Telegram et aucun Railway ne sont actives.

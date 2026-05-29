@@ -38,6 +38,9 @@ ESSENTIAL_FILES = [
     "closing_manual_import.py",
     "shadow_clv_report.py",
     "daily_shadow_candidates.py",
+    "shadow_templates.py",
+    "results_manual_import.py",
+    "shadow_workflow.py",
     "report_runner.py",
     "dashboard_builder.py",
     "model_registry.json",
@@ -72,6 +75,9 @@ MAIN_TESTS = [
     "test_closing_manual_import.py",
     "test_shadow_clv_report.py",
     "test_daily_shadow_candidates.py",
+    "test_shadow_templates.py",
+    "test_results_manual_import.py",
+    "test_shadow_workflow.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -114,6 +120,9 @@ IMPORT_MODULES = [
     "closing_manual_import",
     "shadow_clv_report",
     "daily_shadow_candidates",
+    "shadow_templates",
+    "results_manual_import",
+    "shadow_workflow",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -145,6 +154,9 @@ OFFLINE_COMMAND_FILES = [
     "closing_manual_import.py",
     "shadow_clv_report.py",
     "daily_shadow_candidates.py",
+    "shadow_templates.py",
+    "results_manual_import.py",
+    "shadow_workflow.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [

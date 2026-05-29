@@ -4,7 +4,7 @@
 
 Oracle Football Bot est un outil local d'analyse football et de controle statistique. Il aide a comprendre les marches, les cotes, les marges bookmaker, les backtests et les limites des signaux disponibles.
 
-Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si un signal ne survit pas au split train/validation/test, il reste une observation et ne devient pas un pick conseille.
+Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si un signal ne survit pas au split train/validation/test, il reste une observation et ne devient pas une selection activee.
 
 ## Ce que le bot fait
 
@@ -603,7 +603,7 @@ python project_audit.py
 
 ## Etat actuel : aucune strategie robuste positive
 
-Etat V8.0 Shadow Mode & Manual CLV Capture :
+Etat V8.1 Shadow UX, Daily Workflow, Evidence Dashboard & Safety Hardening :
 
 - memoire moderne 2015-2025 ;
 - environ 528066 records regles ;
@@ -623,8 +623,12 @@ Etat V8.0 Shadow Mode & Manual CLV Capture :
 - CLV partielle H2H home/away disponible en diagnostic si `C_LTH/C_LTA` sont presents ;
 - V7.8 a rejete `C_LTH/C_LTA` comme `numeric_but_not_odds` dans `data/MATCHES.csv` local ;
 - shadow ledger disponible pour collecter les observations live de juin ;
+- workflow quotidien shadow disponible via `shadow_workflow.py` ;
+- templates CSV disponibles via `shadow_templates.py` ;
+- import manuel des resultats disponible via `results_manual_import.py` ;
 - import manuel de closing odds disponible par `shadow_id` ;
-- rapport CLV shadow disponible, observation seulement ;
+- rapport CLV shadow enrichi avec ROI unite, drawdown, splits et blockers, observation seulement ;
+- dashboard shadow evidence disponible ;
 - draw, totals et BTTS restent exclus sans colonnes closing exactes ;
 - CLV, calibration et validation statistique disponibles ;
 - Scientific Benchmark et Model Governance disponibles ;
@@ -639,9 +643,23 @@ Priorite suivante :
 
 1. Commit/push les phases locales prudentes.
 2. Initialiser `shadow_ledger.py --init`.
-3. Ajouter les observations shadow des matchs de juin sans conseil de mise.
+3. Ajouter les observations shadow des matchs de juin sans recommandation de mise.
 4. Lancer manuellement Ligue 1 Understat, sans automatiser de reseau.
 5. Importer les closing odds manuelles fiables avec `closing_manual_import.py`.
 6. Relancer `shadow_clv_report.py` et lire sample/coverage/CLV moyenne.
 7. Chercher une source closing complete et fiable si le manuel ne suffit pas.
 8. Ne penser a Railway ou Telegram qu'apres CLV positive, preuve statistique robuste et revue humaine.
+
+## V8.1 Shadow UX, Daily Workflow & Evidence Dashboard
+
+V8.1 transforme le shadow mode en routine quotidienne locale :
+
+- `shadow_workflow.py --init` initialise le ledger et les templates CSV ;
+- `shadow_ledger.py --add-csv` importe plusieurs observations manuelles ;
+- `shadow_templates.py` genere les templates candidats, closing et resultats ;
+- `closing_manual_import.py` ajoute uniquement des closing odds reelles ;
+- `results_manual_import.py` ajoute les resultats manuels ;
+- `shadow_clv_report.py` calcule CLV, ROI unite, profit, drawdown et splits ;
+- `report_runner.py --daily-shadow` regenere les preuves et le dashboard.
+
+Ce workflow reste un journal de preuve. Il n'utilise pas Kelly, ne cree aucune mise, ne publie rien sur Telegram et ne transforme jamais une observation shadow en recommandation active. Sans CLV manuelle fiable et sans sample largement suffisant, le verdict reste `not_validated` ou `observation_only`.

@@ -1,7 +1,17 @@
 import tempfile
+import csv
 from pathlib import Path
 
 import shadow_ledger
+
+
+def write_csv(path: Path, fieldnames, rows) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
 
 
 def main():
@@ -66,11 +76,45 @@ def main():
         assert summary["signals_total"] == 2
         assert summary["signals_with_clv"] == 1
         assert summary["clv_coverage"] == 50.0
+        assert len(shadow_ledger.pending_closing(str(ledger))) == 1
+        assert len(shadow_ledger.pending_results(str(ledger))) == 1
+        shadow_ledger.set_result(str(ledger), first["shadow_id"], "loss")
+        rows_after_result = shadow_ledger.read_ledger(str(ledger))
+        updated_first = [row for row in rows_after_result if row["shadow_id"] == first["shadow_id"]][0]
+        assert updated_first["result"] == "loss"
+        assert updated_first["status"] == "settled"
+        try:
+            shadow_ledger.set_result(str(ledger), first["shadow_id"], "bad")
+            raise AssertionError("result invalide accepte")
+        except ValueError:
+            pass
 
         export = root / "reports" / "shadow_ledger_export.csv"
         shadow_ledger.export_ledger(str(ledger), str(export))
         assert export.exists()
         assert len(shadow_ledger.read_ledger(str(export))) == 2
+
+        batch = root / "reports" / "shadow_candidates_manual.csv"
+        write_csv(
+            batch,
+            shadow_ledger.CANDIDATE_IMPORT_COLUMNS,
+            [
+                {"match_date": "2026-06-04", "league": "EPL", "home_team": "A", "away_team": "B", "market_type": "h2h", "side": "home", "taken_odds": "2.05", "bookmaker": "manual", "strategy_name": "s1", "reason": "observation", "confidence_label": "", "model_probability": "0.52", "market_probability": "0.50", "no_vig_probability": "", "edge_probability": "0.02", "notes": ""},
+                {"match_date": "2026-06-04", "league": "EPL", "home_team": "A", "away_team": "B", "market_type": "h2h", "side": "home", "taken_odds": "2.05", "bookmaker": "manual", "strategy_name": "s1", "reason": "observation", "confidence_label": "", "model_probability": "0.52", "market_probability": "0.50", "no_vig_probability": "", "edge_probability": "0.02", "notes": ""},
+                {"match_date": "2026-06-05", "league": "EPL", "home_team": "C", "away_team": "D", "market_type": "h2h", "side": "away", "taken_odds": "2.40", "bookmaker": "manual", "strategy_name": "s2", "reason": "", "confidence_label": "watchlist", "model_probability": "", "market_probability": "", "no_vig_probability": "", "edge_probability": "", "notes": ""},
+                {"match_date": "2026-06-06", "league": "EPL", "home_team": "E", "away_team": "F", "market_type": "h2h", "side": "home", "taken_odds": "1.00", "bookmaker": "manual", "strategy_name": "bad", "reason": "", "confidence_label": "", "model_probability": "", "market_probability": "", "no_vig_probability": "", "edge_probability": "", "notes": ""},
+            ],
+        )
+        imported = shadow_ledger.add_csv_entries(str(ledger), str(batch))
+        assert imported["rows_read"] == 4
+        assert imported["rows_added"] == 2
+        assert imported["duplicates_ignored"] == 1
+        assert len(imported["errors"]) == 1
+        assert len(shadow_ledger.read_ledger(str(ledger))) == 4
+
+        imported_dupes = shadow_ledger.add_csv_entries(str(ledger), str(batch), allow_duplicates=True)
+        assert imported_dupes["rows_added"] == 3
+        assert imported_dupes["duplicates_ignored"] == 0
 
         try:
             shadow_ledger.export_ledger(str(ledger), str(data_dir / "shadow.csv"))

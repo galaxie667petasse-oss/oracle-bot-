@@ -34,4 +34,18 @@ Comme `data/MATCHES.csv` ne fournit pas actuellement de cotes closing decimales 
 3. importer cette closing line avec `closing_manual_import.py` ;
 4. relire le rapport `shadow_clv_report.py`.
 
-Cette capture manuelle ne conseille pas de pari. Elle permet seulement de savoir si les observations Oracle prenaient de meilleurs prix que le marche final. Meme une CLV positive reste insuffisante avec un petit sample.
+Cette capture manuelle ne recommande aucune mise. Elle permet seulement de savoir si les observations Oracle prenaient de meilleurs prix que le marche final. Meme une CLV positive reste insuffisante avec un petit sample.
+
+## V8.1 : workflow quotidien et durcissement securite
+
+V8.1 ajoute un workflow plus simple autour de cette capture :
+
+1. initialiser `reports/shadow_ledger.csv` avec `shadow_workflow.py --init` ;
+2. remplir un template d'observations shadow ;
+3. importer les observations avec `shadow_ledger.py --add-csv` ;
+4. generer un template de closing odds ;
+5. importer uniquement des closing odds decimales reelles ;
+6. importer les resultats manuels ;
+7. lire le rapport CLV shadow et le dashboard evidence.
+
+Le rapport distingue les observations sans closing, sans resultat, avec CLV positive ou negative, et les segments trop petits. Les seuils restent stricts : sous 1000 observations shadow, la preuve est insuffisante. Une CLV moyenne positive peut justifier une analyse plus profonde, pas une activation automatique.

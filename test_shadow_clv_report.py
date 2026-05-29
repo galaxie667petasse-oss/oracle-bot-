@@ -20,22 +20,34 @@ def main():
         report = shadow_clv_report.build_shadow_clv_report(str(ledger))
         assert report["signals_total"] == 3
         assert report["signals_with_closing"] == 2
+        assert report["pending_closing"] == 1
+        assert report["pending_results"] == 1
         assert report["clv_coverage"] == 66.67
         assert report["sample_size"] == 3
         assert report["roi"] == 5.0
+        assert report["profit"] == 0.1
+        assert report["drawdown"] == -1.0
         assert report["winrate"] == 50.0
-        assert report["verdict"] == "sample_insufficient"
+        assert report["verdict"] == "not_validated"
         assert "EPL" in report["clv_by_league"]
         assert "h2h" in report["clv_by_market"]
+        assert "home" in report["clv_by_side"]
         assert "s1" in report["clv_by_strategy"]
+        assert "inconnu" in report["clv_by_confidence"]
+        assert "inconnu" in report["clv_by_bookmaker"]
+        assert "2026-06" in report["clv_by_month"]
+        assert any("sample <30" in warning for warning in report["warnings"])
         assert any("sample <1000" in warning for warning in report["warnings"])
 
         out_json = root / "reports" / "shadow_clv_report.json"
         out_html = root / "reports" / "shadow_clv_report.html"
+        out_csv = root / "reports" / "shadow_clv_summary.csv"
         shadow_clv_report.write_json(report, str(out_json))
         shadow_clv_report.write_html(report, str(out_html))
+        shadow_clv_report.write_summary_csv(report, str(out_csv))
         assert out_json.exists()
         assert out_html.exists()
+        assert out_csv.exists()
         assert "Shadow CLV Report" in out_html.read_text(encoding="utf-8")
         assert oracle_db.read_text(encoding="utf-8") == before
 
