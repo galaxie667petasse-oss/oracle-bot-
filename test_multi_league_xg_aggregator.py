@@ -80,6 +80,18 @@ def main():
         assert "sample edge test inferieur a 1000" in laliga["rejection_reasons"]
         assert multi["global"]["robust_candidates"] == 0
 
+        write_json(reports / "clv_readiness.json", {
+            "clv_scope": "partial_h2h_home_away",
+            "clv_calculable_in_preview": True,
+            "lab_only": True,
+            "can_influence_picks": False,
+        })
+        partial_clv = aggregator.build_summary(str(reports))
+        assert partial_clv["global"]["clv_scope"] == "partial_h2h_home_away"
+        assert partial_clv["global"]["clv_partial"] is True
+        assert partial_clv["global"]["clv_global_blocker"] is True
+        assert partial_clv["global"]["leagues_with_positive_roi_but_no_full_clv"] == 1
+
         write_json(reports / "bundesliga_2020_2025_quality.json", quality_payload())
         write_json(reports / "bundesliga_2020_2025_join_diagnostics.json", join_payload(39.89, "insuffisant"))
         write_json(reports / "bundesliga_2020_2025_xg_model.json", model_payload(roi=3.0, picks=1200, clv=True, promotion=True))
@@ -107,10 +119,16 @@ def main():
         assert complete["global"]["missing_leagues"] == []
         assert complete["global"]["clv_blocker"] is False  # Bundesliga synthetic has CLV true even if blocked by join.
 
+        write_json(reports / "clv_readiness.json", {"clv_scope": "full", "lab_only": True, "can_influence_picks": False})
+        full_clv = aggregator.build_summary(str(reports))
+        assert full_clv["global"]["clv_scope"] == "full"
+        assert full_clv["global"]["clv_partial"] is False
+        assert full_clv["global"]["clv_global_blocker"] is False
+
         out_json = reports / "big5_xg_summary.json"
         out_html = reports / "big5_xg_summary.html"
-        aggregator.write_json(complete, str(out_json))
-        aggregator.write_html(complete, str(out_html))
+        aggregator.write_json(full_clv, str(out_json))
+        aggregator.write_html(full_clv, str(out_html))
         assert out_json.exists()
         assert out_html.exists()
         assert "Big 5 xG Lab Summary" in out_html.read_text(encoding="utf-8")

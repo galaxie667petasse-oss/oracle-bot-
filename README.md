@@ -384,6 +384,20 @@ La nouvelle couche closing odds est volontairement separee :
 
 Cette phase ne modifie ni `data/MATCHES.csv`, ni `data/features_modern.csv`, ni la DB. Meme si xG ameliore legerement Brier/log loss, cela reste une observation technique sans CLV fiable, sample suffisant et validation statistique complete.
 
+## V7.7 Partial CLV Pipeline
+
+V7.7 transforme la decouverte `C_LTH` / `C_LTA` en pipeline CLV partiel strict. Ces colonnes permettent seulement une CLV H2H home/away quand la ligne de feature correspond exactement au cote joue. Le draw, les totals et BTTS restent exclus tant que leurs colonnes closing exactes ne sont pas presentes.
+
+Le flux local est :
+
+- `closing_odds_probe.py` classe le scope en `none`, `partial` ou `complete` ;
+- `features_closing_enricher.py` cree uniquement `reports/features_with_closing_preview.csv` ;
+- `clv_analysis.py` lit `clv_available` et ignore les lignes non couvertes ;
+- `clv_readiness_report.py --preview` mesure la couverture reelle ;
+- `benchmark_governance.py` signale la CLV partielle comme diagnostic, jamais comme validation globale.
+
+La CLV partielle peut aider a savoir si certains signaux H2H prenaient de meilleurs prix que la closing line. Elle ne valide pas un modele global, ne valide pas les draws/totals/BTTS et ne debloque aucune promotion si le sample est trop faible ou si la gouvernance complete echoue.
+
 ## Statistical Proof Foundation
 
 La phase V7.0 ajoute la couche de preuve statistique. Elle ne cree aucun pick, ne modifie pas Telegram, ne modifie pas Railway et ne touche pas a `oracle_db.json`.
@@ -565,7 +579,7 @@ python project_audit.py
 
 ## Etat actuel : aucune strategie robuste positive
 
-Etat V7.6 Big Five Completion & Closing Odds Recovery :
+Etat V7.7 Partial CLV Pipeline, H2H Closing Preview & Ligue 1 Readiness :
 
 - memoire moderne 2015-2025 ;
 - environ 528066 records regles ;
@@ -582,6 +596,8 @@ Etat V7.6 Big Five Completion & Closing Odds Recovery :
 - CLV readiness disponible ;
 - closing odds probe disponible ;
 - preview features closing disponible uniquement dans `reports/` ;
+- CLV partielle H2H home/away disponible en diagnostic si `C_LTH/C_LTA` sont presents ;
+- draw, totals et BTTS restent exclus sans colonnes closing exactes ;
 - CLV, calibration et validation statistique disponibles ;
 - Scientific Benchmark et Model Governance disponibles ;
 - rapport central local disponible ;
@@ -594,9 +610,10 @@ Etat V7.6 Big Five Completion & Closing Odds Recovery :
 Priorite suivante :
 
 1. Commit/push les phases locales prudentes.
-2. Relancer Serie A apres alias Parma si le CSV local existe.
-3. Lancer manuellement Ligue 1 Understat, sans automatiser de reseau.
-4. Relancer diagnostics, pipelines stricts et agregateur Big 5.
-5. Inspecter `data/MATCHES.csv` avec `closing_odds_probe.py`.
-6. Si closing fiable existe, generer une preview `reports/features_with_closing_preview.csv`.
-7. Ne penser a Railway ou Telegram qu'apres CLV positive, preuve statistique robuste et revue humaine.
+2. Lancer `report_runner.py --closing-preview --skip-benchmark` pour produire la preview CLV partielle.
+3. Verifier coverage, CLV mean, CLV positive rate et sample H2H.
+4. Lancer manuellement Ligue 1 Understat, sans automatiser de reseau.
+5. Relancer diagnostics, pipelines stricts et agregateur Big 5.
+6. Si la CLV partielle est interessante, envisager V7.8 H2H-only CLV governance.
+7. Sinon chercher une source closing complete et fiable.
+8. Ne penser a Railway ou Telegram qu'apres CLV positive, preuve statistique robuste et revue humaine.

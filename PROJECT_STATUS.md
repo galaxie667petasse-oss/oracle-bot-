@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V7.6 Big Five Completion, Alias Finalization & Closing Odds Recovery.
+V7.7 Partial CLV Pipeline, H2H Closing Preview & Ligue 1 Readiness.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion et V7.5 Big Five xG Aggregation restent en place. V7.6 finalise des aliases Serie A/Bundesliga/Ligue 1, ajoute `closing_odds_probe.py`, prepare une preview `features_closing_enricher.py` et enrichit la readiness CLV. Aucun signal robuste active. Aucun changement V7.6 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation et V7.6 Closing Odds Recovery restent en place. V7.7 ajoute la CLV partielle H2H home/away depuis `C_LTH/C_LTA`, renforce la preview closing dans `reports/` et garde Ligue 1 en readiness sans reseau. Aucun signal robuste active. Aucun changement V7.7 ne branche Telegram, Railway ou un pick automatique.
 
 ## Etat general
 
@@ -22,10 +22,11 @@ Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full 
 - Rapport CLV readiness disponible via `clv_readiness_report.py`.
 - Probe closing odds disponible via `closing_odds_probe.py`, lecture seule.
 - Preview features closing disponible via `features_closing_enricher.py`, sortie limitee a `reports/`.
+- CLV partielle H2H home/away disponible uniquement si la closing exacte du cote joue existe.
 - CLV / Closing Line Value disponible si des cotes closing sont presentes.
 - Reliability curves disponibles via `calibration_report.py`.
 - Validation statistique disponible via `statistical_validation.py`.
-- Benchmark gouvernance V7.6 disponible.
+- Benchmark gouvernance V7.7 disponible.
 - Aucun signal robuste active et aucun candidat robuste sans CLV positive.
 - Railway/Telegram toujours en attente.
 
@@ -44,6 +45,8 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - Ligue 1 doit encore etre exportee et diagnostiquee manuellement ;
 - CLV readiness confirme que les colonnes closing fiables restent le passage oblige ;
 - `data/MATCHES.csv` doit etre inspecte en lecture seule pour savoir si des closing odds fiables existent ;
+- `C_LTH/C_LTA` ne couvrent pas draw, totals ou BTTS ;
+- une CLV partielle ne valide pas une strategie globale ;
 - absence de validation humaine complete.
 
 ## Etat des modules
@@ -55,13 +58,13 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - `understat_xg_pipeline.py` : orchestration locale quality, jointure, rolling features, xG model et gouvernance optionnelle.
 - `multi_league_xg_aggregator.py` : synthese Big 5 des rapports xG existants, sans recuperation reseau.
 - `closing_odds_probe.py` : inspection lecture seule du CSV source pour colonnes closing H2H, total et BTTS.
-- `features_closing_enricher.py` : preview dans `reports/` pour joindre features actuelles et colonnes closing source, sans ecrire dans `data/`.
-- `clv_readiness_report.py` : inspection des colonnes closing manquantes, avec distinction calculable maintenant/apres enrichissement, sans inventer de CLV.
-- `clv_analysis.py` : CLV descriptive, verdict indisponible si cotes closing absentes.
+- `features_closing_enricher.py` : preview dans `reports/` pour joindre features actuelles et colonnes closing source, avec `clv_available/clv_reason`, sans ecrire dans `data/`.
+- `clv_readiness_report.py` : inspection des colonnes closing manquantes, avec distinction calculable maintenant/apres enrichissement/dans preview, sans inventer de CLV.
+- `clv_analysis.py` : CLV descriptive, accepte la preview partielle et exclut les lignes sans closing exacte.
 - `calibration_report.py` : Brier, log loss, ECE, MCE et reliability curves.
 - `statistical_validation.py` : IC ROI, bootstrap, Monte Carlo, drawdown, sample size et Benjamini-Hochberg.
 - `decision_policy.py` : gates CLV/calibration/statistiques/multiple testing.
-- `benchmark_governance.py` : registre enrichi V7.6 avec nulls et warnings si metriques absentes.
+- `benchmark_governance.py` : registre enrichi V7.7 avec nulls, scope CLV et warnings si metriques absentes.
 - `report_runner.py` : mode `--statistical`.
 - `dashboard_builder.py` : sections CLV, calibration, validation statistique, multiple testing et gouvernance finale.
 
@@ -80,6 +83,7 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 - Serie A Understat 2020-2025 : export utilisateur observe a 1900 matchs, cinq saisons completes, xG coverage 100%, jointure apres alias observee a 95.79% avant correction Parma ; `Parma Calcio 1913` est maintenant mappe vers `Parma`.
 - Ligue 1 : aliases prets, export a lancer manuellement.
 - CLV sur `data/features_modern.csv` est probablement indisponible tant que les colonnes closing `C_*` ne sont pas exportees.
+- `data/MATCHES.csv` peut contenir une CLV source partielle H2H home/away via `C_LTH/C_LTA`, a confirmer par preview.
 - Rien n'est branche aux picks Telegram ou Railway.
 
 ## Ce qui est valide
@@ -110,10 +114,10 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 
 ## Prochaine vraie priorite
 
-1. Commit/push la phase locale V7.6.
-2. Relancer Serie A si `external_data/understat_probe/seriea_2020_2025_matches.csv` existe, puis le pipeline strict.
-3. Lancer manuellement Ligue 1, puis `join_diagnostics.py --league "Ligue 1"` et le pipeline strict.
-4. Relancer `multi_league_xg_aggregator.py`.
-5. Lancer `closing_odds_probe.py` sur `data/MATCHES.csv`.
-6. Si closing fiable existe, generer uniquement une preview `reports/features_with_closing_preview.csv`.
-7. Travailler ensuite sur CLV fiable avant toute promotion.
+1. Commit/push la phase locale V7.7.
+2. Lancer `report_runner.py --closing-preview --skip-benchmark`.
+3. Verifier coverage, CLV mean, CLV positive rate et sample.
+4. Lancer manuellement Ligue 1, puis `join_diagnostics.py --league "Ligue 1"` et le pipeline strict.
+5. Relancer `multi_league_xg_aggregator.py`.
+6. Si la CLV partielle H2H est interessante, preparer V7.8 H2H-only CLV governance.
+7. Sinon chercher une source closing complete fiable.

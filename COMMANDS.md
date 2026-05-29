@@ -458,7 +458,48 @@ Lecture prudente :
 - `data/features_modern.csv` et `data/MATCHES.csv` restent inchanges.
 - Sans CLV fiable, aucun signal xG Big Five ne peut etre promu.
 
-## 18. Scientific Benchmark & Model Governance
+## 18. V7.7 Partial CLV Pipeline
+
+Probe closing odds, lecture seule :
+
+```bash
+python closing_odds_probe.py --csv data/MATCHES.csv --output reports/closing_odds_probe.json --html reports/closing_odds_probe.html
+```
+
+Preview features enrichie, uniquement dans `reports/` :
+
+```bash
+python features_closing_enricher.py --features data/features_modern.csv --source data/MATCHES.csv --output reports/features_with_closing_preview.csv
+```
+
+Analyse CLV partielle :
+
+```bash
+python clv_analysis.py --features reports/features_with_closing_preview.csv --output reports/clv_partial_report.json --html reports/clv_partial_report.html
+```
+
+Readiness avec probe et preview :
+
+```bash
+python clv_readiness_report.py --features data/features_modern.csv --closing-probe reports/closing_odds_probe.json --preview reports/features_with_closing_preview.csv --output reports/clv_readiness.json --html reports/clv_readiness.html
+```
+
+Runner CLV partielle :
+
+```bash
+python report_runner.py --closing-preview --skip-benchmark
+```
+
+Lecture prudente :
+
+- `C_LTH` couvre seulement le cote home H2H.
+- `C_LTA` couvre seulement le cote away H2H.
+- Si `C_LTD` manque, le draw est exclu.
+- Sans `C_LTO/C_LTU` ou equivalents, les totals sont exclus.
+- Sans colonnes BTTS exactes, BTTS est exclu.
+- Une CLV partielle ne valide pas une strategie globale.
+
+## 19. Scientific Benchmark & Model Governance
 
 Benchmark complet si `data/features_modern.csv` est disponible :
 
@@ -474,13 +515,13 @@ Sorties :
 
 Le benchmark attribue un score prudent et une decision : rejected, watchlist, observation, candidate, active_shadow_only, active_decision_support ou production_allowed. Meme `production_allowed` ne signifie jamais pari automatique. Rien n'est branche aux picks Telegram.
 
-## 19. Git workflow
+## 20. Git workflow
 
 ```bash
 git status --short
 git diff
 git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
-git commit -m "Add Big Five closing odds recovery V7.6"
+git commit -m "Add partial CLV pipeline V7.7"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -489,7 +530,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 20. Ce qu'il ne faut pas faire
+## 21. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

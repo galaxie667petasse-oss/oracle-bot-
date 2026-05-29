@@ -79,18 +79,106 @@ def _load_probe(path: str = "") -> Dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def analyze_readiness(features_path: str, closing_probe_path: str = "") -> Dict[str, Any]:
+def _truthy(value: Any) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "oui", "y"}
+
+
+def _side_from_row(row: Dict[str, Any]) -> str:
+    market = str(row.get("market_type") or "").lower()
+    pari = str(row.get("pari") or "").lower()
+    if _truthy(row.get("is_home_pick")):
+        return "h2h_home"
+    if _truthy(row.get("is_away_pick")):
+        return "h2h_away"
+    if _truthy(row.get("is_draw")) or market == "draw" or "nul" in pari or "draw" in pari:
+        return "h2h_draw"
+    if market == "h2h":
+        return "h2h"
+    if market == "total":
+        if _truthy(row.get("is_over")) or "plus" in pari or "over" in pari:
+            return "total_over"
+        if _truthy(row.get("is_under")) or "moins" in pari or "under" in pari:
+            return "total_under"
+    return market or "inconnu"
+
+
+def _scope_from_probe(probe: Dict[str, Any]) -> str:
+    if not probe or not probe.get("closing_available"):
+        return "none"
+    h2h = probe.get("h2h_closing_available")
+    total = probe.get("total_closing_available")
+    btts = probe.get("btts_closing_available")
+    if h2h == "partial" and probe.get("h2h_home_closing_available") and probe.get("h2h_away_closing_available") and not probe.get("h2h_draw_closing_available"):
+        return "partial_h2h_home_away"
+    if h2h == "complete" and total in {"none", False, None} and btts in {"none", False, None}:
+        return "complete_h2h"
+    if total in {"complete", True} and h2h in {"none", False, None}:
+        return "total"
+    if h2h == "complete" and total == "complete" and btts == "complete":
+        return "full"
+    return "partial"
+
+
+def _preview_stats(preview_path: str = "") -> Dict[str, Any]:
+    if not preview_path:
+        return {"present": False}
+    path = Path(preview_path)
+    if not path.exists():
+        return {"present": False, "error": f"Preview absente: {preview_path}"}
+    rows = 0
+    with_clv = 0
+    covered = set()
+    all_sides = set()
+    with path.open(newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            rows += 1
+            side = _side_from_row(row)
+            all_sides.add(side)
+            if _truthy(row.get("clv_available")):
+                with_clv += 1
+                covered.add(side)
+    if not covered:
+        scope = "none"
+    elif {"h2h_home", "h2h_away"}.issubset(covered) and "h2h_draw" not in covered and not any(item.startswith("total") for item in covered):
+        scope = "partial_h2h_home_away"
+    elif {"h2h_home", "h2h_away", "h2h_draw"}.issubset(covered) and not any(item.startswith("total") for item in covered):
+        scope = "complete_h2h"
+    elif any(item.startswith("total") for item in covered) and not any(item.startswith("h2h") for item in covered):
+        scope = "total"
+    elif covered == all_sides and rows:
+        scope = "full"
+    else:
+        scope = "partial"
+    return {
+        "present": True,
+        "path": str(path),
+        "rows": rows,
+        "rows_with_clv": with_clv,
+        "coverage": round(with_clv / rows * 100.0, 2) if rows else 0.0,
+        "covered_market_sides": sorted(covered),
+        "uncovered_market_sides": sorted(all_sides - covered),
+        "clv_scope": scope,
+    }
+
+
+def analyze_readiness(features_path: str, closing_probe_path: str = "", preview_path: str = "") -> Dict[str, Any]:
     path = Path(features_path)
     probe = _load_probe(closing_probe_path)
+    preview = _preview_stats(preview_path)
+    probe_scope = _scope_from_probe(probe)
     if not path.exists():
         return {
             "generated_at": now_iso(),
             "features_path": str(path),
             "closing_probe_path": closing_probe_path or "",
+            "preview_path": preview_path or "",
             "status": "indisponible",
             "clv_calculable": False,
             "clv_calculable_now": False,
             "clv_calculable_after_enrichment": bool(probe.get("closing_available")),
+            "clv_calculable_in_preview": bool(preview.get("rows_with_clv")),
+            "clv_scope": probe_scope,
             "source_has_closing": bool(probe.get("closing_available")),
             "reason": f"Fichier introuvable: {features_path}",
             "columns_available": [],
@@ -122,6 +210,10 @@ def analyze_readiness(features_path: str, closing_probe_path: str = "") -> Dict[
     clv_calculable = bool(odds_columns and closing["all"])
     source_has_closing = bool(probe.get("closing_available"))
     clv_after_enrichment = bool(odds_columns and source_has_closing)
+    clv_in_preview = bool(preview.get("rows_with_clv"))
+    clv_scope = preview.get("clv_scope") or probe_scope
+    if preview.get("present"):
+        clv_after_enrichment = clv_in_preview
     if not odds_columns:
         reason = "Colonne de cote prise absente: odds/taken_odds requis."
     elif not closing["all"]:
@@ -129,15 +221,25 @@ def analyze_readiness(features_path: str, closing_probe_path: str = "") -> Dict[
     else:
         reason = "CLV partiellement calculable: verifier le mapping marche/cote closing avant interpretation."
     missing_columns = sorted(set(KNOWN_CLOSING_COLUMNS) - {name.upper() for name in closing["all"]})
+    h2h_home_available = bool(probe.get("h2h_home_closing_available")) if probe else bool(_present(fieldnames, ("C_LTH",)))
+    h2h_away_available = bool(probe.get("h2h_away_closing_available")) if probe else bool(_present(fieldnames, ("C_LTA",)))
+    h2h_draw_available = bool(probe.get("h2h_draw_closing_available")) if probe else bool(_present(fieldnames, ("C_LTD",)))
+    total_available = probe.get("total_closing_available") if probe else ("complete" if ou_available else "none")
+    btts_available_value = probe.get("btts_closing_available") if probe else ("partial" if btts_available else "none")
     markets = {
         "detected_market_types": sorted(market_values),
         "h2h_closing_possible": h2h_available,
+        "h2h_home_available": h2h_home_available,
+        "h2h_away_available": h2h_away_available,
+        "h2h_draw_available": h2h_draw_available,
         "h2h_columns_detected": closing["h2h"],
         "h2h_missing_columns": _missing_for_market(closing["h2h"], H2H_CLOSING_COLUMNS),
         "over_under_closing_possible": ou_available,
+        "total_available": total_available,
         "over_under_columns_detected": closing["over_under"],
         "over_under_missing_columns": _missing_for_market(closing["over_under"], OVER_UNDER_CLOSING_COLUMNS),
         "btts_closing_possible": btts_available,
+        "btts_available": btts_available_value,
         "btts_columns_detected": closing["btts"],
         "btts_missing_columns": _missing_for_market(closing["btts"], BTTS_CLOSING_COLUMNS),
     }
@@ -145,11 +247,20 @@ def analyze_readiness(features_path: str, closing_probe_path: str = "") -> Dict[
         "generated_at": now_iso(),
         "features_path": str(path),
         "closing_probe_path": closing_probe_path or "",
+        "preview_path": preview_path or "",
         "status": "partiel" if clv_calculable else "indisponible",
         "clv_calculable": clv_calculable,
         "clv_calculable_now": clv_calculable,
         "clv_calculable_after_enrichment": clv_after_enrichment,
+        "clv_calculable_in_preview": clv_in_preview,
+        "clv_scope": clv_scope,
         "source_has_closing": source_has_closing,
+        "h2h_home_available": h2h_home_available,
+        "h2h_away_available": h2h_away_available,
+        "h2h_draw_available": h2h_draw_available,
+        "total_available": total_available,
+        "btts_available": btts_available_value,
+        "preview": preview,
         "source_probe_status": probe.get("status") if probe else "non fourni",
         "source_probe_markets": {
             "h2h_closing_available": probe.get("h2h_closing_available"),
@@ -157,10 +268,13 @@ def analyze_readiness(features_path: str, closing_probe_path: str = "") -> Dict[
             "btts_closing_available": probe.get("btts_closing_available"),
         } if probe else {},
         "recommended_next_command": (
+            "Verifier que les colonnes source sont des cotes decimales closing exactes; la preview actuelle ne contient aucune CLV exploitable."
+            if preview.get("present") and not clv_in_preview
+            else
             "python features_closing_enricher.py --features data/features_modern.csv --source data/MATCHES.csv --output reports/features_with_closing_preview.csv"
             if clv_after_enrichment and not clv_calculable
-            else "python clv_analysis.py --features reports/features_with_closing_preview.csv --output reports/clv_report.json --html reports/clv_report.html"
-            if clv_calculable
+            else "python clv_analysis.py --features reports/features_with_closing_preview.csv --output reports/clv_partial_report.json --html reports/clv_partial_report.html"
+            if clv_calculable or clv_in_preview
             else "Verifier une source fiable de closing odds avant tout calcul CLV."
         ),
         "reason": reason,
@@ -177,9 +291,12 @@ def analyze_readiness(features_path: str, closing_probe_path: str = "") -> Dict[
         "markets": markets,
         "checklist": _checklist(),
         "warnings": [
+            warning for warning in [
             "Ne pas inventer de closing odds.",
             "Verifier la fiabilite Football-Data/Pinnacle apres 2025-07-23 avant interpretation.",
             "Sans CLV positive fiable, tout signal reste observation/watchlist.",
+            "CLV partielle exploitable pour diagnostic, non suffisante pour promotion globale." if clv_scope != "full" and (clv_after_enrichment or clv_in_preview) else "",
+            ] if warning
         ],
         "lab_only": True,
         "can_influence_picks": False,
@@ -219,7 +336,11 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         "<table><tbody>",
         f"<tr><th>CLV calculable maintenant</th><td>{report.get('clv_calculable_now')}</td></tr>",
         f"<tr><th>CLV calculable apres enrichissement</th><td>{report.get('clv_calculable_after_enrichment')}</td></tr>",
+        f"<tr><th>CLV calculable dans preview</th><td>{report.get('clv_calculable_in_preview')}</td></tr>",
+        f"<tr><th>Scope CLV</th><td>{html.escape(str(report.get('clv_scope')))}</td></tr>",
         f"<tr><th>Source avec closing</th><td>{report.get('source_has_closing')}</td></tr>",
+        f"<tr><th>Preview lignes CLV</th><td>{(report.get('preview') or {}).get('rows_with_clv')}</td></tr>",
+        f"<tr><th>Preview coverage</th><td>{(report.get('preview') or {}).get('coverage')}</td></tr>",
         f"<tr><th>Colonnes odds</th><td>{html.escape(', '.join(report.get('odds_columns_detected') or []))}</td></tr>",
         f"<tr><th>Colonnes closing</th><td>{html.escape(', '.join(report.get('closing_columns_detected') or []))}</td></tr>",
         f"<tr><th>Colonnes closing source</th><td>{html.escape(', '.join(report.get('source_closing_columns_detected') or []))}</td></tr>",
@@ -245,6 +366,8 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- CLV calculable: {report.get('clv_calculable')}")
     print(f"- CLV calculable maintenant: {report.get('clv_calculable_now')}")
     print(f"- CLV calculable apres enrichissement: {report.get('clv_calculable_after_enrichment')}")
+    print(f"- CLV calculable dans preview: {report.get('clv_calculable_in_preview')}")
+    print(f"- Scope CLV: {report.get('clv_scope')}")
     print(f"- Source avec closing: {report.get('source_has_closing')}")
     print(f"- Raison: {report.get('reason')}")
     print(f"- Colonnes odds detectees: {', '.join(report.get('odds_columns_detected') or []) or 'aucune'}")
@@ -252,8 +375,12 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Colonnes closing source: {', '.join(report.get('source_closing_columns_detected') or []) or 'aucune'}")
     print(f"- Marches detectes: {', '.join(markets.get('detected_market_types') or []) or 'non echantillonnes'}")
     print(f"- H2H closing possible: {markets.get('h2h_closing_possible')}")
+    print(f"- H2H home/away/draw: {report.get('h2h_home_available')} / {report.get('h2h_away_available')} / {report.get('h2h_draw_available')}")
     print(f"- Over/Under closing possible: {markets.get('over_under_closing_possible')}")
     print(f"- BTTS closing possible: {markets.get('btts_closing_possible')}")
+    if (report.get("preview") or {}).get("present"):
+        preview = report.get("preview") or {}
+        print(f"- Preview CLV: {preview.get('rows_with_clv')} lignes, coverage {preview.get('coverage')}%")
     print("- Checklist:")
     for item in report.get("checklist") or []:
         print(f"  - {item}")
@@ -267,6 +394,7 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Rapport local de readiness CLV, sans calculer de closing invente.")
     parser.add_argument("--features", required=True, help="CSV de features a inspecter")
     parser.add_argument("--closing-probe", default="", help="JSON closing_odds_probe optionnel")
+    parser.add_argument("--preview", default="", help="CSV preview features_with_closing optionnel")
     parser.add_argument("--output", default="", help="Rapport JSON dans reports/")
     parser.add_argument("--html", default="", help="Rapport HTML dans reports/")
     return parser.parse_args(argv)
@@ -275,7 +403,7 @@ def parse_args(argv=None):
 def main(argv=None) -> int:
     args = parse_args(argv)
     try:
-        report = analyze_readiness(args.features, closing_probe_path=args.closing_probe)
+        report = analyze_readiness(args.features, closing_probe_path=args.closing_probe, preview_path=args.preview)
         if args.output:
             path = write_json(report, args.output)
             print(f"- Rapport JSON CLV readiness ecrit: {path}")

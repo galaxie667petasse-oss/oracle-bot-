@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from decision_policy import classify_strategy, robustness_score
 
 
-GOVERNANCE_VERSION = "V7.6"
+GOVERNANCE_VERSION = "V7.7"
 DEFAULT_FEATURES = "data/features_modern.csv"
 DEFAULT_REGISTRY = "model_registry.json"
 
@@ -130,16 +130,32 @@ def _update_entry_decision(entry: Dict[str, Any]) -> None:
 def enrich_registry_entries(entries: List[Dict[str, Any]], report_sections: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     reports = {section.get("name"): section.get("data") for section in report_sections if section.get("ok") and isinstance(section.get("data"), dict)}
     clv_report = reports.get("CLV report") or {}
+    clv_readiness = reports.get("CLV readiness") or {}
     calibration = reports.get("Calibration report") or {}
     statistical = reports.get("Statistical validation") or {}
     clv_by_strategy = ((clv_report.get("groups") or {}).get("by_strategy") or {}) if isinstance(clv_report, dict) else {}
     stat_by_strategy = statistical.get("by_strategy") or {} if isinstance(statistical, dict) else {}
+    clv_scope = clv_report.get("clv_scope") or clv_readiness.get("clv_scope") or "none"
+    clv_coverage = clv_report.get("coverage_global") or ((clv_readiness.get("preview") or {}).get("coverage"))
+    partial_warning = "CLV partielle: ne valide pas draw, total, BTTS ni strategie globale." if clv_scope not in {"full", "none"} else ""
     for entry in entries:
         name = entry.get("name", "")
+        entry["clv_scope"] = clv_scope
+        entry["clv_coverage"] = clv_coverage
+        entry["partial_clv_warning"] = partial_warning
+        entry["clv_blocks_promotion_reason"] = ""
         if name in clv_by_strategy:
             stat = clv_by_strategy[name]
             entry["clv_mean"] = stat.get("clv_mean")
             entry["clv_positive_rate"] = stat.get("clv_positive_rate")
+        if clv_scope not in {"full", "none"}:
+            lowered = f"{entry.get('name', '')} {entry.get('type', '')}".lower()
+            if "total" in lowered or "draw" in lowered or "nul" in lowered or "baseline_all" in lowered or "global" in lowered:
+                entry["clv_mean"] = None
+                entry["clv_positive_rate"] = None
+                entry["clv_blocks_promotion_reason"] = "CLV partielle non applicable a ce marche/segment"
+            elif not entry.get("clv_mean"):
+                entry["clv_blocks_promotion_reason"] = "CLV partielle disponible seulement si le segment est couvert et sample suffisant"
         if name in stat_by_strategy:
             stat = stat_by_strategy[name]
             boot = stat.get("bootstrap_roi") or {}
@@ -155,6 +171,8 @@ def enrich_registry_entries(entries: List[Dict[str, Any]], report_sections: Iter
             entry["ece"] = calibration.get("ece")
             entry["mce"] = calibration.get("mce")
         _update_entry_decision(entry)
+        if entry.get("clv_blocks_promotion_reason"):
+            entry["rejection_reasons"] = list(dict.fromkeys(list(entry.get("rejection_reasons") or []) + [entry["clv_blocks_promotion_reason"]]))
     return entries
 
 
@@ -619,6 +637,7 @@ def build_benchmark(
     big5_global = big5_data.get("global") or {}
     clv_readiness = report_data.get("CLV readiness") or {}
     closing_probe = report_data.get("Closing odds probe") or {}
+    clv_report_data = report_data.get("CLV report") or {}
     clv_calculable = bool(clv_readiness.get("clv_calculable")) if clv_readiness else False
     clv_calculable_now = bool(clv_readiness.get("clv_calculable_now", clv_calculable)) if clv_readiness else False
     clv_calculable_after_enrichment = bool(clv_readiness.get("clv_calculable_after_enrichment")) if clv_readiness else False
@@ -626,6 +645,10 @@ def build_benchmark(
         clv_readiness.get("source_has_closing")
         or closing_probe.get("closing_available")
     )
+    clv_scope = clv_readiness.get("clv_scope") or clv_report_data.get("clv_scope") or "none"
+    clv_is_partial = clv_scope not in {"full", "none"}
+    clv_report_summary = clv_report_data.get("summary") or {}
+    clv_report_sample = clv_report_summary.get("n") or clv_report_data.get("rows_with_closing") or 0
     robust = [
         entry for entry in entries
         if entry.get("robustness_score", 0) >= 80
@@ -648,6 +671,12 @@ def build_benchmark(
     promotion_blockers: List[str] = []
     if clv_readiness and not clv_calculable:
         promotion_blockers.append("CLV non calculable depuis la feature matrix actuelle")
+    if clv_is_partial:
+        promotion_blockers.append("CLV partielle: ne valide pas draw, total, BTTS ni strategie globale")
+    if clv_report_data and clv_report_sample < 1000:
+        promotion_blockers.append("Sample CLV inferieur a 1000")
+    if clv_report_summary.get("clv_mean") is not None and clv_report_summary.get("clv_mean") <= 0:
+        promotion_blockers.append("CLV moyenne non positive")
     if clv_calculable_after_enrichment and not clv_calculable_now:
         promotion_blockers.append("Enrichissement closing requis avant analyse CLV")
     if closing_probe and not source_has_closing:
@@ -696,6 +725,12 @@ def build_benchmark(
         "clv_calculable": clv_calculable,
         "clv_calculable_now": clv_calculable_now,
         "clv_calculable_after_enrichment": clv_calculable_after_enrichment,
+        "clv_scope": clv_scope,
+        "clv_partial": clv_is_partial,
+        "clv_coverage": clv_report_data.get("coverage_global") or ((clv_readiness.get("preview") or {}).get("coverage")),
+        "clv_sample": clv_report_sample,
+        "clv_mean": clv_report_summary.get("clv_mean"),
+        "clv_positive_rate": clv_report_summary.get("clv_positive_rate"),
         "source_has_closing": source_has_closing,
         "recommended_next_command": clv_readiness.get("recommended_next_command") if clv_readiness else None,
         "clv_missing_columns": clv_readiness.get("missing_columns") if clv_readiness else [],
@@ -711,7 +746,7 @@ def build_benchmark(
         "big5_candidate_count": big5_global.get("robust_candidates", 0),
         "big5_blocked_by_clv": bool(big5_data and (big5_global.get("leagues_clv_available") or 0) == 0),
         "promotion_blockers": promotion_blockers,
-        "clv_report_available": bool((report_data.get("CLV report") or {}).get("status") == "disponible"),
+        "clv_report_available": bool((report_data.get("CLV report") or {}).get("status") in {"disponible", "partiel"}),
         "calibration_report_available": bool((report_data.get("Calibration report") or {}).get("status") == "disponible"),
         "statistical_report_available": bool((report_data.get("Statistical validation") or {}).get("status") == "disponible"),
         "sections_available": available,
@@ -754,6 +789,8 @@ def write_summary(benchmark: Dict[str, Any], path: str) -> Path:
             "robustness_score": entry["robustness_score"],
             "governance_status": entry.get("governance_status"),
             "clv_mean": entry.get("clv_mean"),
+            "clv_scope": entry.get("clv_scope"),
+            "clv_coverage": entry.get("clv_coverage"),
             "ece": entry.get("ece"),
             "bootstrap_roi_p05": entry.get("bootstrap_roi_p05"),
             "p_value_adjusted": entry.get("p_value_adjusted"),
@@ -764,6 +801,8 @@ def write_summary(benchmark: Dict[str, Any], path: str) -> Path:
             "alias_applied": entry.get("alias_applied"),
             "unmatched_count": entry.get("unmatched_count"),
             "join_blocks_promotion": entry.get("join_blocks_promotion"),
+            "clv_blocks_promotion_reason": entry.get("clv_blocks_promotion_reason"),
+            "partial_clv_warning": entry.get("partial_clv_warning"),
             "lab_only": entry.get("lab_only"),
             "promotion_allowed": entry.get("promotion_allowed"),
             "status": entry["status"],
@@ -818,6 +857,9 @@ def write_html(benchmark: Dict[str, Any], path: str) -> Path:
         f"<li>CLV readiness disponible: {benchmark['summary'].get('clv_readiness_available')}</li>",
         f"<li>Closing odds probe disponible: {benchmark['summary'].get('closing_probe_available')}</li>",
         f"<li>CLV calculable: {benchmark['summary'].get('clv_calculable')}</li>",
+        f"<li>Scope CLV: {html.escape(str(benchmark['summary'].get('clv_scope')))}</li>",
+        f"<li>Coverage CLV: {benchmark['summary'].get('clv_coverage')}</li>",
+        f"<li>CLV partielle: {benchmark['summary'].get('clv_partial')}</li>",
         f"<li>CLV calculable apres enrichissement: {benchmark['summary'].get('clv_calculable_after_enrichment')}</li>",
         f"<li>Source avec closing: {benchmark['summary'].get('source_has_closing')}</li>",
         f"<li>Big 5 complet: {benchmark['summary'].get('big5_ready_for_conclusion')}</li>",
@@ -862,6 +904,9 @@ def print_report(benchmark: Dict[str, Any]) -> None:
     print(f"- CLV readiness disponible: {summary.get('clv_readiness_available')}")
     print(f"- Closing odds probe disponible: {summary.get('closing_probe_available')}")
     print(f"- CLV calculable: {summary.get('clv_calculable')}")
+    print(f"- Scope CLV: {summary.get('clv_scope')}")
+    print(f"- Coverage CLV: {summary.get('clv_coverage')}")
+    print(f"- CLV partielle: {summary.get('clv_partial')}")
     print(f"- CLV calculable apres enrichissement: {summary.get('clv_calculable_after_enrichment')}")
     print(f"- Source avec closing: {summary.get('source_has_closing')}")
     print(f"- Big 5 complet: {summary.get('big5_ready_for_conclusion')}")

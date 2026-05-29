@@ -254,6 +254,9 @@ def parse_league_reports(values: Iterable[str]) -> Dict[str, str]:
 
 def build_summary(reports_dir: str = "reports", league_reports: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     root = Path(reports_dir)
+    clv_readiness = read_json(root / "clv_readiness.json")
+    clv_scope = clv_readiness.get("clv_scope") or "none"
+    clv_partial = clv_scope not in {"full", "none"}
     explicit = league_reports or {}
     expected_leagues = list(DEFAULT_LEAGUES.keys())
     league_items: List[Dict[str, Any]] = []
@@ -274,6 +277,7 @@ def build_summary(reports_dir: str = "reports", league_reports: Optional[Dict[st
     roi_positive = [item for item in available if (item.get("roi_edge_test") or 0) > 0]
     sample_ok = [item for item in available if (item.get("sample_edge_test") or 0) >= 1000]
     clv_ok = [item for item in available if item.get("clv_available")]
+    positive_roi_no_full_clv = [item for item in roi_positive if clv_scope != "full"]
     candidates = [
         item for item in available
         if item.get("promotion_allowed") and item.get("clv_available") and (item.get("sample_edge_test") or 0) >= 1000
@@ -284,8 +288,12 @@ def build_summary(reports_dir: str = "reports", league_reports: Optional[Dict[st
         conclusion = "Conclusion partielle Big 5: ligues manquantes, aucun candidat robuste."
         if clv_blocker:
             conclusion += " CLV absente sur les ligues disponibles."
+        if clv_partial:
+            conclusion += " CLV partielle utile au diagnostic H2H, pas a la promotion globale."
     elif clv_blocker:
         conclusion = "Big 5 complet mais CLV absente: aucun candidat robuste, observations seulement."
+    elif clv_partial:
+        conclusion = "Big 5 xG partiellement evaluable avec CLV H2H: aucun candidat robuste sans CLV complete par marche/cote."
     elif not candidates:
         conclusion = "Aucun candidat robuste Big 5: verifier CLV, sample, jointure et stabilite avant toute promotion."
     else:
@@ -302,6 +310,10 @@ def build_summary(reports_dir: str = "reports", league_reports: Optional[Dict[st
             "missing_leagues": missing_leagues,
             "ready_for_big5_conclusion": ready_for_big5,
             "clv_blocker": clv_blocker,
+            "clv_scope": clv_scope,
+            "clv_partial": clv_partial,
+            "clv_global_blocker": clv_scope != "full",
+            "leagues_with_positive_roi_but_no_full_clv": len(positive_roi_no_full_clv),
             "leagues_available": len(available),
             "leagues_exploitable": len(exploitable),
             "leagues_xg_improves_brier": len(improves_brier),
@@ -361,6 +373,8 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         f"<li>Ligues exploitables: {global_data.get('leagues_exploitable')}</li>",
         f"<li>Ligues avec ROI edge positif: {global_data.get('leagues_roi_edge_positive')}</li>",
         f"<li>Ligues avec CLV disponible: {global_data.get('leagues_clv_available')}</li>",
+        f"<li>Scope CLV: {html.escape(str(global_data.get('clv_scope')))}</li>",
+        f"<li>CLV partielle: {global_data.get('clv_partial')}</li>",
         f"<li>Candidats robustes: {global_data.get('robust_candidates')}</li>",
         "</ul>",
         "<table><thead><tr><th>Ligue</th><th>Present</th><th>Quality</th><th>Join rate</th><th>Join quality</th><th>Brier marche/xG</th><th>Log loss marche/xG</th><th>ROI edge</th><th>Sample</th><th>Statut</th><th>Blocages</th></tr></thead><tbody>",
@@ -385,6 +399,8 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Ligues ROI edge positif: {global_data.get('leagues_roi_edge_positive')}")
     print(f"- Ligues sample >= 1000: {global_data.get('leagues_sample_ge_1000')}")
     print(f"- Ligues avec CLV disponible: {global_data.get('leagues_clv_available')}")
+    print(f"- Scope CLV: {global_data.get('clv_scope')}")
+    print(f"- CLV partielle: {global_data.get('clv_partial')}")
     print(f"- Bloqueur CLV: {global_data.get('clv_blocker')}")
     print(f"- Candidats robustes: {global_data.get('robust_candidates')}")
     for item in report.get("leagues") or []:

@@ -102,6 +102,20 @@ def infer_side(row: Dict[str, Any]) -> str:
     return ""
 
 
+def market_side(row: Dict[str, Any]) -> str:
+    market = str(row.get("market_type") or "").lower() or "inconnu"
+    side = infer_side(row)
+    if market == "draw":
+        return "h2h_draw"
+    if market == "h2h" and side in {"home", "away", "draw"}:
+        return f"h2h_{side}"
+    if market == "total" and side in {"over", "under"}:
+        return f"total_{side}"
+    if side:
+        return f"{market}_{side}"
+    return market
+
+
 def closing_column_for_row(row: Dict[str, Any], fieldnames: Sequence[str]) -> Optional[str]:
     generic = first_present(fieldnames, CLOSING_GENERIC_COLUMNS)
     if generic:
@@ -132,6 +146,21 @@ def detect_closing_columns(fieldnames: Sequence[str]) -> List[str]:
     return sorted(out)
 
 
+def _clv_available_flag(row: Dict[str, Any]) -> bool:
+    if "clv_available" not in row:
+        return True
+    return truthy(row.get("clv_available"))
+
+
+def _result_profit(row: Dict[str, Any], odds: float) -> Optional[float]:
+    result = str(row.get("result") or row.get("outcome") or row.get("won") or row.get("is_win") or "").strip().lower()
+    if result in {"win", "won", "1", "true", "yes", "oui"}:
+        return odds - 1.0
+    if result in {"loss", "lost", "0", "false", "no", "non"}:
+        return -1.0
+    return None
+
+
 def is_recent_pinnacle(row: Dict[str, Any], closing_column: str) -> bool:
     date = str(row.get("date") or row.get("date_key") or "").strip()[:10]
     if date < PINNACLE_DATE_WARNING:
@@ -148,16 +177,21 @@ def new_accumulator() -> Dict[str, Any]:
         "clv_prob_edge_sum": 0.0,
         "positive": 0,
         "values": [],
+        "profit": 0.0,
+        "profit_n": 0,
     }
 
 
-def add_value(acc: Dict[str, Any], clv_absolute: float, clv_percent: float, clv_prob_edge: float) -> None:
+def add_value(acc: Dict[str, Any], clv_absolute: float, clv_percent: float, clv_prob_edge: float, profit: Optional[float] = None) -> None:
     acc["n"] += 1
     acc["clv_absolute_sum"] += clv_absolute
     acc["clv_percent_sum"] += clv_percent
     acc["clv_prob_edge_sum"] += clv_prob_edge
     acc["positive"] += 1 if clv_percent > 0 else 0
     acc["values"].append(clv_percent)
+    if profit is not None:
+        acc["profit"] += profit
+        acc["profit_n"] += 1
 
 
 def finalize_acc(acc: Dict[str, Any]) -> Dict[str, Any]:
@@ -173,6 +207,35 @@ def finalize_acc(acc: Dict[str, Any]) -> Dict[str, Any]:
         "clv_positive_rate": round(acc["positive"] / n * 100.0, 2),
         "clv_absolute_mean": round(acc["clv_absolute_sum"] / n, 6),
         "clv_prob_edge_mean": round(acc["clv_prob_edge_sum"] / n, 6),
+        "roi": round(acc["profit"] / acc["profit_n"] * 100.0, 2) if acc.get("profit_n") else None,
+        "roi_n": int(acc.get("profit_n") or 0),
+    }
+
+
+def _scope_from_report(fieldnames: Sequence[str], by_market_side: Dict[str, Dict[str, Any]], used: int, total: int) -> Dict[str, Any]:
+    sides = {key for key, value in by_market_side.items() if value.get("n")}
+    h2h_home = "h2h_home" in sides
+    h2h_away = "h2h_away" in sides
+    h2h_draw = "h2h_draw" in sides
+    total_covered = any(key.startswith("total_") for key in sides)
+    btts_covered = any(key.startswith("btts") for key in sides)
+    if used == 0:
+        scope = "none"
+    elif h2h_home and h2h_away and not h2h_draw and not total_covered and not btts_covered:
+        scope = "partial_h2h_home_away"
+    elif h2h_home and h2h_away and h2h_draw and not total_covered and not btts_covered:
+        scope = "complete_h2h"
+    elif total_covered and not (h2h_home or h2h_away or h2h_draw or btts_covered):
+        scope = "total"
+    elif used == total and total > 0:
+        scope = "full"
+    else:
+        scope = "partial"
+    return {
+        "clv_scope": scope,
+        "is_partial": scope not in {"full", "none"},
+        "covered_market_sides": sorted(sides),
+        "excluded_market_sides": [key for key in ["h2h_draw", "total_over", "total_under", "btts_yes", "btts_no"] if key not in sides],
     }
 
 
@@ -226,15 +289,23 @@ def analyze_clv(features_path: str) -> Dict[str, Any]:
             }
         total = 0
         used = 0
+        skipped_unavailable = 0
         warnings: List[str] = []
         warning_recent_pinnacle = False
         global_acc = new_accumulator()
         by_market: Dict[str, Dict[str, Any]] = {}
+        by_market_side: Dict[str, Dict[str, Any]] = {}
         by_bucket: Dict[str, Dict[str, Any]] = {}
         by_year: Dict[str, Dict[str, Any]] = {}
         by_strategy: Dict[str, Dict[str, Any]] = {}
+        coverage_rows: Dict[str, int] = {}
         for row in reader:
             total += 1
+            side_key = market_side(row)
+            coverage_rows[side_key] = coverage_rows.get(side_key, 0) + 1
+            if not _clv_available_flag(row):
+                skipped_unavailable += 1
+                continue
             taken_odds = parse_float(row.get("odds") or row.get("taken_odds"))
             if taken_odds is None:
                 continue
@@ -246,34 +317,53 @@ def analyze_clv(features_path: str) -> Dict[str, Any]:
                 continue
             used += 1
             clv_absolute = closing_odds - taken_odds
-            clv_percent = taken_odds / closing_odds - 1.0
+            clv_percent = parse_float(row.get("clv_percent"))
+            if clv_percent is None:
+                clv_percent = taken_odds / closing_odds - 1.0
             taken_prob = implied_probability(taken_odds) or 0.0
             closing_prob = implied_probability(closing_odds) or 0.0
             clv_prob_edge = closing_prob - taken_prob
-            add_value(global_acc, clv_absolute, clv_percent, clv_prob_edge)
+            profit = _result_profit(row, taken_odds)
+            add_value(global_acc, clv_absolute, clv_percent, clv_prob_edge, profit)
             for groups, key in (
                 (by_market, str(row.get("market_type") or "inconnu")),
+                (by_market_side, side_key),
                 (by_bucket, odds_bucket(taken_odds)),
                 (by_year, year_from_row(row)),
             ):
                 groups.setdefault(key, new_accumulator())
-                add_value(groups[key], clv_absolute, clv_percent, clv_prob_edge)
+                add_value(groups[key], clv_absolute, clv_percent, clv_prob_edge, profit)
             strategy = str(row.get("strategy_name") or "").strip()
             if strategy:
                 by_strategy.setdefault(strategy, new_accumulator())
-                add_value(by_strategy[strategy], clv_absolute, clv_percent, clv_prob_edge)
+                add_value(by_strategy[strategy], clv_absolute, clv_percent, clv_prob_edge, profit)
             if is_recent_pinnacle(row, closing_column):
                 warning_recent_pinnacle = True
         summary = finalize_acc(global_acc)
+        market_side_stats = finalize_groups(by_market_side)
+        scope = _scope_from_report(fieldnames, market_side_stats, used, total)
+        coverage_by_market_side = {
+            key: {
+                "rows": rows,
+                "with_clv": market_side_stats.get(key, {}).get("n", 0),
+                "coverage": round((market_side_stats.get(key, {}).get("n", 0) / rows * 100.0), 2) if rows else 0.0,
+            }
+            for key, rows in sorted(coverage_rows.items())
+        }
         if used == 0:
             status = "indisponible"
             message = "Closing odds detectees mais aucune ligne exploitable : verifier le mapping des cotes closing et du cote joue."
+        elif scope["is_partial"]:
+            status = "partiel"
+            message = "CLV partielle : H2H home/away seulement si ce sont les seules colonnes exactes; draw/totals exclus."
         else:
             status = "disponible"
             message = "Rapport CLV descriptif genere. Une CLV positive ne suffit jamais sans validation statistique complete."
         if warning_recent_pinnacle:
             warnings.append("Attention: source closing Pinnacle recente detectee apres 2025-07-23; ne pas surinterpreter cette CLV sans controle de source.")
         warnings.append("Convention: prendre 2.10 quand la closing line finit a 2.00 est positif; prendre 1.90 contre 2.00 est negatif.")
+        if scope["is_partial"]:
+            warnings.append("CLV partielle: ne pas conclure sur une strategie globale, draw, total ou BTTS avec ces lignes.")
         return {
             "generated_at": now_iso(),
             "features_path": str(path),
@@ -282,13 +372,18 @@ def analyze_clv(features_path: str) -> Dict[str, Any]:
             "closing_columns_detected": closing_columns,
             "rows_total": total,
             "rows_with_closing": used,
+            "rows_skipped_clv_unavailable": skipped_unavailable,
+            "coverage_global": round(used / total * 100.0, 2) if total else 0.0,
+            **scope,
             "summary": summary,
             "groups": {
                 "by_market": finalize_groups(by_market),
+                "by_market_side": market_side_stats,
                 "by_odds_bucket": finalize_groups(by_bucket),
                 "by_year": finalize_groups(by_year),
                 "by_strategy": finalize_groups(by_strategy),
             },
+            "coverage_by_market_side": coverage_by_market_side,
             "verdict": clv_verdict(summary),
             "warnings": warnings,
         }
@@ -328,6 +423,8 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         f"<p>{html.escape(str(report.get('message') or ''))}</p>",
         "<ul>",
         f"<li>Lignes avec closing: {summary.get('n')}</li>",
+        f"<li>Coverage global: {report.get('coverage_global')}</li>",
+        f"<li>Scope CLV: {html.escape(str(report.get('clv_scope')))}</li>",
         f"<li>CLV moyenne: {summary.get('clv_mean')}</li>",
         f"<li>CLV mediane: {summary.get('clv_median')}</li>",
         f"<li>% CLV positive: {summary.get('clv_positive_rate')}</li>",
@@ -350,6 +447,8 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Statut: {report.get('status')}")
     print(f"- Message: {report.get('message')}")
     print(f"- Lignes exploitees: {summary.get('n')}")
+    print(f"- Coverage global: {report.get('coverage_global')}%")
+    print(f"- Scope CLV: {report.get('clv_scope')}")
     print(f"- CLV moyenne: {summary.get('clv_mean')}")
     print(f"- CLV mediane: {summary.get('clv_median')}")
     print(f"- CLV positive: {summary.get('clv_positive_rate')}%")

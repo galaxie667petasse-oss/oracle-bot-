@@ -15,6 +15,9 @@ def write_csv(path: Path, fieldnames, rows) -> None:
 
 
 def main():
+    assert understat_xg_pipeline.infer_league("external_data/understat_probe/seriea_2020_2025_matches.csv") == "Serie A"
+    assert understat_xg_pipeline.infer_league("external_data/understat_probe/ligue1_2020_2025_matches.csv") == "Ligue 1"
+
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         oracle_db = root / "oracle_db.json"
@@ -102,6 +105,40 @@ def main():
         except ValueError as exc:
             assert "strict-join" in str(exc)
         assert (Path("reports") / "tmp_pipeline_strict_join_diagnostics.json").exists()
+
+        bundes_external = root / "bundesliga_external.csv"
+        write_csv(bundes_external, ["date", "league", "season", "home_team", "away_team", "home_xg", "away_xg"], [{
+            "date": "2024-08-03",
+            "league": "GER-Bundesliga",
+            "season": "2024-2025",
+            "home_team": "Bayer Leverkusen",
+            "away_team": "Eintracht Frankfurt",
+            "home_xg": "1.2",
+            "away_xg": "0.8",
+        }])
+        bundes_features = root / "bundes_features.csv"
+        write_csv(bundes_features, ["date", "home", "away", "competition", "market_type", "pari", "result", "odds", "no_vig_probability"], [{
+            "date": "2024-08-03",
+            "home": "Leverkusen",
+            "away": "Ein Frankfurt",
+            "competition": "D1",
+            "market_type": "h2h",
+            "pari": "Victoire Leverkusen",
+            "result": "win",
+            "odds": "1.8",
+            "no_vig_probability": "0.55",
+        }])
+        bundes_summary = understat_xg_pipeline.build_pipeline(
+            str(bundes_external),
+            str(bundes_features),
+            out_prefix="tmp_pipeline_bundesliga",
+            expected_seasons="2024-2025",
+            skip_model=True,
+            skip_benchmark=True,
+            strict_join=True,
+        )
+        assert bundes_summary["join_rate_after_alias"] == 100.0
+        assert bundes_summary["join_quality"] == "excellent"
         assert oracle_db.read_text(encoding="utf-8") == before
         assert list(data_dir.iterdir()) == []
 

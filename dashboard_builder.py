@@ -22,6 +22,7 @@ REPORT_FILES = {
     "benchmark_governance": "benchmark_governance.txt",
     "xg_model_lab": "xg_model_lab.txt",
     "clv": "clv_report.txt",
+    "clv_partial": "clv_partial_report.txt",
     "calibration": "calibration_report.txt",
     "statistical_validation": "statistical_validation.txt",
     "understat_xg_pipeline": "understat_xg_pipeline.txt",
@@ -119,6 +120,7 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     ml_global = texts["ml_global"]
     registry = read_model_registry(report_dir)
     clv_json = read_json(report_dir, "clv_report.json")
+    clv_partial_json = read_json_candidates(report_dir, ["clv_partial_report.json"])
     calibration_json = read_json(report_dir, "calibration_report.json")
     statistical_json = read_json(report_dir, "statistical_validation.json")
     benchmark_json = read_json(report_dir, "benchmark_summary.json")
@@ -169,8 +171,13 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "model_registry_count": len(registry),
         "best_robustness_score": max((entry.get("robustness_score", 0) for entry in registry), default=None),
         "clv_status": clv_json.get("status") or "indisponible",
-        "clv_mean": (clv_json.get("summary") or {}).get("clv_mean"),
-        "clv_positive_rate": (clv_json.get("summary") or {}).get("clv_positive_rate"),
+        "clv_mean": (clv_partial_json.get("summary") or clv_json.get("summary") or {}).get("clv_mean"),
+        "clv_positive_rate": (clv_partial_json.get("summary") or clv_json.get("summary") or {}).get("clv_positive_rate"),
+        "clv_partial_scope": clv_partial_json.get("clv_scope") or clv_readiness.get("clv_scope"),
+        "clv_partial_coverage": clv_partial_json.get("coverage_global") or ((clv_readiness.get("preview") or {}).get("coverage")),
+        "clv_partial_rows": clv_partial_json.get("rows_with_closing") or ((clv_readiness.get("preview") or {}).get("rows_with_clv")),
+        "clv_partial_market_sides": clv_partial_json.get("covered_market_sides") or ((clv_readiness.get("preview") or {}).get("covered_market_sides") or []),
+        "clv_partial_excluded_sides": clv_partial_json.get("excluded_market_sides") or ((clv_readiness.get("preview") or {}).get("uncovered_market_sides") or []),
         "calibration_ece": calibration_json.get("ece"),
         "calibration_mce": calibration_json.get("mce"),
         "calibration_brier": calibration_json.get("brier"),
@@ -392,6 +399,21 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     if texts["closing_odds_probe"]:
         closing_recovery_lines.extend(_lines_matching(texts["closing_odds_probe"], ["Closing", "H2H", "Total", "BTTS", "Colonnes", "Mapping", "Avertissement"], 24))
     parts.append(_card("Closing Odds Recovery Plan", "\n".join(closing_recovery_lines)))
+
+    clv_partial_lines = [
+        f"scope: {summary.get('clv_partial_scope')}",
+        f"lignes avec CLV: {summary.get('clv_partial_rows')}",
+        f"coverage: {summary.get('clv_partial_coverage')}%",
+        f"CLV moyenne: {summary.get('clv_mean')}",
+        f"CLV positive: {summary.get('clv_positive_rate')}%",
+        f"marches couverts: {', '.join(summary.get('clv_partial_market_sides') or []) or 'aucun'}",
+        f"marches exclus: {', '.join(summary.get('clv_partial_excluded_sides') or []) or 'n/a'}",
+        "blocage: draw/total/BTTS non couverts par C_LTH/C_LTA.",
+        "statut: diagnostic seulement, pas validation globale.",
+    ]
+    if texts["clv_partial"]:
+        clv_partial_lines.extend(_lines_matching(texts["clv_partial"], ["Scope", "Coverage", "CLV moyenne", "CLV positive", "partielle", "Avertissement"], 24))
+    parts.append(_card("CLV partielle / Closing odds", "\n".join(clv_partial_lines)))
 
     league_rows = []
     for item in (big5_xg.get("leagues") or []):

@@ -59,6 +59,28 @@ def main():
         assert grouped["groups"]["by_market"]["total"]["n"] == 1
         assert grouped["groups"]["by_strategy"]["s1"]["clv_mean"] > 0
 
+        preview_path = root / "features_preview.csv"
+        write_csv(
+            preview_path,
+            ["date", "market_type", "pari", "odds", "closing_odds", "clv_percent", "clv_available", "is_home_pick", "is_away_pick", "is_draw", "is_over", "result"],
+            [
+                {"date": "2024-01-01", "market_type": "h2h", "pari": "Victoire A", "odds": "2.10", "closing_odds": "2.00", "clv_percent": "0.05", "clv_available": "True", "is_home_pick": "1", "is_away_pick": "0", "is_draw": "0", "is_over": "0", "result": "win"},
+                {"date": "2024-01-02", "market_type": "h2h", "pari": "Victoire B", "odds": "4.20", "closing_odds": "4.00", "clv_percent": "0.05", "clv_available": "True", "is_home_pick": "0", "is_away_pick": "1", "is_draw": "0", "is_over": "0", "result": "loss"},
+                {"date": "2024-01-03", "market_type": "draw", "pari": "Nul", "odds": "3.20", "closing_odds": "", "clv_percent": "", "clv_available": "False", "is_home_pick": "0", "is_away_pick": "0", "is_draw": "1", "is_over": "0", "result": "loss"},
+                {"date": "2024-01-04", "market_type": "total", "pari": "Plus de 2.5", "odds": "1.90", "closing_odds": "", "clv_percent": "", "clv_available": "False", "is_home_pick": "0", "is_away_pick": "0", "is_draw": "0", "is_over": "1", "result": "win"},
+            ],
+        )
+        partial = clv_analysis.analyze_clv(str(preview_path))
+        assert partial["status"] == "partiel"
+        assert partial["clv_scope"] == "partial_h2h_home_away"
+        assert partial["rows_total"] == 4
+        assert partial["rows_with_closing"] == 2
+        assert partial["coverage_global"] == 50.0
+        assert partial["groups"]["by_market"]["h2h"]["n"] == 2
+        assert "draw" not in partial["groups"]["by_market"]
+        assert "total" not in partial["groups"]["by_market"]
+        assert partial["coverage_by_market_side"]["h2h_draw"]["with_clv"] == 0
+
         absent_path = root / "features_no_closing.csv"
         write_csv(absent_path, ["date", "market_type", "odds"], [{"date": "2024-01-01", "market_type": "h2h", "odds": "2.00"}])
         absent = clv_analysis.analyze_clv(str(absent_path))

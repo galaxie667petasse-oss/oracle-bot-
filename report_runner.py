@@ -260,6 +260,104 @@ def closing_readiness_commands(
     return commands
 
 
+def closing_preview_commands(
+    features: str = "data/features_modern.csv",
+    source_csv: str = "data/MATCHES.csv",
+    preview_output: str = "reports/features_with_closing_preview.csv",
+    skip_benchmark: bool = False,
+) -> List[ReportCommand]:
+    if "data" in [part.lower() for part in Path(preview_output).parts]:
+        raise ValueError("La preview closing ne doit pas etre ecrite dans data/.")
+    commands = [
+        ReportCommand(
+            "Closing odds probe",
+            "closing_odds_probe.txt",
+            [
+                "closing_odds_probe.py",
+                "--csv",
+                source_csv,
+                "--output",
+                "{report_dir}/closing_odds_probe.json",
+                "--html",
+                "{report_dir}/closing_odds_probe.html",
+            ],
+            timeout=900,
+        ),
+        ReportCommand(
+            "Features closing preview",
+            "features_closing_enricher.txt",
+            [
+                "features_closing_enricher.py",
+                "--features",
+                features,
+                "--source",
+                source_csv,
+                "--output",
+                preview_output,
+            ],
+            timeout=1800,
+        ),
+        ReportCommand(
+            "CLV partial analysis",
+            "clv_partial_report.txt",
+            [
+                "clv_analysis.py",
+                "--features",
+                preview_output,
+                "--output",
+                "{report_dir}/clv_partial_report.json",
+                "--html",
+                "{report_dir}/clv_partial_report.html",
+            ],
+            timeout=1200,
+        ),
+        ReportCommand(
+            "CLV readiness preview",
+            "clv_readiness.txt",
+            [
+                "clv_readiness_report.py",
+                "--features",
+                features,
+                "--closing-probe",
+                "{report_dir}/closing_odds_probe.json",
+                "--preview",
+                preview_output,
+                "--output",
+                "{report_dir}/clv_readiness.json",
+                "--html",
+                "{report_dir}/clv_readiness.html",
+            ],
+            timeout=900,
+        ),
+    ]
+    if not skip_benchmark:
+        commands.append(
+            ReportCommand(
+                "Benchmark governance CLV partielle",
+                "benchmark_governance_closing_preview.txt",
+                [
+                    "benchmark_governance.py",
+                    "--features",
+                    features,
+                    "--clv-report",
+                    "{report_dir}/clv_partial_report.json",
+                    "--clv-readiness",
+                    "{report_dir}/clv_readiness.json",
+                    "--closing-probe",
+                    "{report_dir}/closing_odds_probe.json",
+                    "--summary-json",
+                    "{report_dir}/benchmark_summary.json",
+                    "--html",
+                    "{report_dir}/benchmark_governance.html",
+                    "--registry",
+                    "{report_dir}/model_registry.json",
+                ],
+                timeout=1800,
+            )
+        )
+    return commands
+
+
 def timestamp() -> str:
     return datetime.now().strftime("%Y_%m_%d_%H%M%S")
 
@@ -286,6 +384,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return big5_xg_commands()
     if mode == "closing-readiness":
         return closing_readiness_commands()
+    if mode == "closing-preview":
+        return closing_preview_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -399,10 +499,14 @@ def parse_args(argv=None):
     mode.add_argument("--xg-understat", action="store_true", help="Lance le pipeline local Understat xG multi-saisons")
     mode.add_argument("--big5-xg", action="store_true", help="Lance l'agregateur Big 5 xG et CLV readiness sans reseau")
     mode.add_argument("--closing-readiness", action="store_true", help="Inspecte les closing odds source et met a jour la readiness CLV")
+    mode.add_argument("--closing-preview", action="store_true", help="Construit la preview CLV partielle dans reports/ et l'analyse")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
     parser.add_argument("--closing-source", default="data/MATCHES.csv", help="CSV source closing odds pour --closing-readiness")
+    parser.add_argument("--source-csv", default="", help="Alias de --closing-source pour --closing-preview")
+    parser.add_argument("--features", default="", help="Alias explicite du CSV features pour --closing-preview")
+    parser.add_argument("--preview-output", default="reports/features_with_closing_preview.csv", help="Sortie preview CLV partielle dans reports/")
     parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
     parser.add_argument("--skip-benchmark", action="store_true", help="Pour --xg-understat/--big5-xg: ignore benchmark_governance")
     parser.add_argument("--skip-model", action="store_true", help="Pour --xg-understat: ignore xg_model_lab")
@@ -414,6 +518,7 @@ def main(argv=None) -> None:
     args = parse_args(argv)
     mode = (
         "closing-readiness" if args.closing_readiness
+        else "closing-preview" if args.closing_preview
         else "big5-xg" if args.big5_xg
         else "xg-understat" if args.xg_understat
         else "full" if args.full
@@ -439,8 +544,15 @@ def main(argv=None) -> None:
         commands = big5_xg_commands(features=args.xgabora, skip_benchmark=args.skip_benchmark)
     elif mode == "closing-readiness":
         commands = closing_readiness_commands(
-            features=args.xgabora,
-            source_csv=args.closing_source,
+            features=args.features or args.xgabora,
+            source_csv=args.source_csv or args.closing_source,
+            skip_benchmark=args.skip_benchmark,
+        )
+    elif mode == "closing-preview":
+        commands = closing_preview_commands(
+            features=args.features or args.xgabora,
+            source_csv=args.source_csv or args.closing_source,
+            preview_output=args.preview_output,
             skip_benchmark=args.skip_benchmark,
         )
     else:

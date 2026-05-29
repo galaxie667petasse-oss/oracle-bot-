@@ -97,6 +97,9 @@ def main():
     assert normalize_team_name("ESTAC Troyes", league="Ligue 1") == "troyes"
     assert normalize_team_name("Angers SCO", league="Ligue 1") == "angers"
     assert normalize_team_name("Girondins Bordeaux", league="Ligue 1") == "bordeaux"
+    assert normalize_team_name("FC Sochaux-Montbeliard", league="Ligue 1") == "sochaux"
+    assert normalize_team_name("EA Guingamp", league="Ligue 1") == "guingamp"
+    assert normalize_team_name("Stade Malherbe Caen", league="Ligue 1") == "caen"
     assert normalize_team_name("Nîmes", league="F1") == "nimes"
 
     assert normalize_team_name("Athletic Club", league="La-Liga", use_aliases=False) == "athletic"

@@ -130,3 +130,14 @@ La recuperation closing odds devient un gate explicite :
 - si la source closing est absente, douteuse ou non mappee au marche pris, toute promotion reste bloquee.
 
 Un xG qui ameliore legerement Brier/log loss peut etre utile pour la calibration, mais il ne prouve pas un edge betting. Sans CLV positive fiable, ROI test positif, sample suffisant, bootstrap favorable, calibration correcte, correction multiple testing et stabilite annuelle, le statut maximum reste observation/watchlist. Telegram, Railway et tout pick automatique restent exclus.
+
+## V7.7 Partial CLV pipeline
+
+Les colonnes `C_LTH` et `C_LTA` permettent seulement une CLV partielle H2H home/away. Cette CLV est utile pour diagnostiquer le prix pris contre la closing line, mais elle ne valide pas :
+
+- les draws si `C_LTD` est absent ;
+- les totals si les colonnes Over/Under closing sont absentes ;
+- BTTS si les colonnes exactes sont absentes ;
+- les strategies globales multi-marches.
+
+Une strategie H2H couverte peut etre mieux observee avec cette CLV, mais elle reste bloquee si le sample CLV est inferieur a 1000, si la CLV moyenne est non positive, si la couverture est faible, ou si les autres gates statistiques echouent. La CLV partielle ne peut jamais etre extrapolee a un marche non couvert.

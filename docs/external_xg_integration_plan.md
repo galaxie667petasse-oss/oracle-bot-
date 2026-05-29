@@ -329,3 +329,24 @@ python features_closing_enricher.py --features data/features_modern.csv --source
 ```
 
 `features_closing_enricher.py` ne doit jamais ecrire dans `data/`. Si les colonnes closing sont absentes ou douteuses, le projet reste un outil d'analyse prudent. Si elles existent, la prochaine etape est une preview verifiee, puis seulement ensuite une analyse CLV descriptive.
+
+## V7.7 Partial CLV Pipeline
+
+V7.7 exploite prudemment les colonnes `C_LTH` et `C_LTA` detectees dans la source locale. Le scope est volontairement limite :
+
+- H2H home : possible avec `C_LTH` ;
+- H2H away : possible avec `C_LTA` ;
+- H2H draw : exclu si `C_LTD` manque ;
+- totals et BTTS : exclus sans colonnes closing exactes.
+
+Commandes locales sans reseau :
+
+```bash
+python closing_odds_probe.py --csv data/MATCHES.csv --output reports/closing_odds_probe.json --html reports/closing_odds_probe.html
+python features_closing_enricher.py --features data/features_modern.csv --source data/MATCHES.csv --output reports/features_with_closing_preview.csv
+python clv_analysis.py --features reports/features_with_closing_preview.csv --output reports/clv_partial_report.json --html reports/clv_partial_report.html
+python clv_readiness_report.py --features data/features_modern.csv --closing-probe reports/closing_odds_probe.json --preview reports/features_with_closing_preview.csv --output reports/clv_readiness.json --html reports/clv_readiness.html
+python report_runner.py --closing-preview --skip-benchmark
+```
+
+Interpretation : une CLV partielle positive sur H2H home/away peut creer une observation plus informative, mais pas une preuve globale. Elle doit etre lue avec coverage, sample, CLV positive rate, ROI test, bootstrap, calibration et multiple testing. Ligue 1 reste une execution humaine separee : aucune recuperation reseau n'est lancee par les tests.

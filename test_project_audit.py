@@ -77,6 +77,7 @@ def test_release_candidate_docs_exist_and_have_sections():
         "big five xg completion",
         "clv readiness",
         "closing odds recovery",
+        "partial clv pipeline",
         "statistical proof foundation",
         "clv",
         "reliability curves",

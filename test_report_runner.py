@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, big5_xg_commands, closing_readiness_commands, command_set, run_report, xg_understat_commands
+from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, run_report, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -131,6 +131,9 @@ Understat xG Full Pipeline Quality Gate
             "clv_calculable": False,
             "clv_calculable_now": False,
             "clv_calculable_after_enrichment": True,
+            "clv_calculable_in_preview": True,
+            "clv_scope": "partial_h2h_home_away",
+            "preview": {"rows_with_clv": 2, "coverage": 50.0, "covered_market_sides": ["h2h_home", "h2h_away"], "uncovered_market_sides": ["h2h_draw", "total_over"]},
             "source_has_closing": True,
             "missing_columns": ["C_LTH", "C_LTA"],
             "markets": {"h2h_closing_possible": False},
@@ -138,12 +141,22 @@ Understat xG Full Pipeline Quality Gate
         }, ensure_ascii=False), encoding="utf-8")
         (report_dir / "closing_odds_probe.json").write_text(json.dumps({
             "closing_available": True,
-            "h2h_closing_available": True,
-            "total_closing_available": False,
-            "btts_closing_available": False,
+            "h2h_closing_available": "partial",
+            "total_closing_available": "none",
+            "btts_closing_available": "none",
             "detected_columns": {"all_closing": ["C_LTH", "C_LTD", "C_LTA"]},
         }, ensure_ascii=False), encoding="utf-8")
         write_report(report_dir / "closing_odds_probe.txt", "Closing Odds Probe\n- H2H closing disponible: True\n- Colonnes closing detectees: C_LTH, C_LTD, C_LTA\n")
+        (report_dir / "clv_partial_report.json").write_text(json.dumps({
+            "status": "partiel",
+            "clv_scope": "partial_h2h_home_away",
+            "coverage_global": 50.0,
+            "covered_market_sides": ["h2h_home", "h2h_away"],
+            "excluded_market_sides": ["h2h_draw", "total_over"],
+            "rows_with_closing": 2,
+            "summary": {"n": 2, "clv_mean": 0.01, "clv_positive_rate": 50.0},
+        }, ensure_ascii=False), encoding="utf-8")
+        write_report(report_dir / "clv_partial_report.txt", "Rapport CLV Oracle Bot\n- Scope CLV: partial_h2h_home_away\n- Coverage global: 50.0%\n- CLV moyenne: 0.01\n")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -162,6 +175,7 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Understat xG Full Pipeline Quality Gate" for command in command_set("xg-understat"))
         assert any(command.name == "Big 5 xG aggregator" for command in command_set("big5-xg"))
         assert any(command.name == "Closing odds probe" for command in command_set("closing-readiness"))
+        assert any(command.name == "CLV partial analysis" for command in command_set("closing-preview"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
@@ -172,6 +186,14 @@ Understat xG Full Pipeline Quality Gate
         assert any("closing_odds_probe.py" in command.args for command in closing_commands)
         assert any("--closing-probe" in command.args for command in closing_commands)
         assert any("benchmark_governance.py" in command.args for command in closing_commands)
+        preview_commands = closing_preview_commands("features.csv", "matches.csv", str(root / "reports" / "preview.csv"), skip_benchmark=True)
+        assert any("features_closing_enricher.py" in command.args for command in preview_commands)
+        assert not any("benchmark_governance.py" in command.args for command in preview_commands)
+        try:
+            closing_preview_commands("features.csv", "matches.csv", str(root / "data" / "preview.csv"))
+            raise AssertionError("preview data non bloquee")
+        except ValueError as exc:
+            assert "data" in str(exc)
         assert "CLV / Closing Line Value" in html
         assert "CLV Readiness" in html
         assert "Validation statistique" in html
@@ -181,6 +203,7 @@ Understat xG Full Pipeline Quality Gate
         assert "League-by-league xG comparison" in html
         assert "League readiness table" in html
         assert "Closing Odds Recovery Plan" in html
+        assert "CLV partielle / Closing odds" in html
         assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 

@@ -245,6 +245,16 @@ LEAGUE_ALIASES = {
         "amiens sc": "amiens",
         "montpellier hsc": "montpellier",
         "rc strasbourg": "strasbourg",
+        "sochaux": "sochaux",
+        "fc sochaux": "sochaux",
+        "fc sochaux montbeliard": "sochaux",
+        "sochaux montbeliard": "sochaux",
+        "guingamp": "guingamp",
+        "ea guingamp": "guingamp",
+        "en avant guingamp": "guingamp",
+        "caen": "caen",
+        "sm caen": "caen",
+        "stade malherbe caen": "caen",
     },
 }
 

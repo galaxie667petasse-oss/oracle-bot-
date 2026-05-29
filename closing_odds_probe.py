@@ -16,8 +16,13 @@ H2H_CLOSING_COLUMNS = (
     "MaxCH", "MaxCD", "MaxCA",
     "AvgCH", "AvgCD", "AvgCA",
 )
+H2H_HOME_COLUMNS = ("C_LTH", "C_VCH", "PSCH", "B365CH", "MaxCH", "AvgCH", "closing_home", "closing_home_odds")
+H2H_DRAW_COLUMNS = ("C_LTD", "C_VCD", "PSCD", "B365CD", "MaxCD", "AvgCD", "closing_draw", "closing_draw_odds")
+H2H_AWAY_COLUMNS = ("C_LTA", "C_VCA", "PSCA", "B365CA", "MaxCA", "AvgCA", "closing_away", "closing_away_odds")
 H2H_OPENING_COLUMNS = ("B365H", "B365D", "B365A", "PSH", "PSD", "PSA", "MaxH", "MaxD", "MaxA", "AvgH", "AvgD", "AvgA")
-TOTAL_CLOSING_COLUMNS = ("C_LTO", "C_LTU", "PCO", "PCU", "B365C>2.5", "B365C<2.5", "MaxC>2.5", "MaxC<2.5", "AvgC>2.5", "AvgC<2.5")
+TOTAL_OVER_COLUMNS = ("C_LTO", "PCO", "B365C>2.5", "MaxC>2.5", "AvgC>2.5", "closing_over", "closing_over_odds")
+TOTAL_UNDER_COLUMNS = ("C_LTU", "PCU", "B365C<2.5", "MaxC<2.5", "AvgC<2.5", "closing_under", "closing_under_odds")
+TOTAL_CLOSING_COLUMNS = TOTAL_OVER_COLUMNS + TOTAL_UNDER_COLUMNS
 BTTS_CLOSING_HINTS = ("btts", "bothteamstoscore", "gg", "ng")
 PINNACLE_WARNING_DATE = "2025-07-23"
 
@@ -85,6 +90,26 @@ def _date_range(rows: List[Dict[str, Any]]) -> Dict[str, str]:
     return {"date_min": min(dates) if dates else "", "date_max": max(dates) if dates else ""}
 
 
+def _decimal_odds_plausible(rows: List[Dict[str, Any]], columns: Sequence[str]) -> bool:
+    checked = 0
+    plausible = 0
+    for row in rows:
+        for column in columns:
+            value = str(row.get(column) or "").strip().replace(",", ".")
+            if not value:
+                continue
+            try:
+                number = float(value)
+            except Exception:
+                continue
+            checked += 1
+            if number > 1.01:
+                plausible += 1
+        if checked >= 200:
+            break
+    return bool(plausible)
+
+
 def _recommended_mapping(h2h: List[str], total: List[str], btts: List[str]) -> Dict[str, Any]:
     mapping: Dict[str, Any] = {}
     lookup = {_norm(name): name for name in h2h + total + btts}
@@ -105,6 +130,15 @@ def _recommended_mapping(h2h: List[str], total: List[str], btts: List[str]) -> D
     return mapping
 
 
+def _availability(*flags: bool) -> str:
+    count = sum(1 for flag in flags if flag)
+    if count == 0:
+        return "none"
+    if count == len(flags):
+        return "complete"
+    return "partial"
+
+
 def probe_csv(csv_path: str, sample_rows: int = 5000) -> Dict[str, Any]:
     path = Path(csv_path)
     if not path.exists():
@@ -114,9 +148,12 @@ def probe_csv(csv_path: str, sample_rows: int = 5000) -> Dict[str, Any]:
             "status": "erreur",
             "error": f"Fichier introuvable: {csv_path}",
             "closing_available": False,
-            "h2h_closing_available": False,
-            "total_closing_available": False,
-            "btts_closing_available": False,
+            "h2h_closing_available": "none",
+            "h2h_home_closing_available": False,
+            "h2h_draw_closing_available": False,
+            "h2h_away_closing_available": False,
+            "total_closing_available": "none",
+            "btts_closing_available": "none",
             "detected_columns": {},
             "missing_columns": list(H2H_CLOSING_COLUMNS[:3]),
             "recommended_mapping": {},
@@ -132,20 +169,37 @@ def probe_csv(csv_path: str, sample_rows: int = 5000) -> Dict[str, Any]:
                 break
 
     h2h_closing = _present(fieldnames, H2H_CLOSING_COLUMNS)
+    h2h_home = _present(fieldnames, H2H_HOME_COLUMNS)
+    h2h_draw = _present(fieldnames, H2H_DRAW_COLUMNS)
+    h2h_away = _present(fieldnames, H2H_AWAY_COLUMNS)
     h2h_opening = _present(fieldnames, H2H_OPENING_COLUMNS)
     total_closing = _present(fieldnames, TOTAL_CLOSING_COLUMNS)
+    total_over = _present(fieldnames, TOTAL_OVER_COLUMNS)
+    total_under = _present(fieldnames, TOTAL_UNDER_COLUMNS)
     btts_closing = _btts_closing_columns(fieldnames)
     generic_closing = _generic_closing_columns(fieldnames)
     detected_all = sorted(set(h2h_closing + total_closing + btts_closing + generic_closing))
-    h2h_available = any(_norm(col) in {_norm(c) for c in H2H_CLOSING_COLUMNS[:3]} for col in h2h_closing) or len(h2h_closing) >= 3
-    total_available = bool(total_closing)
-    btts_available = bool(btts_closing)
+    h2h_home_available = bool(h2h_home)
+    h2h_draw_available = bool(h2h_draw)
+    h2h_away_available = bool(h2h_away)
+    h2h_available = _availability(h2h_home_available, h2h_draw_available, h2h_away_available)
+    total_available = _availability(bool(total_over), bool(total_under))
+    btts_available = "partial" if btts_closing else "none"
     date_info = _date_range(rows)
     warnings: List[str] = []
     if date_info.get("date_max") and date_info["date_max"] >= PINNACLE_WARNING_DATE and any(_norm(col).startswith("ps") for col in detected_all):
         warnings.append("Colonnes Pinnacle/PS detectees apres 2025-07-23: verifier la fiabilite de source avant CLV.")
     if not detected_all:
         warnings.append("Aucune colonne closing detectee dans ce CSV.")
+    h2h_decimal_plausible = _decimal_odds_plausible(rows, h2h_closing)
+    total_decimal_plausible = _decimal_odds_plausible(rows, total_closing)
+    btts_decimal_plausible = _decimal_odds_plausible(rows, btts_closing)
+    if detected_all and not any((h2h_decimal_plausible, total_decimal_plausible, btts_decimal_plausible)):
+        warnings.append("Colonnes closing detectees, mais les valeurs echantillonnees ne ressemblent pas a des cotes decimales exploitables.")
+    if h2h_available == "partial":
+        warnings.append("Closing H2H partiel: ne pas valider les sides non couverts, notamment le draw si C_LTD est absent.")
+    if total_available != "complete":
+        warnings.append("Closing Over/Under absent ou partiel: ne pas calculer de CLV total avec des colonnes H2H.")
     missing = []
     for column in ("C_LTH", "C_LTD", "C_LTA"):
         if _norm(column) not in {_norm(value) for value in detected_all}:
@@ -160,12 +214,25 @@ def probe_csv(csv_path: str, sample_rows: int = 5000) -> Dict[str, Any]:
         "date_max": date_info.get("date_max", ""),
         "closing_available": bool(detected_all),
         "h2h_closing_available": h2h_available,
+        "h2h_home_closing_available": h2h_home_available,
+        "h2h_draw_closing_available": h2h_draw_available,
+        "h2h_away_closing_available": h2h_away_available,
         "total_closing_available": total_available,
         "btts_closing_available": btts_available,
+        "decimal_odds_plausible": {
+            "h2h": h2h_decimal_plausible,
+            "total": total_decimal_plausible,
+            "btts": btts_decimal_plausible,
+        },
         "detected_columns": {
             "h2h_closing": h2h_closing,
+            "h2h_home_closing": h2h_home,
+            "h2h_draw_closing": h2h_draw,
+            "h2h_away_closing": h2h_away,
             "h2h_opening": h2h_opening,
             "total_closing": total_closing,
+            "total_over_closing": total_over,
+            "total_under_closing": total_under,
             "btts_closing": btts_closing,
             "generic_closing": generic_closing,
             "all_closing": detected_all,
@@ -200,6 +267,9 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         f"<tr><th>CSV</th><td>{html.escape(str(report.get('csv_path')))}</td></tr>",
         f"<tr><th>Closing disponible</th><td>{report.get('closing_available')}</td></tr>",
         f"<tr><th>H2H closing</th><td>{report.get('h2h_closing_available')}</td></tr>",
+        f"<tr><th>Home closing</th><td>{report.get('h2h_home_closing_available')}</td></tr>",
+        f"<tr><th>Draw closing</th><td>{report.get('h2h_draw_closing_available')}</td></tr>",
+        f"<tr><th>Away closing</th><td>{report.get('h2h_away_closing_available')}</td></tr>",
         f"<tr><th>Total closing</th><td>{report.get('total_closing_available')}</td></tr>",
         f"<tr><th>BTTS closing</th><td>{report.get('btts_closing_available')}</td></tr>",
         f"<tr><th>Colonnes H2H</th><td>{html.escape(', '.join(detected.get('h2h_closing') or []))}</td></tr>",
@@ -220,6 +290,9 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- CSV: {report.get('csv_path')}")
     print(f"- Closing disponible: {report.get('closing_available')}")
     print(f"- H2H closing disponible: {report.get('h2h_closing_available')}")
+    print(f"- H2H home closing: {report.get('h2h_home_closing_available')}")
+    print(f"- H2H draw closing: {report.get('h2h_draw_closing_available')}")
+    print(f"- H2H away closing: {report.get('h2h_away_closing_available')}")
     print(f"- Total closing disponible: {report.get('total_closing_available')}")
     print(f"- BTTS closing disponible: {report.get('btts_closing_available')}")
     print(f"- Colonnes closing detectees: {', '.join(detected.get('all_closing') or []) or 'aucune'}")

@@ -35,23 +35,36 @@ def main():
             ["date", "home", "away", "market_type", "pari", "odds", "is_home_pick", "is_away_pick", "is_draw", "is_over", "is_under"],
             [
                 {"date": "2024-01-01", "home": "Alpha", "away": "Beta", "market_type": "h2h", "pari": "Victoire Alpha", "odds": "2.10", "is_home_pick": "1", "is_away_pick": "0", "is_draw": "0", "is_over": "0", "is_under": "0"},
+                {"date": "2024-01-01", "home": "Alpha", "away": "Beta", "market_type": "h2h", "pari": "Victoire Beta", "odds": "4.20", "is_home_pick": "0", "is_away_pick": "1", "is_draw": "0", "is_over": "0", "is_under": "0"},
                 {"date": "2024-01-01", "home": "Alpha", "away": "Beta", "market_type": "draw", "pari": "Nul", "odds": "3.40", "is_home_pick": "0", "is_away_pick": "0", "is_draw": "1", "is_over": "0", "is_under": "0"},
+                {"date": "2024-01-01", "home": "Alpha", "away": "Beta", "market_type": "total", "pari": "Plus de 2.5 buts", "odds": "1.90", "is_home_pick": "0", "is_away_pick": "0", "is_draw": "0", "is_over": "1", "is_under": "0"},
             ],
         )
         write_csv(
             source,
-            ["Date", "HomeTeam", "AwayTeam", "C_LTH", "C_LTD", "C_LTA"],
-            [{"Date": "2024-01-01", "HomeTeam": "Alpha", "AwayTeam": "Beta", "C_LTH": "2.00", "C_LTD": "3.30", "C_LTA": "4.00"}],
+            ["Date", "HomeTeam", "AwayTeam", "C_LTH", "C_LTA"],
+            [{"Date": "2024-01-01", "HomeTeam": "Alpha", "AwayTeam": "Beta", "C_LTH": "2.00", "C_LTA": "4.00"}],
         )
         before_features = features.read_text(encoding="utf-8")
         summary = features_closing_enricher.enrich_features_with_closing(str(features), str(source), str(output))
         assert summary["rows_with_closing"] == 2
-        assert summary["closing_coverage"] == 100.0
+        assert summary["closing_coverage"] == 50.0
+        assert summary["coverage_by_scope"]["h2h_home"]["coverage"] == 100.0
+        assert summary["coverage_by_scope"]["h2h_away"]["coverage"] == 100.0
+        assert summary["coverage_by_scope"]["h2h_draw"]["coverage"] == 0.0
+        assert summary["coverage_by_scope"]["total"]["coverage"] == 0.0
         rows = read_rows(output)
         assert rows[0]["closing_odds"] == "2.0"
-        assert rows[0]["closing_source"] == "C_LTH"
+        assert rows[0]["closing_source_column"] == "C_LTH"
         assert rows[0]["clv_percent"] == "0.05"
-        assert rows[1]["closing_source"] == "C_LTD"
+        assert rows[0]["clv_available"] == "True"
+        assert rows[1]["closing_source_column"] == "C_LTA"
+        assert rows[1]["clv_available"] == "True"
+        assert rows[2]["clv_available"] == "False"
+        assert rows[2]["closing_odds"] == ""
+        assert rows[2]["clv_reason"] == "closing du cote draw absent"
+        assert rows[3]["clv_available"] == "False"
+        assert rows[3]["clv_reason"] == "closing du marche absent"
         readiness = clv_readiness_report.analyze_readiness(str(output))
         assert readiness["clv_calculable"] is True
 

@@ -95,6 +95,59 @@ def main():
         assert arsenal["source_external_file"] == "matches.csv"
         assert arsenal["leak_risk"] == "eleve"
 
+        bundes_xgabora = root / "bundes_features.csv"
+        bundes_external = root / "bundes_external.csv"
+        write_csv(
+            bundes_xgabora,
+            ["date", "home", "away", "competition", "market_type", "odds", "result", "no_vig_probability"],
+            [
+                {"date": "2024-03-01", "home": "Leverkusen", "away": "Ein Frankfurt", "competition": "D1", "market_type": "h2h", "odds": "1.7", "result": "win", "no_vig_probability": "0.58"},
+                {"date": "2024-03-02", "home": "MGladbach", "away": "Dortmund", "competition": "D1", "market_type": "h2h", "odds": "2.4", "result": "loss", "no_vig_probability": "0.42"},
+            ],
+        )
+        write_csv(
+            bundes_external,
+            ["date", "league", "home_team", "away_team", "home_xg", "away_xg"],
+            [
+                {"date": "2024-03-01", "league": "GER-Bundesliga", "home_team": "Bayer Leverkusen", "away_team": "Eintracht Frankfurt", "home_xg": "1.8", "away_xg": "0.6"},
+                {"date": "2024-03-02", "league": "GER-Bundesliga", "home_team": "Borussia M.Gladbach", "away_team": "Borussia Dortmund", "home_xg": "1.0", "away_xg": "1.7"},
+            ],
+        )
+        bundes_plan = external_xg_lab.build_join_plan(str(bundes_xgabora), str(bundes_external))
+        assert bundes_plan["match_rate"] == 100.0
+        bundes_eval = external_xg_lab.evaluate_join(str(bundes_xgabora), str(bundes_external))
+        assert bundes_eval["join_quality"] == "excellent"
+
+        seriea_xgabora = root / "seriea_features.csv"
+        seriea_external = root / "seriea_external.csv"
+        write_csv(
+            seriea_xgabora,
+            ["date", "home", "away", "competition", "market_type", "odds", "result", "no_vig_probability"],
+            [{"date": "2024-04-01", "home": "Inter", "away": "Milan", "competition": "I1", "market_type": "h2h", "odds": "1.9", "result": "win", "no_vig_probability": "0.52"}],
+        )
+        write_csv(
+            seriea_external,
+            ["date", "league", "home_team", "away_team", "home_xg", "away_xg"],
+            [{"date": "2024-04-01", "league": "Serie A", "home_team": "Internazionale", "away_team": "AC Milan", "home_xg": "1.2", "away_xg": "0.8"}],
+        )
+        seriea_plan = external_xg_lab.build_join_plan(str(seriea_xgabora), str(seriea_external))
+        assert seriea_plan["match_rate"] == 100.0
+
+        ligue1_xgabora = root / "ligue1_features.csv"
+        ligue1_external = root / "ligue1_external.csv"
+        write_csv(
+            ligue1_xgabora,
+            ["date", "home", "away", "competition", "market_type", "odds", "result", "no_vig_probability"],
+            [{"date": "2024-05-01", "home": "Paris SG", "away": "Marseille", "competition": "F1", "market_type": "h2h", "odds": "1.7", "result": "win", "no_vig_probability": "0.6"}],
+        )
+        write_csv(
+            ligue1_external,
+            ["date", "league", "home_team", "away_team", "home_xg", "away_xg"],
+            [{"date": "2024-05-01", "league": "Ligue 1", "home_team": "Paris Saint-Germain", "away_team": "Olympique Marseille", "home_xg": "2.1", "away_xg": "0.5"}],
+        )
+        ligue1_plan = external_xg_lab.build_join_plan(str(ligue1_xgabora), str(ligue1_external))
+        assert ligue1_plan["match_rate"] == 100.0
+
         assert oracle_db.read_text(encoding="utf-8") == before_db
         assert matches_csv.read_text(encoding="utf-8") == before_matches
 

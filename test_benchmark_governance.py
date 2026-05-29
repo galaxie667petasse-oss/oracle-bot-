@@ -133,6 +133,9 @@ def main():
             "clv_calculable": False,
             "clv_calculable_now": False,
             "clv_calculable_after_enrichment": True,
+            "clv_calculable_in_preview": True,
+            "clv_scope": "partial_h2h_home_away",
+            "preview": {"rows_with_clv": 250, "coverage": 12.5, "covered_market_sides": ["h2h_home", "h2h_away"]},
             "source_has_closing": True,
             "missing_columns": ["C_LTH", "C_LTA"],
             "markets": {"h2h_closing_possible": False},
@@ -159,6 +162,9 @@ def main():
         assert benchmark_big5["summary"]["closing_probe_available"] is True
         assert benchmark_big5["summary"]["clv_calculable"] is False
         assert benchmark_big5["summary"]["clv_calculable_after_enrichment"] is True
+        assert benchmark_big5["summary"]["clv_scope"] == "partial_h2h_home_away"
+        assert benchmark_big5["summary"]["clv_partial"] is True
+        assert benchmark_big5["summary"]["clv_coverage"] == 12.5
         assert benchmark_big5["summary"]["source_has_closing"] is True
         assert benchmark_big5["summary"]["big5_ready_for_conclusion"] is False
         assert benchmark_big5["summary"]["big5_missing_leagues"] == ["SerieA", "Ligue1"]
@@ -167,9 +173,32 @@ def main():
         assert benchmark_big5["summary"]["big5_candidate_count"] == 0
         assert "C_LTH" in benchmark_big5["summary"]["clv_missing_columns"]
         assert any("CLV non calculable" in blocker for blocker in benchmark_big5["summary"]["promotion_blockers"])
+        assert any("CLV partielle" in blocker for blocker in benchmark_big5["summary"]["promotion_blockers"])
         assert any("Enrichissement closing requis" in blocker for blocker in benchmark_big5["summary"]["promotion_blockers"])
         assert any("Big 5 incomplet" in blocker for blocker in benchmark_big5["summary"]["promotion_blockers"])
         assert benchmark_big5["summary"]["robust_candidates"] == 0
+
+        clv_partial_path = root / "reports" / "clv_partial_report.json"
+        clv_partial_path.write_text(json.dumps({
+            "status": "partiel",
+            "clv_scope": "partial_h2h_home_away",
+            "coverage_global": 20.0,
+            "rows_with_closing": 250,
+            "summary": {"n": 250, "clv_mean": 0.01, "clv_positive_rate": 55.0},
+            "groups": {"by_strategy": {}},
+        }, ensure_ascii=False), encoding="utf-8")
+        benchmark_partial = benchmark_governance.build_benchmark(
+            str(root / "features_absent.csv"),
+            db=synthetic_db(),
+            clv_report_path=str(clv_partial_path),
+            clv_readiness_path=str(clv_ready_path),
+        )
+        assert benchmark_partial["summary"]["clv_report_available"] is True
+        assert benchmark_partial["summary"]["clv_sample"] == 250
+        assert benchmark_partial["summary"]["clv_mean"] == 0.01
+        assert any("Sample CLV inferieur a 1000" in blocker for blocker in benchmark_partial["summary"]["promotion_blockers"])
+        assert all(entry.get("partial_clv_warning") for entry in benchmark_partial["registry"])
+        assert any(entry.get("clv_blocks_promotion_reason") for entry in benchmark_partial["registry"] if "total" in entry.get("name", "").lower() or "global" in entry.get("name", "").lower())
 
         quality_path = root / "reports" / "xg_quality.json"
         model_path = root / "reports" / "xg_model.json"

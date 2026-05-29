@@ -43,16 +43,37 @@ def main():
         probe_path.write_text(json.dumps({
             "status": "ok",
             "closing_available": True,
-            "h2h_closing_available": True,
-            "total_closing_available": False,
-            "btts_closing_available": False,
+            "h2h_closing_available": "partial",
+            "h2h_home_closing_available": True,
+            "h2h_draw_closing_available": False,
+            "h2h_away_closing_available": True,
+            "total_closing_available": "none",
+            "btts_closing_available": "none",
             "detected_columns": {"all_closing": ["C_LTH", "C_LTD", "C_LTA"]},
         }, ensure_ascii=False), encoding="utf-8")
         enriched_possible = clv_readiness_report.analyze_readiness(str(no_closing), closing_probe_path=str(probe_path))
         assert enriched_possible["clv_calculable_now"] is False
         assert enriched_possible["source_has_closing"] is True
         assert enriched_possible["clv_calculable_after_enrichment"] is True
+        assert enriched_possible["clv_scope"] == "partial_h2h_home_away"
+        assert enriched_possible["h2h_home_available"] is True
+        assert enriched_possible["h2h_away_available"] is True
+        assert enriched_possible["h2h_draw_available"] is False
         assert "features_closing_enricher.py" in enriched_possible["recommended_next_command"]
+
+        preview_path = root / "reports" / "features_with_closing_preview.csv"
+        write_csv(
+            preview_path,
+            ["date", "home", "away", "market_type", "odds", "is_home_pick", "is_away_pick", "is_draw", "clv_available", "clv_percent"],
+            [
+                {"date": "2024-01-01", "home": "A", "away": "B", "market_type": "h2h", "odds": "2.0", "is_home_pick": "1", "is_away_pick": "0", "is_draw": "0", "clv_available": "True", "clv_percent": "0.05"},
+                {"date": "2024-01-01", "home": "A", "away": "B", "market_type": "draw", "odds": "3.2", "is_home_pick": "0", "is_away_pick": "0", "is_draw": "1", "clv_available": "False", "clv_percent": ""},
+            ],
+        )
+        preview_ready = clv_readiness_report.analyze_readiness(str(no_closing), closing_probe_path=str(probe_path), preview_path=str(preview_path))
+        assert preview_ready["clv_calculable_in_preview"] is True
+        assert preview_ready["preview"]["rows_with_clv"] == 1
+        assert preview_ready["preview"]["coverage"] == 50.0
 
         probe_without_path = root / "reports" / "closing_odds_probe_empty.json"
         probe_without_path.write_text(json.dumps({"status": "ok", "closing_available": False}, ensure_ascii=False), encoding="utf-8")
@@ -69,6 +90,7 @@ def main():
         ready = clv_readiness_report.analyze_readiness(str(with_closing))
         assert ready["clv_calculable"] is True
         assert ready["clv_calculable_now"] is True
+        assert ready["clv_calculable_in_preview"] is False
         assert ready["status"] == "partiel"
         assert ready["markets"]["h2h_closing_possible"] is True
         assert ready["markets"]["over_under_closing_possible"] is False
