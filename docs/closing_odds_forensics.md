@@ -58,3 +58,15 @@ V8.2 ajoute deux garde-fous supplementaires :
 - `sample_size_planner.py` montre combien d'observations sont necessaires pour commencer a lire un petit edge.
 
 Ces modules ne remplacent pas une source closing fiable. Ils rendent visible le blocage : sans cotes closing reelles et sans sample suffisant, le projet reste un outil d'analyse.
+
+## V8.3 : recuperation propre des cotes
+
+La phase V8.3 ajoute un `Odds Source Lab` pour eviter d'utiliser aveuglement des colonnes suspectes :
+
+- `manual_odds_import.py` pour CSV manuel ;
+- `api_football_odds_adapter.py` en dry-run/fixture ou reseau explicite ;
+- `the_odds_api_adapter.py` en dry-run/fixture ou reseau explicite ;
+- `odds_source_quality_report.py` pour mesurer coverage et near-close ;
+- `odds_closing_matcher.py` pour renseigner le ledger seulement si match/marche/side correspondent.
+
+Une colonne nommee closing ne suffit toujours pas. La valeur doit etre une cote decimale plausible, horodatee et associee au bon marche.

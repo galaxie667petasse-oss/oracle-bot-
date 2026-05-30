@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V8.2 Shadow Operations Center, Evidence Gate, Simulation & June Runbook.
+V8.3 Odds Source Adapter Lab, Odds Snapshot Intake & Shadow Automation.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. Aucun signal robuste active. Aucun changement V8.2 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. Aucun signal robuste active. Aucun changement V8.3 ne branche Telegram, Railway ou un pick automatique.
 
 V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre operations et le gate de preuve.
 
@@ -140,12 +140,28 @@ Le vrai blocage n'est pas le bankroll management. Le blocage est :
 
 ## Prochaine vraie priorite
 
-1. Commit/push la phase locale V8.2.
-2. Lancer `oracle_ops.py --health` puis `oracle_ops.py --daily`.
-3. Creer 5-10 observations shadow reelles ou de test.
-4. Collecter les closing odds manuelles fiables.
-5. Importer les resultats manuels.
-6. Lire `shadow_quality_audit.py`, `shadow_clv_report.py` et `evidence_gate.py`.
-7. Continuer jusqu'a sample significatif.
-8. Lancer manuellement Ligue 1, puis `join_diagnostics.py --league "Ligue 1"` et le pipeline strict.
-9. Sinon chercher une source closing complete fiable.
+1. Commit/push la phase locale V8.3.
+2. Lancer `oracle_ops.py --health` puis `oracle_ops.py --odds-lab`.
+3. Remplir `reports/manual_odds_snapshot_template.csv` avec quelques cotes reelles.
+4. Importer dans `reports/odds_snapshots.csv`.
+5. Convertir en observations shadow en dry-run, puis appliquer seulement si les lignes sont propres.
+6. Capturer des snapshots near-close fiables.
+7. Matcher les near-close vers le ledger avec `odds_closing_matcher.py --dry-run`.
+8. Lire `shadow_quality_audit.py`, `shadow_clv_report.py` et `evidence_gate.py`.
+9. Continuer jusqu'a sample significatif et chercher une source closing complete fiable.
+
+## V8.3 Odds Source Adapter Lab
+
+V8.3 prepare la collecte de cotes propre sans activer de reseau :
+
+- configuration odds dans `config/odds_sources.example.json` ;
+- aucune vraie cle commitee ;
+- import manuel CSV ;
+- adaptateurs API-Football et The Odds API en dry-run/fixture ;
+- snapshot store local dans `reports/` ;
+- conversion snapshots vers observations shadow ;
+- matching near-close vers closing odds du ledger ;
+- rapport qualite sources de cotes ;
+- integration `oracle_ops.py --odds-lab` et `report_runner.py --odds-lab`.
+
+Le blocage central reste inchange : sans CLV fiable, sans sample suffisant et sans validation historique/live, aucun signal robuste n'est active.

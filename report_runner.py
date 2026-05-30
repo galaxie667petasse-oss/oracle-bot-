@@ -584,6 +584,111 @@ def ops_commands(
     return commands
 
 
+def odds_lab_commands(
+    ledger: str = "reports/shadow_ledger.csv",
+    snapshots: str = "reports/odds_snapshots.csv",
+    skip_evidence: bool = False,
+    skip_quality: bool = False,
+    skip_dashboard: bool = False,
+) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "Odds source config",
+            "odds_source_config.txt",
+            ["odds_source_config.py", "--check"],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Odds snapshot summary",
+            "odds_snapshot_store.txt",
+            ["odds_snapshot_store.py", "--store", snapshots, "--summary", "--output", "{report_dir}/odds_snapshot_summary.json"],
+            timeout=300,
+        ),
+    ]
+    if not skip_quality:
+        commands.append(
+            ReportCommand(
+                "Odds source quality",
+                "odds_source_quality.txt",
+                [
+                    "odds_source_quality_report.py",
+                    "--snapshots",
+                    snapshots,
+                    "--output",
+                    "{report_dir}/odds_source_quality.json",
+                    "--html",
+                    "{report_dir}/odds_source_quality.html",
+                ],
+                timeout=300,
+            )
+        )
+        commands.append(
+            ReportCommand(
+                "Shadow quality audit",
+                "shadow_quality_audit.txt",
+                [
+                    "shadow_quality_audit.py",
+                    "--ledger",
+                    ledger,
+                    "--output",
+                    "{report_dir}/shadow_quality_audit.json",
+                    "--html",
+                    "{report_dir}/shadow_quality_audit.html",
+                ],
+                timeout=600,
+            )
+        )
+    commands.append(
+        ReportCommand(
+            "Shadow CLV report odds lab",
+            "shadow_clv_report.txt",
+            [
+                "shadow_clv_report.py",
+                "--ledger",
+                ledger,
+                "--output",
+                "{report_dir}/shadow_clv_report.json",
+                "--html",
+                "{report_dir}/shadow_clv_report.html",
+            ],
+            timeout=600,
+        )
+    )
+    if not skip_evidence:
+        commands.append(
+            ReportCommand(
+                "Evidence gate odds lab",
+                "evidence_gate.txt",
+                [
+                    "evidence_gate.py",
+                    "--shadow-report",
+                    "{report_dir}/shadow_clv_report.json",
+                    "--quality-audit",
+                    "{report_dir}/shadow_quality_audit.json",
+                    "--big5-summary",
+                    "reports/big5_xg_summary.json",
+                    "--clv-readiness",
+                    "reports/clv_readiness.json",
+                    "--output",
+                    "{report_dir}/evidence_gate.json",
+                    "--html",
+                    "{report_dir}/evidence_gate.html",
+                ],
+                timeout=600,
+            )
+        )
+    if not skip_dashboard:
+        commands.append(
+            ReportCommand(
+                "Dashboard odds lab",
+                "dashboard_builder.txt",
+                ["dashboard_builder.py", "--input", "{report_dir}"],
+                timeout=300,
+            )
+        )
+    return commands
+
+
 def timestamp() -> str:
     return datetime.now().strftime("%Y_%m_%d_%H%M%S")
 
@@ -618,6 +723,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return daily_shadow_commands()
     if mode == "ops":
         return ops_commands()
+    if mode == "odds-lab":
+        return odds_lab_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -735,6 +842,7 @@ def parse_args(argv=None):
     mode.add_argument("--shadow", action="store_true", help="Lance le rapport shadow mode et la gouvernance locale")
     mode.add_argument("--daily-shadow", action="store_true", help="Lance le workflow quotidien shadow local")
     mode.add_argument("--ops", action="store_true", help="Lance le centre operations shadow local")
+    mode.add_argument("--odds-lab", action="store_true", help="Lance le laboratoire local des sources de cotes")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
@@ -743,6 +851,7 @@ def parse_args(argv=None):
     parser.add_argument("--features", default="", help="Alias explicite du CSV features pour --closing-preview")
     parser.add_argument("--preview-output", default="reports/features_with_closing_preview.csv", help="Sortie preview CLV partielle dans reports/")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv", help="Ledger shadow mode pour --shadow")
+    parser.add_argument("--snapshots", default="reports/odds_snapshots.csv", help="Snapshots de cotes pour --odds-lab")
     parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
     parser.add_argument("--skip-benchmark", action="store_true", help="Pour --xg-understat/--big5-xg: ignore benchmark_governance")
     parser.add_argument("--skip-dashboard", action="store_true", help="Pour --daily-shadow: ignore dashboard_builder")
@@ -763,6 +872,7 @@ def main(argv=None) -> None:
         else "shadow" if args.shadow
         else "daily-shadow" if args.daily_shadow
         else "ops" if args.ops
+        else "odds-lab" if args.odds_lab
         else "big5-xg" if args.big5_xg
         else "xg-understat" if args.xg_understat
         else "full" if args.full
@@ -820,6 +930,14 @@ def main(argv=None) -> None:
             skip_sample_plan=args.skip_sample_plan,
             skip_dashboard=args.skip_dashboard,
             simulated_ledger=args.simulated_ledger,
+        )
+    elif mode == "odds-lab":
+        commands = odds_lab_commands(
+            ledger=args.ledger,
+            snapshots=args.snapshots,
+            skip_evidence=args.skip_evidence,
+            skip_quality=args.skip_quality,
+            skip_dashboard=args.skip_dashboard,
         )
     else:
         commands = command_set(mode)

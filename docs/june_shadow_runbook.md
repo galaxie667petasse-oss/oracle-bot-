@@ -77,3 +77,17 @@ python sample_size_planner.py --shadow-report reports/shadow_clv_report.json --o
 5. Soir : relancer `report_runner.py --ops --skip-dashboard`.
 6. Lire `evidence_gate.html`.
 7. Continuer la collecte si le statut est non valide.
+
+## Ajout V8.3 : snapshots de cotes
+
+Routine supplementaire pour juin :
+
+1. Generer `reports/manual_odds_snapshot_template.csv`.
+2. Renseigner quelques cotes observees avec timestamp.
+3. Importer vers `reports/odds_snapshots.csv`.
+4. Lire `odds_source_quality_report.py`.
+5. Convertir en observations shadow seulement apres controle.
+6. Noter un snapshot `is_near_close=true` si proche du coup d'envoi.
+7. Matcher ce snapshot vers le ledger en dry-run.
+
+Un snapshot near-close aide le diagnostic, mais ne remplace pas une vraie source closing historique documentee.

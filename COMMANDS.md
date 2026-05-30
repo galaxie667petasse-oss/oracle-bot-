@@ -685,13 +685,72 @@ Preview message shadow, sans envoi :
 python shadow_message_formatter.py --ledger reports/shadow_ledger.csv --output reports/shadow_messages_preview.txt
 ```
 
-## 24. Git workflow
+## 24. V8.3 Odds Source Lab
+
+Configuration :
+
+```bash
+python odds_source_config.py --write-example
+python odds_source_config.py --check
+```
+
+Manual odds :
+
+```bash
+python manual_odds_import.py --template reports/manual_odds_snapshot_template.csv
+python manual_odds_import.py --input reports/manual_odds_snapshot.csv --store reports/odds_snapshots.csv
+python odds_snapshot_store.py --summary
+```
+
+API-Football dry-run/fixture :
+
+```bash
+python api_football_odds_adapter.py --check-config
+python api_football_odds_adapter.py --dry-run --league EPL --date 2026-06-01
+python api_football_odds_adapter.py --from-fixture tests/fixtures/api_football_odds_sample.json --output reports/api_football_odds_normalized.csv
+```
+
+The Odds API dry-run/fixture :
+
+```bash
+python the_odds_api_adapter.py --check-config
+python the_odds_api_adapter.py --dry-run --sport soccer_epl
+python the_odds_api_adapter.py --from-fixture tests/fixtures/the_odds_api_sample.json --output reports/the_odds_api_normalized.csv
+```
+
+Snapshots to shadow :
+
+```bash
+python odds_to_shadow.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --dry-run
+python odds_to_shadow.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --mode observation
+```
+
+Near close matching :
+
+```bash
+python odds_closing_matcher.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --dry-run
+```
+
+Quality :
+
+```bash
+python odds_source_quality_report.py --snapshots reports/odds_snapshots.csv --output reports/odds_source_quality.json --html reports/odds_source_quality.html
+```
+
+Ops :
+
+```bash
+python oracle_ops.py --odds-lab
+python report_runner.py --odds-lab --skip-dashboard
+```
+
+## 25. Git workflow
 
 ```bash
 git status --short
 git diff
-git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md docs/closing_odds_forensics.md docs/shadow_mode_workflow.md docs/operations_center.md docs/evidence_gate_policy.md docs/june_shadow_runbook.md team_name_normalizer.py join_diagnostics.py external_xg_lab.py external_xg_features.py understat_xg_pipeline.py xg_dataset_quality.py multi_league_xg_aggregator.py clv_readiness_report.py closing_odds_probe.py features_closing_enricher.py shadow_ledger.py closing_manual_import.py shadow_clv_report.py daily_shadow_candidates.py shadow_templates.py results_manual_import.py shadow_workflow.py oracle_ops.py shadow_quality_audit.py evidence_gate.py shadow_simulator.py sample_size_planner.py shadow_message_formatter.py benchmark_governance.py report_runner.py dashboard_builder.py project_audit.py test_team_name_normalizer.py test_join_diagnostics.py test_external_xg_lab.py test_external_xg_features.py test_understat_xg_pipeline.py test_multi_league_xg_aggregator.py test_clv_readiness_report.py test_closing_odds_probe.py test_features_closing_enricher.py test_shadow_ledger.py test_closing_manual_import.py test_shadow_clv_report.py test_daily_shadow_candidates.py test_shadow_templates.py test_results_manual_import.py test_shadow_workflow.py test_oracle_ops.py test_shadow_quality_audit.py test_evidence_gate.py test_shadow_simulator.py test_sample_size_planner.py test_shadow_message_formatter.py test_benchmark_governance.py test_report_runner.py test_project_audit.py
-git commit -m "Add shadow operations center V8.2"
+git add README.md PROJECT_STATUS.md COMMANDS.md docs/model_promotion_policy.md docs/external_xg_integration_plan.md docs/closing_odds_forensics.md docs/shadow_mode_workflow.md docs/operations_center.md docs/evidence_gate_policy.md docs/june_shadow_runbook.md docs/odds_source_lab.md docs/free_odds_sources.md docs/odds_snapshot_format.md .gitignore config/odds_sources.example.json odds_source_config.py odds_normalizer.py odds_snapshot_store.py manual_odds_import.py api_football_odds_adapter.py the_odds_api_adapter.py odds_to_shadow.py odds_closing_matcher.py odds_source_quality_report.py oracle_ops.py report_runner.py dashboard_builder.py project_audit.py test_odds_source_config.py test_odds_normalizer.py test_odds_snapshot_store.py test_manual_odds_import.py test_api_football_odds_adapter.py test_the_odds_api_adapter.py test_odds_to_shadow.py test_odds_closing_matcher.py test_odds_source_quality_report.py test_oracle_ops.py test_report_runner.py test_project_audit.py tests/fixtures/api_football_odds_sample.json tests/fixtures/the_odds_api_sample.json
+git commit -m "Add odds source adapter lab V8.3"
 ```
 
 Verifier avant commit qu'aucun fichier sensible n'est ajoute :
@@ -700,7 +759,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 25. Ce qu'il ne faut pas faire
+## 26. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

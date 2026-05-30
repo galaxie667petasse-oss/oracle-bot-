@@ -45,3 +45,19 @@ Les statuts sont `OK`, `warning` ou `bloquant`.
 7. dashboard optionnel.
 
 Le mode reste laboratoire : aucune mise conseillee, aucun envoi, aucune activation automatique.
+
+## V8.3 Odds Source Lab dans oracle_ops
+
+Commandes ajoutees :
+
+```bash
+python oracle_ops.py --odds-config
+python oracle_ops.py --odds-template
+python oracle_ops.py --odds-summary
+python oracle_ops.py --odds-quality
+python oracle_ops.py --odds-to-shadow
+python oracle_ops.py --closing-match
+python oracle_ops.py --odds-lab
+```
+
+Par defaut, `--odds-to-shadow` et `--closing-match` restent en dry-run. Utiliser `--apply` seulement apres verification humaine. Aucun reseau n'est lance par ces commandes.

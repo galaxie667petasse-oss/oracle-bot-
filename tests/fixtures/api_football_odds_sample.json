@@ -1,0 +1,39 @@
+{
+  "response": [
+    {
+      "fixture": {
+        "id": 101,
+        "date": "2026-06-01T19:00:00+00:00"
+      },
+      "league": {
+        "name": "EPL"
+      },
+      "teams": {
+        "home": {"name": "Arsenal"},
+        "away": {"name": "Chelsea"}
+      },
+      "bookmakers": [
+        {
+          "name": "Book Test",
+          "bets": [
+            {
+              "name": "Match Winner",
+              "values": [
+                {"value": "Home", "odd": "2.10"},
+                {"value": "Draw", "odd": "3.40"},
+                {"value": "Away", "odd": "3.20"}
+              ]
+            },
+            {
+              "name": "Goals Over/Under",
+              "values": [
+                {"value": "Over 2.5", "odd": "1.90"},
+                {"value": "Under 2.5", "odd": "1.95"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

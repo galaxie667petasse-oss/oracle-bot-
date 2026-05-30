@@ -683,3 +683,34 @@ V8.2 ajoute une couche operations pour utiliser Oracle Bot au quotidien en juin 
 - `shadow_message_formatter.py` prepare une preview texte privee, sans envoi Telegram.
 
 Le statut maximum reste `ready_for_deep_review`, c'est-a-dire analyse approfondie requise. Il n'y a aucune mise reelle, aucune activation automatique, aucune promesse de rentabilite.
+
+## V8.3 Odds Source Lab, Odds Snapshot & Shadow Automation
+
+V8.3 ajoute un laboratoire de collecte de cotes sans reseau automatique :
+
+- `odds_source_config.py` centralise les sources sans committer de secrets ;
+- `odds_normalizer.py` convertit CSV/API vers un format snapshot standard ;
+- `odds_snapshot_store.py` stocke les snapshots dans `reports/` ;
+- `manual_odds_import.py` importe le CSV manuel ;
+- `api_football_odds_adapter.py` et `the_odds_api_adapter.py` restent optionnels et refusent le reseau sans `--allow-network` ;
+- `odds_to_shadow.py` transforme des snapshots valides en observations shadow ;
+- `odds_closing_matcher.py` utilise uniquement des snapshots `is_near_close=true` pour renseigner une closing observee ;
+- `odds_source_quality_report.py` mesure couverture, invalides, near-close et capacite CLV.
+
+Cette phase ne valide aucun signal. Elle prepare la collecte de preuves : taken odds, near-close odds, coverage par marche, puis CLV seulement si la cote closing exacte existe.
+
+Commandes principales :
+
+```bash
+python odds_source_config.py --write-example
+python odds_source_config.py --check
+python manual_odds_import.py --template reports/manual_odds_snapshot_template.csv
+python manual_odds_import.py --input reports/manual_odds_snapshot.csv --store reports/odds_snapshots.csv
+python odds_source_quality_report.py --snapshots reports/odds_snapshots.csv --output reports/odds_source_quality.json --html reports/odds_source_quality.html
+python odds_to_shadow.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --dry-run
+python odds_closing_matcher.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --dry-run
+python oracle_ops.py --odds-lab
+python report_runner.py --odds-lab --skip-dashboard
+```
+
+`C_LTH/C_LTA` dans `data/MATCHES.csv` restent rejetes comme cotes decimales non plausibles. V8.3 ne les transforme pas en CLV et ne fabrique aucune closing odds.

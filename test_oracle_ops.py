@@ -33,6 +33,12 @@ def main():
         assert full["quality"]["verdict"] in {"usable_with_warnings", "clean"}
         assert full["evidence"]["global_status"] in {"insufficient_evidence", "blocked", "promising_but_unvalidated"}
         assert full["optional"] == []
+        odds_store = root / "reports" / "odds_snapshots.csv"
+        odds_lab = oracle_ops.odds_lab(str(root / "reports"), str(odds_store))
+        assert odds_lab["summary"]["rows_total"] == 0
+        assert Path(odds_lab["template"]["manual_odds_template"]).exists()
+        assert oracle_ops.odds_summary(str(odds_store))["rows_total"] == 0
+        assert oracle_ops.odds_config_report()["config_ok"] is True
 
         absent = oracle_ops.build_health(root / "absent", str(ledger))
         assert absent["status"] == "bloquant"

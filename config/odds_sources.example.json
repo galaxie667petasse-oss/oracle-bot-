@@ -1,0 +1,24 @@
+{
+  "api_football": {
+    "enabled": false,
+    "base_url": "https://v3.football.api-sports.io",
+    "api_key_env": "API_FOOTBALL_KEY",
+    "daily_limit": 100,
+    "default_bookmakers": [],
+    "notes": "Free plan possible, ne pas committer la cle."
+  },
+  "the_odds_api": {
+    "enabled": false,
+    "base_url": "https://api.the-odds-api.com/v4",
+    "api_key_env": "THE_ODDS_API_KEY",
+    "monthly_credits_limit": 500,
+    "regions": "eu",
+    "markets": "h2h,totals",
+    "odds_format": "decimal",
+    "notes": "Free plan limite, historique payant."
+  },
+  "manual_csv": {
+    "enabled": true,
+    "default_path": "reports/manual_odds_snapshot.csv"
+  }
+}

@@ -35,6 +35,11 @@ REPORT_FILES = {
     "evidence_gate": "evidence_gate.txt",
     "sample_size_plan": "sample_size_plan.txt",
     "shadow_message_preview": "shadow_messages_preview.txt",
+    "odds_source_config": "odds_source_config.txt",
+    "odds_snapshot_summary": "odds_snapshot_store.txt",
+    "odds_source_quality": "odds_source_quality.txt",
+    "odds_to_shadow": "odds_to_shadow.txt",
+    "odds_closing_matcher": "odds_closing_matcher.txt",
 }
 
 
@@ -140,6 +145,10 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     shadow_quality = read_json_candidates(report_dir, ["shadow_quality_audit.json"])
     evidence_gate = read_json_candidates(report_dir, ["evidence_gate.json"])
     sample_plan = read_json_candidates(report_dir, ["sample_size_plan.json"])
+    odds_quality = read_json_candidates(report_dir, ["odds_source_quality.json"])
+    odds_summary = read_json_candidates(report_dir, ["odds_snapshot_summary.json"])
+    odds_to_shadow = read_json_candidates(report_dir, ["odds_to_shadow_report.json"])
+    odds_closing_matcher = read_json_candidates(report_dir, ["odds_closing_matcher_report.json"])
     pipeline_final = understat_pipeline.get("final_status") or {}
     pipeline_model = pipeline_final.get("xg_model") or {}
 
@@ -270,6 +279,22 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "sample_plan_current": sample_plan.get("current_sample"),
         "sample_plan_target_required": sample_plan.get("target_edge_required_sample"),
         "sample_plan_edges": sample_plan.get("edge_sample_requirements") or {},
+        "odds_quality_available": bool(odds_quality),
+        "odds_sources": odds_quality.get("sources") or odds_summary.get("sources") or {},
+        "odds_bookmakers": odds_quality.get("bookmakers") or odds_summary.get("bookmakers") or {},
+        "odds_leagues": odds_quality.get("leagues") or odds_summary.get("leagues") or {},
+        "odds_markets": odds_quality.get("markets") or odds_summary.get("markets") or {},
+        "odds_rows_total": odds_quality.get("rows_total") if odds_quality else odds_summary.get("rows_total"),
+        "odds_invalid_rows": odds_quality.get("invalid_rows") if odds_quality else odds_summary.get("invalid_rows"),
+        "odds_near_close_rows": odds_quality.get("near_close_rows") if odds_quality else odds_summary.get("near_close_rows"),
+        "odds_clv_capacity": odds_quality.get("clv_capacity"),
+        "odds_recommendations": odds_quality.get("recommendations") or [],
+        "odds_to_shadow_available": bool(odds_to_shadow),
+        "odds_to_shadow_added": odds_to_shadow.get("rows_added"),
+        "odds_to_shadow_dry_run": odds_to_shadow.get("dry_run"),
+        "odds_closing_matcher_available": bool(odds_closing_matcher),
+        "odds_closing_updates": odds_closing_matcher.get("closing_updated"),
+        "odds_closing_matches": odds_closing_matcher.get("matches_found"),
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -302,6 +327,8 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     summary = build_summary(report_dir)
     registry = read_model_registry(report_dir)
     big5_xg = read_json_candidates(report_dir, ["big5_xg_summary.json"])
+    odds_summary = read_json_candidates(report_dir, ["odds_snapshot_summary.json"])
+    odds_quality = read_json_candidates(report_dir, ["odds_source_quality.json"])
     parts = [
         "<!doctype html>",
         "<html lang='fr'><head><meta charset='utf-8'>",
@@ -548,6 +575,68 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         "Aucune mise conseillee.",
     ]
     parts.append(_card("Manual Workflow Checklist", "\n".join(workflow_lines)))
+
+    odds_lab_lines = [
+        f"rapport quality disponible: {summary.get('odds_quality_available')}",
+        f"lignes snapshots: {summary.get('odds_rows_total')}",
+        f"sources: {summary.get('odds_sources')}",
+        f"bookmakers: {summary.get('odds_bookmakers')}",
+        f"ligues: {summary.get('odds_leagues')}",
+        f"marches: {summary.get('odds_markets')}",
+        "statut: laboratoire local, aucun reseau automatique.",
+    ]
+    if texts["odds_source_config"]:
+        odds_lab_lines.extend(_lines_matching(texts["odds_source_config"], ["Configuration", "Cle API", "Validation", "Warning", "Erreur"], 20))
+    parts.append(_card("Odds Source Lab", "\n".join(odds_lab_lines)))
+
+    snapshot_lines = [
+        f"lignes totales: {summary.get('odds_rows_total')}",
+        f"lignes invalides: {summary.get('odds_invalid_rows')}",
+        f"doublons: {odds_summary.get('duplicates') if odds_summary else 'n/a'}",
+        f"dates min/max: {odds_summary.get('date_min') if odds_summary else None} / {odds_summary.get('date_max') if odds_summary else None}",
+    ]
+    if texts["odds_snapshot_summary"]:
+        snapshot_lines.extend(_lines_matching(texts["odds_snapshot_summary"], ["Lignes", "Sources", "Bookmakers", "Marches", "Doublons"], 20))
+    parts.append(_card("Odds Snapshot Coverage", "\n".join(snapshot_lines)))
+
+    near_close_lines = [
+        f"snapshots near-close: {summary.get('odds_near_close_rows')}",
+        f"capacite CLV: {summary.get('odds_clv_capacity')}",
+        f"recommandations: {', '.join(summary.get('odds_recommendations') or []) or 'aucune'}",
+        "un snapshot near-close n'est pas une preuve historique parfaite sans controle de source et timestamp.",
+    ]
+    if texts["odds_source_quality"]:
+        near_close_lines.extend(_lines_matching(texts["odds_source_quality"], ["near-close", "Capacite", "Recommandations", "invalides"], 20))
+    parts.append(_card("Near-Close Coverage", "\n".join(near_close_lines)))
+
+    odds_shadow_lines = [
+        f"rapport disponible: {summary.get('odds_to_shadow_available')}",
+        f"observations ajoutees/simulees: {summary.get('odds_to_shadow_added')}",
+        f"dry-run: {summary.get('odds_to_shadow_dry_run')}",
+        "par defaut, l'intake cree seulement des observations shadow.",
+    ]
+    if texts["odds_to_shadow"]:
+        odds_shadow_lines.extend(_lines_matching(texts["odds_to_shadow"], ["Observations", "Doublons", "Erreurs", "shadow"], 20))
+    parts.append(_card("Odds to Shadow Intake", "\n".join(odds_shadow_lines)))
+
+    closing_match_lines = [
+        f"rapport disponible: {summary.get('odds_closing_matcher_available')}",
+        f"correspondances trouvees: {summary.get('odds_closing_matches')}",
+        f"closing mises a jour: {summary.get('odds_closing_updates')}",
+        "aucune cote closing n'est inventee; les ambiguites restent ignorees.",
+    ]
+    if texts["odds_closing_matcher"]:
+        closing_match_lines.extend(_lines_matching(texts["odds_closing_matcher"], ["Correspondances", "Closing", "Ambiguites", "Non matches"], 20))
+    parts.append(_card("Closing Matcher Status", "\n".join(closing_match_lines)))
+
+    source_quality_lines = [
+        f"lignes valides: {odds_quality.get('valid_rows') if odds_quality else 'n/a'}",
+        f"lignes invalides: {summary.get('odds_invalid_rows')}",
+        f"marches couverts: {odds_quality.get('markets_covered') if odds_quality else 'n/a'}",
+        f"capacite CLV: {summary.get('odds_clv_capacity')}",
+        f"recommandations: {', '.join(summary.get('odds_recommendations') or []) or 'aucune'}",
+    ]
+    parts.append(_card("Source Quality", "\n".join(source_quality_lines)))
 
     league_rows = []
     for item in (big5_xg.get("leagues") or []):

@@ -47,6 +47,16 @@ ESSENTIAL_FILES = [
     "shadow_simulator.py",
     "sample_size_planner.py",
     "shadow_message_formatter.py",
+    "odds_source_config.py",
+    "odds_normalizer.py",
+    "odds_snapshot_store.py",
+    "manual_odds_import.py",
+    "api_football_odds_adapter.py",
+    "the_odds_api_adapter.py",
+    "odds_to_shadow.py",
+    "odds_closing_matcher.py",
+    "odds_source_quality_report.py",
+    "config/odds_sources.example.json",
     "report_runner.py",
     "dashboard_builder.py",
     "model_registry.json",
@@ -61,6 +71,8 @@ SENSITIVE_PATTERNS = [
     ".env",
     "variable/",
     "reports/",
+    "config/odds_sources.json",
+    "*.env",
 ]
 
 MAIN_TESTS = [
@@ -90,6 +102,15 @@ MAIN_TESTS = [
     "test_shadow_simulator.py",
     "test_sample_size_planner.py",
     "test_shadow_message_formatter.py",
+    "test_odds_source_config.py",
+    "test_odds_normalizer.py",
+    "test_odds_snapshot_store.py",
+    "test_manual_odds_import.py",
+    "test_api_football_odds_adapter.py",
+    "test_the_odds_api_adapter.py",
+    "test_odds_to_shadow.py",
+    "test_odds_closing_matcher.py",
+    "test_odds_source_quality_report.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -141,6 +162,15 @@ IMPORT_MODULES = [
     "shadow_simulator",
     "sample_size_planner",
     "shadow_message_formatter",
+    "odds_source_config",
+    "odds_normalizer",
+    "odds_snapshot_store",
+    "manual_odds_import",
+    "api_football_odds_adapter",
+    "the_odds_api_adapter",
+    "odds_to_shadow",
+    "odds_closing_matcher",
+    "odds_source_quality_report",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -181,6 +211,15 @@ OFFLINE_COMMAND_FILES = [
     "shadow_simulator.py",
     "sample_size_planner.py",
     "shadow_message_formatter.py",
+    "odds_source_config.py",
+    "odds_normalizer.py",
+    "odds_snapshot_store.py",
+    "manual_odds_import.py",
+    "api_football_odds_adapter.py",
+    "the_odds_api_adapter.py",
+    "odds_to_shadow.py",
+    "odds_closing_matcher.py",
+    "odds_source_quality_report.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [
@@ -295,6 +334,33 @@ def check_sensitive_tracking(root: Path, result: AuditResult, use_git: bool = Tr
         result.add_ok("Aucun fichier sensible attendu n'est suivi par git.")
 
 
+def check_odds_secret_hygiene(root: Path, result: AuditResult, use_git: bool = True) -> None:
+    if not use_git:
+        result.add_warning("Verification git des secrets odds ignoree par le test.")
+        return
+    try:
+        tracked_config = _git_ls_files(root, ["config/odds_sources.json", ".env", "*.env", "reports/odds_snapshots.csv"])
+        tracked_files = _git_ls_files(root, ["*.py", "*.md", "*.json", "*.txt", "config/*"])
+    except Exception as exc:
+        result.add_warning(f"Impossible de verifier les secrets odds par git: {exc}")
+        return
+    if tracked_config:
+        result.add_error("Fichiers odds/secrets suivis par git: " + ", ".join(tracked_config))
+    else:
+        result.add_ok("Aucun fichier local odds_sources/.env/odds_snapshots sensible n'est suivi par git.")
+    risky = []
+    forbidden_assignments = ["API_FOOTBALL" + "_KEY=", "THE_ODDS_API" + "_KEY="]
+    for rel in tracked_files:
+        path = root / rel
+        text = _read_text(path)
+        if any(snippet in text for snippet in forbidden_assignments):
+            risky.append(rel)
+    if risky:
+        result.add_error("Affectation de cle API trouvee dans fichiers suivis: " + ", ".join(risky))
+    else:
+        result.add_ok("Aucune affectation de cle API odds detectee dans les fichiers suivis.")
+
+
 def check_tests(root: Path, result: AuditResult) -> None:
     missing = [name for name in MAIN_TESTS if not (root / name).exists()]
     if missing:
@@ -399,6 +465,7 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     check_essential_files(root, result)
     check_gitignore(root, result)
     check_sensitive_tracking(root, result, use_git=use_git)
+    check_odds_secret_hygiene(root, result, use_git=use_git)
     check_tests(root, result)
     if check_import_modules:
         check_imports(result)

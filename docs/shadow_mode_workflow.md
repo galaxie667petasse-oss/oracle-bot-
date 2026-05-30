@@ -136,3 +136,15 @@ Le workflow V8.2 ajoute :
 - runbook de juin.
 
 Le statut final reste non valide tant que sample, CLV, resultats et qualite ledger ne sont pas suffisants.
+
+## V8.3 : intake de cotes vers shadow
+
+Le shadow workflow peut maintenant recevoir des snapshots normalises :
+
+```bash
+python manual_odds_import.py --input reports/manual_odds_snapshot.csv --store reports/odds_snapshots.csv
+python odds_to_shadow.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --dry-run
+python odds_closing_matcher.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --dry-run
+```
+
+Cette automatisation ne produit que des observations shadow. Elle ne valide pas un signal et ne cree aucune mise.

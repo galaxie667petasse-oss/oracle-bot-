@@ -39,3 +39,15 @@ Le statut maximum est `ready_for_deep_review`. Il n'existe pas de statut qui aut
 - meme avec tout positif, analyse approfondie requise avant toute decision.
 
 Le gate ne conseille aucune mise et ne publie rien.
+
+## Sources de cotes V8.3
+
+L'evidence gate peut etre informe par les rapports odds, mais ses seuils ne changent pas :
+
+- snapshots sans near-close : preuve CLV absente ;
+- near-close partiel : diagnostic seulement ;
+- CLV sample < 1000 : non valide ;
+- CLV moyenne non positive : bloque ;
+- source mal documentee : analyse approfondie requise.
+
+Les adaptateurs de cotes ne court-circuitent jamais la gouvernance.

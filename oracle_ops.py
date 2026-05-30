@@ -13,6 +13,12 @@ from shadow_ledger import summarize_ledger
 from shadow_quality_audit import audit_shadow_ledger, write_html as write_quality_html, write_json as write_quality_json
 from shadow_workflow import workflow_init
 from shadow_templates import create_candidates_template, create_closing_template, create_results_template
+from manual_odds_import import write_template as write_manual_odds_template
+from odds_closing_matcher import match_closing_snapshots
+from odds_snapshot_store import DEFAULT_STORE as DEFAULT_ODDS_STORE, init_store, summarize_snapshots
+from odds_source_config import load_odds_source_config, validate_config, write_example
+from odds_source_quality_report import build_quality_report, write_html as write_odds_quality_html, write_json as write_odds_quality_json
+from odds_to_shadow import snapshots_to_shadow
 
 
 KEY_MODULES = [
@@ -28,6 +34,15 @@ KEY_MODULES = [
     "shadow_simulator.py",
     "sample_size_planner.py",
     "shadow_message_formatter.py",
+    "odds_source_config.py",
+    "odds_normalizer.py",
+    "odds_snapshot_store.py",
+    "manual_odds_import.py",
+    "api_football_odds_adapter.py",
+    "the_odds_api_adapter.py",
+    "odds_to_shadow.py",
+    "odds_closing_matcher.py",
+    "odds_source_quality_report.py",
 ]
 
 
@@ -147,6 +162,65 @@ def sample_plan(reports_dir: str) -> Dict[str, Any]:
     return report
 
 
+def odds_config_report() -> Dict[str, Any]:
+    config = load_odds_source_config()
+    report = validate_config(config)
+    return {
+        "config_ok": report["ok"],
+        "sources": report["sources"],
+        "warnings": report["warnings"],
+        "errors": report["errors"],
+        "lab_only": True,
+    }
+
+
+def odds_template(reports_dir: str) -> Dict[str, Any]:
+    reports = Path(reports_dir)
+    reports.mkdir(parents=True, exist_ok=True)
+    example = write_example("config/odds_sources.example.json", force=False)
+    template = write_manual_odds_template(str(reports / "manual_odds_snapshot_template.csv"))
+    return {"config_example": str(example), "manual_odds_template": str(template)}
+
+
+def odds_summary(store: str = DEFAULT_ODDS_STORE) -> Dict[str, Any]:
+    return summarize_snapshots(store)
+
+
+def odds_quality(reports_dir: str, store: str = DEFAULT_ODDS_STORE) -> Dict[str, Any]:
+    report = build_quality_report(store)
+    write_odds_quality_json(report, _reports_path(reports_dir, "odds_source_quality.json"))
+    write_odds_quality_html(report, _reports_path(reports_dir, "odds_source_quality.html"))
+    return report
+
+
+def odds_to_shadow_report(snapshots: str, ledger: str, reports_dir: str, apply: bool = False) -> Dict[str, Any]:
+    report = snapshots_to_shadow(snapshots, ledger, dry_run=not apply)
+    target = Path(_reports_path(reports_dir, "odds_to_shadow_report.json"))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    return report
+
+
+def closing_match_report(snapshots: str, ledger: str, reports_dir: str, apply: bool = False) -> Dict[str, Any]:
+    report = match_closing_snapshots(ledger, snapshots, dry_run=not apply)
+    target = Path(_reports_path(reports_dir, "odds_closing_matcher_report.json"))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    return report
+
+
+def odds_lab(reports_dir: str, store: str = DEFAULT_ODDS_STORE) -> Dict[str, Any]:
+    Path(reports_dir).mkdir(parents=True, exist_ok=True)
+    init_store(store)
+    return {
+        "config": odds_config_report(),
+        "template": odds_template(reports_dir),
+        "summary": odds_summary(store),
+        "quality": odds_quality(reports_dir, store),
+        "message": "Odds lab local: aucun reseau, aucune mise conseillee.",
+    }
+
+
 def full_local(ledger: str, reports_dir: str, skip_benchmark: bool = False, skip_dashboard: bool = False) -> Dict[str, Any]:
     Path(reports_dir).mkdir(parents=True, exist_ok=True)
     health = build_health(Path("."), ledger)
@@ -178,6 +252,12 @@ def full_local(ledger: str, reports_dir: str, skip_benchmark: bool = False, skip
     }
 
 
+def print_odds_report(title: str, report: Dict[str, Any]) -> None:
+    print(f"Oracle Ops - {title}")
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print("- Laboratoire local: aucune mise conseillee, aucun reseau automatique.")
+
+
 def print_health(report: Dict[str, Any]) -> None:
     print("Oracle Operations Center - Health")
     print(f"- Statut: {report.get('status')}")
@@ -207,8 +287,18 @@ def parse_args(argv=None):
     actions.add_argument("--big5-summary", action="store_true")
     actions.add_argument("--clv-readiness", action="store_true")
     actions.add_argument("--full-local", action="store_true")
+    actions.add_argument("--odds-config", action="store_true")
+    actions.add_argument("--odds-template", action="store_true")
+    actions.add_argument("--odds-summary", action="store_true")
+    actions.add_argument("--odds-quality", action="store_true")
+    actions.add_argument("--odds-to-shadow", action="store_true")
+    actions.add_argument("--closing-match", action="store_true")
+    actions.add_argument("--odds-lab", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
+    parser.add_argument("--odds-store", default=DEFAULT_ODDS_STORE)
+    parser.add_argument("--snapshots", default=DEFAULT_ODDS_STORE)
+    parser.add_argument("--apply", action="store_true", help="Applique les changements ledger pour odds-to-shadow/closing-match")
     parser.add_argument("--skip-benchmark", action="store_true")
     parser.add_argument("--skip-dashboard", action="store_true")
     parser.add_argument("--date", default="")
@@ -251,6 +341,20 @@ def main(argv=None) -> int:
         elif args.full_local:
             print("Oracle Ops - full local")
             print(json.dumps(full_local(args.ledger, args.reports_dir, args.skip_benchmark, args.skip_dashboard), ensure_ascii=False, indent=2))
+        elif args.odds_config:
+            print_odds_report("odds config", odds_config_report())
+        elif args.odds_template:
+            print_odds_report("odds template", odds_template(args.reports_dir))
+        elif args.odds_summary:
+            print_odds_report("odds summary", odds_summary(args.odds_store))
+        elif args.odds_quality:
+            print_odds_report("odds quality", odds_quality(args.reports_dir, args.odds_store))
+        elif args.odds_to_shadow:
+            print_odds_report("odds to shadow", odds_to_shadow_report(args.snapshots, args.ledger, args.reports_dir, apply=args.apply))
+        elif args.closing_match:
+            print_odds_report("closing matcher", closing_match_report(args.snapshots, args.ledger, args.reports_dir, apply=args.apply))
+        elif args.odds_lab:
+            print_odds_report("odds lab", odds_lab(args.reports_dir, args.odds_store))
         else:
             print_health(build_health(Path("."), args.ledger))
         return 0
