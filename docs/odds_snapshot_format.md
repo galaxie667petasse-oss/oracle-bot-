@@ -42,3 +42,23 @@ python odds_closing_matcher.py --ledger reports/shadow_ledger.csv --snapshots re
 ```
 
 Le format sert au laboratoire de preuve. Il ne cree aucune mise.
+
+## Controle V8.4
+
+Valider le store :
+
+```bash
+python odds_snapshot_store.py --validate
+```
+
+Exporter seulement le near-close :
+
+```bash
+python odds_snapshot_store.py --near-close-only --output reports/odds_near_close.csv
+```
+
+Filtrer un marche :
+
+```bash
+python odds_snapshot_store.py --filter --market h2h --output reports/odds_h2h.csv
+```

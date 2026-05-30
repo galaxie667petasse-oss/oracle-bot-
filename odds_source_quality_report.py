@@ -17,6 +17,7 @@ def build_quality_report(snapshots_path: str) -> Dict[str, Any]:
     rows = load_snapshots(snapshots_path)
     valid = [row for row in rows if row.get("validation_status") == "valid"]
     near_close = [row for row in valid if str(row.get("is_near_close") or "").lower() == "true"]
+    taken = [row for row in valid if str(row.get("is_near_close") or "").lower() != "true"]
     ids = [row.get("snapshot_id") for row in rows if row.get("snapshot_id")]
     match_counter = Counter(
         (
@@ -44,17 +45,62 @@ def build_quality_report(snapshots_path: str) -> Dict[str, Any]:
         recommendations.append("ajouter le marche h2h")
     if rows and len(valid) < len(rows):
         recommendations.append("corriger les lignes de cotes invalides")
+    duplicate_examples = []
+    seen = set()
+    for row in rows:
+        sid = row.get("snapshot_id")
+        if sid in seen:
+            duplicate_examples.append({"snapshot_id": sid, "match_date": row.get("match_date"), "home_team": row.get("home_team"), "away_team": row.get("away_team")})
+        seen.add(sid)
+    invalid_examples = [
+        {"match_date": row.get("match_date"), "home_team": row.get("home_team"), "away_team": row.get("away_team"), "reason": row.get("validation_reason")}
+        for row in rows if row.get("validation_status") != "valid"
+    ][:20]
+    by_date = dict(Counter(row.get("match_date") or "unknown" for row in valid))
+    quality_by_source = {
+        source: {
+            "rows": sum(1 for row in rows if (row.get("source") or "unknown") == source),
+            "valid": sum(1 for row in valid if (row.get("source") or "unknown") == source),
+            "near_close": sum(1 for row in near_close if (row.get("source") or "unknown") == source),
+        }
+        for source in sorted({row.get("source") or "unknown" for row in rows})
+    }
+    quality_by_bookmaker = {
+        bookmaker: {
+            "rows": sum(1 for row in rows if (row.get("bookmaker") or "unknown") == bookmaker),
+            "valid": sum(1 for row in valid if (row.get("bookmaker") or "unknown") == bookmaker),
+            "near_close": sum(1 for row in near_close if (row.get("bookmaker") or "unknown") == bookmaker),
+        }
+        for bookmaker in sorted({row.get("bookmaker") or "unknown" for row in rows})
+    }
+    quality_by_league = {
+        league: {
+            "rows": sum(1 for row in rows if (row.get("league") or "unknown") == league),
+            "valid": sum(1 for row in valid if (row.get("league") or "unknown") == league),
+            "near_close": sum(1 for row in near_close if (row.get("league") or "unknown") == league),
+        }
+        for league in sorted({row.get("league") or "unknown" for row in rows})
+    }
+    quality_by_market = {
+        market: {
+            "rows": sum(1 for row in rows if (row.get("market_type") or "unknown") == market),
+            "valid": sum(1 for row in valid if (row.get("market_type") or "unknown") == market),
+            "near_close": sum(1 for row in near_close if (row.get("market_type") or "unknown") == market),
+        }
+        for market in sorted({row.get("market_type") or "unknown" for row in rows})
+    }
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "snapshots": snapshots_path,
         "rows_total": len(rows),
         "valid_rows": len(valid),
         "invalid_rows": len(rows) - len(valid),
+        "taken_rows": len(taken),
+        "near_close_rows": len(near_close),
         "sources": dict(Counter(row.get("source") or "unknown" for row in valid)),
         "bookmakers": dict(Counter(row.get("bookmaker") or "unknown" for row in valid)),
         "leagues": dict(Counter(row.get("league") or "unknown" for row in valid)),
         "markets": dict(markets),
-        "near_close_rows": len(near_close),
         "near_close_coverage": _pct(len(near_close), len(valid)),
         "duplicates": len(ids) - len(set(ids)),
         "matches_count": len(match_counter),
@@ -63,6 +109,18 @@ def build_quality_report(snapshots_path: str) -> Dict[str, Any]:
             "h2h": markets.get("h2h", 0) > 0,
             "total": markets.get("total", 0) > 0,
             "btts": markets.get("btts", 0) > 0,
+        },
+        "quality_by_source": quality_by_source,
+        "quality_by_bookmaker": quality_by_bookmaker,
+        "quality_by_league": quality_by_league,
+        "quality_by_market": quality_by_market,
+        "invalid_odds_examples": invalid_examples,
+        "duplicate_examples": duplicate_examples[:20],
+        "coverage_by_date": by_date,
+        "capability": {
+            "can_create_shadow_observations": bool(taken),
+            "can_match_closing": bool(near_close),
+            "can_compute_clv": bool(taken and near_close),
         },
         "clv_capacity": clv_capacity,
         "recommendations": recommendations,

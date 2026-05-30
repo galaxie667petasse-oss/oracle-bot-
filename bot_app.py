@@ -81,7 +81,7 @@ async def run_scan(ctx, force=False):
         for i, p in enumerate(top, 1):
             idx = displayed.index(p)
             kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ GAGNÉ", callback_data=f"res:{day['key']}:{idx}:win"), InlineKeyboardButton("❌ PERDU", callback_data=f"res:{day['key']}:{idx}:loss"), InlineKeyboardButton("🚫 Annuler", callback_data=f"res:{day['key']}:{idx}:cancel")]])
-            await ctx.bot.send_message(settings.chat_id, pick_card(i, p, "PARI CONSEILLÉ"), parse_mode=ParseMode.HTML, reply_markup=kb)
+            await ctx.bot.send_message(settings.chat_id, pick_card(i, p, "OBSERVATION"), parse_mode=ParseMode.HTML, reply_markup=kb)
     else:
         await ctx.bot.send_message(settings.chat_id, "🏆 <b>OBSERVATIONS ORACLE</b>\nAucune selection activee aujourd'hui. Le systeme prefere ne rien jouer plutot que forcer une selection faible.", parse_mode=ParseMode.HTML)
 

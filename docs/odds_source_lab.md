@@ -38,3 +38,15 @@ python odds_source_quality_report.py --snapshots reports/odds_snapshots.csv --ou
 ## Pourquoi ce lab existe
 
 `data/MATCHES.csv` contient des colonnes `C_LTH/C_LTA`, mais V7.8 a montre que leurs valeurs ressemblent a des probabilites ou codes entre 0 et 1, pas a des cotes decimales. Il faut donc capturer ou importer des cotes fiables ailleurs avant de parler de CLV.
+
+## V8.4 : workflow praticable
+
+V8.4 ajoute :
+
+- `odds_lab_wizard.py` pour guider les commandes ;
+- `manual_odds_import.py --rejects-output --summary-json --strict` ;
+- `odds_snapshot_store.py --validate --filter --near-close-only` ;
+- `odds_intake_audit.py` pour verifier la chaine complete ;
+- `odds_e2e_demo.py` pour tester le workflow sans vraie donnee.
+
+Le principe important : les snapshots `is_near_close=true` ne sont jamais convertis en taken odds par defaut.

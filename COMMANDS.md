@@ -744,7 +744,69 @@ python oracle_ops.py --odds-lab
 python report_runner.py --odds-lab --skip-dashboard
 ```
 
-## 25. Git workflow
+## 25. V8.4 Odds Lab Usability
+
+Wizard :
+
+```bash
+python odds_lab_wizard.py --status
+python odds_lab_wizard.py --make-templates
+python odds_lab_wizard.py --validate-manual reports/manual_odds_snapshot.csv
+python odds_lab_wizard.py --import-manual reports/manual_odds_snapshot.csv
+python odds_lab_wizard.py --dry-run-full
+python odds_lab_wizard.py --demo
+python odds_lab_wizard.py --next-actions
+```
+
+Manual import :
+
+```bash
+python manual_odds_import.py --input reports/manual_odds_snapshot.csv --store reports/odds_snapshots.csv --rejects-output reports/manual_odds_rejects.csv --summary-json reports/manual_odds_import_summary.json
+```
+
+Store :
+
+```bash
+python odds_snapshot_store.py --summary
+python odds_snapshot_store.py --validate
+python odds_snapshot_store.py --near-close-only --output reports/odds_near_close.csv
+```
+
+To shadow :
+
+```bash
+python odds_to_shadow.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --dry-run
+python odds_to_shadow.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --mode observation --taken-only
+```
+
+Closing matcher :
+
+```bash
+python odds_closing_matcher.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --dry-run --prefer-latest-before-kickoff
+python odds_closing_matcher.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --prefer-latest-before-kickoff
+```
+
+Audit :
+
+```bash
+python odds_intake_audit.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --output reports/odds_intake_audit.json --html reports/odds_intake_audit.html
+```
+
+Demo :
+
+```bash
+python odds_e2e_demo.py --output-dir reports/odds_e2e_demo
+```
+
+Ops :
+
+```bash
+python oracle_ops.py --odds-status
+python oracle_ops.py --odds-next
+python report_runner.py --odds-intake --skip-dashboard
+```
+
+## 26. Git workflow
 
 ```bash
 git status --short
@@ -759,7 +821,7 @@ Verifier avant commit qu'aucun fichier sensible n'est ajoute :
 git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.json" data external_data .env variable reports
 ```
 
-## 26. Ce qu'il ne faut pas faire
+## 27. Ce qu'il ne faut pas faire
 
 - Ne pas modifier `main.py` ou `Dockerfile` sans bug bloquant prouve.
 - Ne pas modifier `oracle_db.json`, les backups ou `data/MATCHES.csv` pour stabiliser la release.

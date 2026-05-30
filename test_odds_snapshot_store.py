@@ -30,6 +30,14 @@ def main():
         summary = odds_snapshot_store.summarize_snapshots(str(store))
         assert summary["rows_total"] == 2
         assert summary["near_close_rows"] == 2
+        assert summary["clv_readiness_potential"] == "near_close_only"
+        validation = odds_snapshot_store.validate_store(str(store))
+        assert validation["valid"] is True
+        filtered = odds_snapshot_store.filter_snapshots(str(store), market="h2h")
+        assert len(filtered) == 2
+        near = Path(tmp) / "reports" / "near.csv"
+        odds_snapshot_store.export_near_close(str(store), str(near))
+        assert near.exists()
         dedupe = odds_snapshot_store.dedupe_snapshots(str(store))
         assert dedupe["removed"] == 1
         export = Path(tmp) / "reports" / "export.csv"

@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V8.3 Odds Source Adapter Lab, Odds Snapshot Intake & Shadow Automation.
+V8.4 Odds Lab Usability, Manual Snapshot Workflow, Intake QA & No-Network Safety.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. Aucun signal robuste active. Aucun changement V8.3 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. Aucun signal robuste active. Aucun changement V8.4 ne branche Telegram, Railway ou un pick automatique.
 
 V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre operations et le gate de preuve.
 
@@ -165,3 +165,17 @@ V8.3 prepare la collecte de cotes propre sans activer de reseau :
 - integration `oracle_ops.py --odds-lab` et `report_runner.py --odds-lab`.
 
 Le blocage central reste inchange : sans CLV fiable, sans sample suffisant et sans validation historique/live, aucun signal robuste n'est active.
+
+## V8.4 Odds Lab Usability
+
+V8.4 rend la collecte manuelle praticable :
+
+- wizard CLI `odds_lab_wizard.py` ;
+- validation manuelle stricte et fichiers de rejets ;
+- store snapshots validable et filtrable ;
+- conversion taken-only par defaut vers shadow ;
+- matching near-close plus prudent ;
+- audit intake odds ;
+- demo end-to-end synthetique.
+
+Le statut reste laboratoire local. Les snapshots ne deviennent une preuve que si les cotes sont reelles, horodatees, matchables et accumulees sur un sample significatif.

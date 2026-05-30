@@ -1,5 +1,7 @@
 import argparse
+import csv
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -11,6 +13,31 @@ from team_name_normalizer import normalize_team_name
 
 def _norm(value: Any) -> str:
     return str(value or "").strip().lower()
+
+
+def _parse_dt(value: Any):
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except Exception:
+        try:
+            return datetime.fromisoformat(text[:19])
+        except Exception:
+            return None
+
+
+def _minutes_before_kickoff(snapshot: Dict[str, Any]):
+    captured = _parse_dt(snapshot.get("captured_at"))
+    kickoff = _parse_dt(snapshot.get("kickoff_time"))
+    if not captured or not kickoff:
+        return None
+    if captured.tzinfo is None and kickoff.tzinfo is not None:
+        captured = captured.replace(tzinfo=kickoff.tzinfo)
+    if kickoff.tzinfo is None and captured.tzinfo is not None:
+        kickoff = kickoff.replace(tzinfo=captured.tzinfo)
+    return (kickoff - captured).total_seconds() / 60.0
 
 
 def _match_key(row: Dict[str, Any], same_bookmaker: bool = False) -> Tuple[str, ...]:
@@ -34,6 +61,9 @@ def match_closing_snapshots(
     same_bookmaker_only: bool = False,
     overwrite: bool = False,
     allow_ambiguous: bool = False,
+    time_window_minutes: int = 0,
+    prefer_latest_before_kickoff: bool = False,
+    prefer_same_bookmaker: bool = False,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
     ledger_rows = read_ledger(ledger_path)
@@ -48,18 +78,41 @@ def match_closing_snapshots(
     matched = 0
     unmatched = 0
     ambiguous = 0
+    skipped_existing = 0
+    clv_added: List[float] = []
     errors: List[str] = []
     preview: List[Dict[str, Any]] = []
+    unmatched_rows: List[Dict[str, Any]] = []
+    ambiguous_rows: List[Dict[str, Any]] = []
     for row in ledger_rows:
         if str(row.get("closing_odds") or "").strip() and not overwrite:
+            skipped_existing += 1
             continue
         key = _match_key(row, same_bookmaker_only)
         candidates = grouped.get(key) or []
+        if time_window_minutes:
+            filtered = []
+            for candidate in candidates:
+                minutes = _minutes_before_kickoff(candidate)
+                if minutes is None or 0 <= minutes <= time_window_minutes:
+                    filtered.append(candidate)
+            candidates = filtered
+        if prefer_same_bookmaker and candidates:
+            same = [candidate for candidate in candidates if _norm(candidate.get("bookmaker")) == _norm(row.get("bookmaker"))]
+            if same:
+                candidates = same
         if not candidates:
             unmatched += 1
+            unmatched_rows.append(row)
             continue
+        if len(candidates) > 1 and prefer_latest_before_kickoff:
+            before = [(candidate, _minutes_before_kickoff(candidate)) for candidate in candidates]
+            before = [(candidate, minutes) for candidate, minutes in before if minutes is not None and minutes >= 0]
+            if before:
+                candidates = [sorted(before, key=lambda item: item[1])[0][0]]
         if len(candidates) > 1 and not allow_ambiguous:
             ambiguous += 1
+            ambiguous_rows.append({"shadow_id": row.get("shadow_id"), "candidates": len(candidates), "match_date": row.get("match_date"), "home_team": row.get("home_team"), "away_team": row.get("away_team")})
             continue
         candidate = sorted(candidates, key=lambda item: item.get("snapshot_id") or "")[0]
         try:
@@ -77,6 +130,7 @@ def match_closing_snapshots(
             "clv_percent": compute_clv(taken, closing)["clv_percent"],
         }
         preview.append(change)
+        clv_added.append(float(change["clv_percent"]))
         if not dry_run:
             row["closing_odds"] = str(closing)
             row["closing_source"] = change["closing_source"]
@@ -90,15 +144,35 @@ def match_closing_snapshots(
         "shadow_rows": len(ledger_rows),
         "near_close_snapshots": len(snapshots),
         "matches_found": matched,
+        "matched": matched,
         "closing_updated": updated,
+        "updated": updated,
+        "skipped_existing": skipped_existing,
         "unmatched": unmatched,
         "ambiguous": ambiguous,
+        "clv_mean_added": round(sum(clv_added) / len(clv_added), 6) if clv_added else None,
         "errors": errors,
         "dry_run": dry_run,
         "preview": preview[:20],
+        "unmatched_rows": unmatched_rows[:50],
+        "ambiguous_rows": ambiguous_rows[:50],
         "lab_only": True,
         "can_influence_picks": False,
     }
+
+
+def write_dict_csv(rows: List[Dict[str, Any]], output: str) -> Path:
+    target = Path(output)
+    if "data" in [part.lower() for part in target.parts]:
+        raise ValueError("Les sorties closing matcher doivent rester hors data/.")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = sorted({key for row in rows for key in row.keys()}) or ["empty"]
+    with target.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+    return target
 
 
 def print_report(report: Dict[str, Any]) -> None:
@@ -107,8 +181,10 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Snapshots near-close: {report.get('near_close_snapshots')}")
     print(f"- Correspondances trouvees: {report.get('matches_found')}")
     print(f"- Closing mises a jour: {report.get('closing_updated')}")
+    print(f"- Closing existantes ignorees: {report.get('skipped_existing')}")
     print(f"- Non matches: {report.get('unmatched')}")
     print(f"- Ambiguites: {report.get('ambiguous')}")
+    print(f"- CLV moyenne ajoutee: {report.get('clv_mean_added')}")
     print("- Aucune cote closing n'est inventee.")
 
 
@@ -120,7 +196,13 @@ def parse_args(argv=None):
     parser.add_argument("--same-bookmaker-only", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--allow-ambiguous", action="store_true")
+    parser.add_argument("--time-window-minutes", type=int, default=0)
+    parser.add_argument("--prefer-latest-before-kickoff", action="store_true")
+    parser.add_argument("--prefer-same-bookmaker", action="store_true")
     parser.add_argument("--report", default="")
+    parser.add_argument("--summary-json", default="")
+    parser.add_argument("--unmatched-output", default="")
+    parser.add_argument("--ambiguous-output", default="")
     return parser.parse_args(argv)
 
 
@@ -133,15 +215,23 @@ def main(argv=None) -> int:
             same_bookmaker_only=args.same_bookmaker_only,
             overwrite=args.overwrite,
             allow_ambiguous=args.allow_ambiguous,
+            time_window_minutes=args.time_window_minutes,
+            prefer_latest_before_kickoff=args.prefer_latest_before_kickoff,
+            prefer_same_bookmaker=args.prefer_same_bookmaker,
             dry_run=args.dry_run,
         )
         print_report(report)
-        if args.report:
-            target = Path(args.report)
+        output_path = args.summary_json or args.report
+        if output_path:
+            target = Path(output_path)
             if "data" in [part.lower() for part in target.parts]:
                 raise ValueError("Le rapport closing matcher doit rester hors data/.")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        if args.unmatched_output:
+            print(f"- Non matches CSV: {write_dict_csv(report.get('unmatched_rows') or [], args.unmatched_output)}")
+        if args.ambiguous_output:
+            print(f"- Ambiguites CSV: {write_dict_csv(report.get('ambiguous_rows') or [], args.ambiguous_output)}")
         return 0
     except Exception as exc:
         print(f"Erreur: {exc}")

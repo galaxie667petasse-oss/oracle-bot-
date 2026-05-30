@@ -15,6 +15,8 @@ from shadow_workflow import workflow_init
 from shadow_templates import create_candidates_template, create_closing_template, create_results_template
 from manual_odds_import import write_template as write_manual_odds_template
 from odds_closing_matcher import match_closing_snapshots
+from odds_intake_audit import build_intake_audit, write_html as write_intake_html, write_json as write_intake_json
+from odds_lab_wizard import build_status as odds_wizard_status, dry_run_full as odds_wizard_dry_run, import_manual as odds_wizard_import_manual, make_templates as odds_wizard_templates, next_actions as odds_wizard_next, validate_manual as odds_wizard_validate_manual
 from odds_snapshot_store import DEFAULT_STORE as DEFAULT_ODDS_STORE, init_store, summarize_snapshots
 from odds_source_config import load_odds_source_config, validate_config, write_example
 from odds_source_quality_report import build_quality_report, write_html as write_odds_quality_html, write_json as write_odds_quality_json
@@ -43,6 +45,9 @@ KEY_MODULES = [
     "odds_to_shadow.py",
     "odds_closing_matcher.py",
     "odds_source_quality_report.py",
+    "odds_lab_wizard.py",
+    "odds_intake_audit.py",
+    "odds_e2e_demo.py",
 ]
 
 
@@ -221,6 +226,13 @@ def odds_lab(reports_dir: str, store: str = DEFAULT_ODDS_STORE) -> Dict[str, Any
     }
 
 
+def odds_intake_audit_report(reports_dir: str, snapshots: str, ledger: str) -> Dict[str, Any]:
+    report = build_intake_audit(snapshots, ledger)
+    write_intake_json(report, _reports_path(reports_dir, "odds_intake_audit.json"))
+    write_intake_html(report, _reports_path(reports_dir, "odds_intake_audit.html"))
+    return report
+
+
 def full_local(ledger: str, reports_dir: str, skip_benchmark: bool = False, skip_dashboard: bool = False) -> Dict[str, Any]:
     Path(reports_dir).mkdir(parents=True, exist_ok=True)
     health = build_health(Path("."), ledger)
@@ -294,6 +306,12 @@ def parse_args(argv=None):
     actions.add_argument("--odds-to-shadow", action="store_true")
     actions.add_argument("--closing-match", action="store_true")
     actions.add_argument("--odds-lab", action="store_true")
+    actions.add_argument("--odds-status", action="store_true")
+    actions.add_argument("--odds-wizard", action="store_true")
+    actions.add_argument("--odds-validate-manual", default="")
+    actions.add_argument("--odds-import-manual", default="")
+    actions.add_argument("--odds-intake-audit", action="store_true")
+    actions.add_argument("--odds-next", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--odds-store", default=DEFAULT_ODDS_STORE)
@@ -355,6 +373,27 @@ def main(argv=None) -> int:
             print_odds_report("closing matcher", closing_match_report(args.snapshots, args.ledger, args.reports_dir, apply=args.apply))
         elif args.odds_lab:
             print_odds_report("odds lab", odds_lab(args.reports_dir, args.odds_store))
+        elif args.odds_status:
+            print_odds_report("odds status", odds_wizard_status(args.odds_store, args.ledger, args.reports_dir))
+        elif args.odds_wizard:
+            print("Oracle Ops - odds wizard")
+            print("1. python oracle_ops.py --odds-template")
+            print("2. Remplir reports/manual_odds_snapshot.csv")
+            print("3. python oracle_ops.py --odds-validate-manual reports/manual_odds_snapshot.csv")
+            print("4. python oracle_ops.py --odds-import-manual reports/manual_odds_snapshot.csv --apply")
+            print("5. python oracle_ops.py --odds-to-shadow --apply apres dry-run propre")
+            print("- Laboratoire local: aucune mise, aucun reseau.")
+        elif args.odds_validate_manual:
+            print_odds_report("odds validate manual", odds_wizard_validate_manual(args.odds_validate_manual))
+        elif args.odds_import_manual:
+            if not args.apply:
+                print_odds_report("odds import manual dry-run", odds_wizard_validate_manual(args.odds_import_manual))
+            else:
+                print_odds_report("odds import manual", odds_wizard_import_manual(args.odds_import_manual, args.odds_store, allow_errors=False))
+        elif args.odds_intake_audit:
+            print_odds_report("odds intake audit", odds_intake_audit_report(args.reports_dir, args.snapshots, args.ledger))
+        elif args.odds_next:
+            print_odds_report("odds next", {"next_actions": odds_wizard_next(args.odds_store, args.ledger)})
         else:
             print_health(build_health(Path("."), args.ledger))
         return 0

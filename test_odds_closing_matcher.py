@@ -45,6 +45,21 @@ def main():
         odds_snapshot_store.append_snapshot_rows(str(snapshots2), [snap("Book A"), snap("Book B")])
         ambiguous = odds_closing_matcher.match_closing_snapshots(str(ledger2), str(snapshots2), dry_run=False)
         assert ambiguous["ambiguous"] == 1
+        summary = Path(tmp) / "reports" / "match_summary.json"
+        unmatched = Path(tmp) / "reports" / "unmatched.csv"
+        ambiguous_csv = Path(tmp) / "reports" / "ambiguous.csv"
+        assert odds_closing_matcher.main([
+            "--ledger", str(ledger2),
+            "--snapshots", str(snapshots2),
+            "--dry-run",
+            "--prefer-latest-before-kickoff",
+            "--summary-json", str(summary),
+            "--unmatched-output", str(unmatched),
+            "--ambiguous-output", str(ambiguous_csv),
+        ]) == 0
+        assert summary.exists()
+        assert unmatched.exists()
+        assert ambiguous_csv.exists()
 
     print("test_odds_closing_matcher ok")
 

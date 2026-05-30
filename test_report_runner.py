@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, odds_lab_commands, ops_commands, run_report, shadow_commands, xg_understat_commands
+from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, odds_intake_commands, odds_lab_commands, ops_commands, run_report, shadow_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -231,9 +231,21 @@ Understat xG Full Pipeline Quality Gate
             "matches_found": 1,
             "closing_updated": 0,
         }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "odds_intake_audit.json").write_text(json.dumps({
+            "taken_snapshots": 2,
+            "near_close_snapshots": 1,
+            "valid_odds": 3,
+            "invalid_odds": 0,
+            "shadow_linked_to_snapshots": 1,
+            "closing_coverage_possible": 50.0,
+            "closing_coverage_real": 0.0,
+            "verdict": "shadow_started",
+            "recommendations": ["matcher near-close"],
+        }, ensure_ascii=False), encoding="utf-8")
         write_report(report_dir / "odds_source_config.txt", "Configuration sources de cotes Oracle\n- Validation: OK\n")
         write_report(report_dir / "odds_snapshot_store.txt", "Resume snapshots de cotes Oracle\n- Lignes totales: 3\n")
         write_report(report_dir / "odds_source_quality.txt", "Qualite des sources de cotes Oracle\n- Capacite CLV: partial\n")
+        write_report(report_dir / "odds_intake_audit.txt", "Audit intake odds Oracle\n- Verdict: shadow_started\n")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -257,6 +269,7 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Shadow workflow init" for command in command_set("daily-shadow"))
         assert any(command.name == "Oracle ops health" for command in command_set("ops"))
         assert any(command.name == "Odds source config" for command in command_set("odds-lab"))
+        assert any(command.name == "Odds intake audit" for command in command_set("odds-intake"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
@@ -289,6 +302,9 @@ Understat xG Full Pipeline Quality Gate
         assert any("odds_source_config.py" in command.args for command in odds_cmds)
         assert any("odds_source_quality_report.py" in command.args for command in odds_cmds)
         assert not any("dashboard_builder.py" in command.args for command in odds_cmds)
+        intake_cmds = odds_intake_commands(str(root / "reports" / "shadow_ledger.csv"), str(root / "reports" / "odds_snapshots.csv"), skip_evidence=True, skip_quality=True, skip_dashboard=True)
+        assert any("odds_intake_audit.py" in command.args for command in intake_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in intake_cmds)
         try:
             closing_preview_commands("features.csv", "matches.csv", str(root / "data" / "preview.csv"))
             raise AssertionError("preview data non bloquee")
@@ -317,6 +333,7 @@ Understat xG Full Pipeline Quality Gate
         assert "Odds to Shadow Intake" in html
         assert "Closing Matcher Status" in html
         assert "Source Quality" in html
+        assert "Odds Intake Workflow" in html
         assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 

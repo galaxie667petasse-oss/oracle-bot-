@@ -689,6 +689,106 @@ def odds_lab_commands(
     return commands
 
 
+def odds_intake_commands(
+    ledger: str = "reports/shadow_ledger.csv",
+    snapshots: str = "reports/odds_snapshots.csv",
+    skip_evidence: bool = False,
+    skip_quality: bool = False,
+    skip_dashboard: bool = False,
+) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "Odds snapshot summary",
+            "odds_snapshot_store.txt",
+            ["odds_snapshot_store.py", "--store", snapshots, "--summary", "--output", "{report_dir}/odds_snapshot_summary.json"],
+            timeout=300,
+        )
+    ]
+    if not skip_quality:
+        commands.append(
+            ReportCommand(
+                "Odds source quality",
+                "odds_source_quality.txt",
+                [
+                    "odds_source_quality_report.py",
+                    "--snapshots",
+                    snapshots,
+                    "--output",
+                    "{report_dir}/odds_source_quality.json",
+                    "--html",
+                    "{report_dir}/odds_source_quality.html",
+                ],
+                timeout=300,
+            )
+        )
+    commands.append(
+        ReportCommand(
+            "Odds intake audit",
+            "odds_intake_audit.txt",
+            [
+                "odds_intake_audit.py",
+                "--snapshots",
+                snapshots,
+                "--ledger",
+                ledger,
+                "--output",
+                "{report_dir}/odds_intake_audit.json",
+                "--html",
+                "{report_dir}/odds_intake_audit.html",
+            ],
+            timeout=300,
+        )
+    )
+    if not skip_quality:
+        commands.append(
+            ReportCommand(
+                "Shadow quality audit",
+                "shadow_quality_audit.txt",
+                [
+                    "shadow_quality_audit.py",
+                    "--ledger",
+                    ledger,
+                    "--output",
+                    "{report_dir}/shadow_quality_audit.json",
+                    "--html",
+                    "{report_dir}/shadow_quality_audit.html",
+                ],
+                timeout=600,
+            )
+        )
+    if not skip_evidence:
+        commands.append(
+            ReportCommand(
+                "Evidence gate odds intake",
+                "evidence_gate.txt",
+                [
+                    "evidence_gate.py",
+                    "--quality-audit",
+                    "{report_dir}/shadow_quality_audit.json",
+                    "--big5-summary",
+                    "reports/big5_xg_summary.json",
+                    "--clv-readiness",
+                    "reports/clv_readiness.json",
+                    "--output",
+                    "{report_dir}/evidence_gate.json",
+                    "--html",
+                    "{report_dir}/evidence_gate.html",
+                ],
+                timeout=600,
+            )
+        )
+    if not skip_dashboard:
+        commands.append(
+            ReportCommand(
+                "Dashboard odds intake",
+                "dashboard_builder.txt",
+                ["dashboard_builder.py", "--input", "{report_dir}"],
+                timeout=300,
+            )
+        )
+    return commands
+
+
 def timestamp() -> str:
     return datetime.now().strftime("%Y_%m_%d_%H%M%S")
 
@@ -725,6 +825,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return ops_commands()
     if mode == "odds-lab":
         return odds_lab_commands()
+    if mode == "odds-intake":
+        return odds_intake_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -843,6 +945,7 @@ def parse_args(argv=None):
     mode.add_argument("--daily-shadow", action="store_true", help="Lance le workflow quotidien shadow local")
     mode.add_argument("--ops", action="store_true", help="Lance le centre operations shadow local")
     mode.add_argument("--odds-lab", action="store_true", help="Lance le laboratoire local des sources de cotes")
+    mode.add_argument("--odds-intake", action="store_true", help="Lance l'audit local du workflow odds intake")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
@@ -873,6 +976,7 @@ def main(argv=None) -> None:
         else "daily-shadow" if args.daily_shadow
         else "ops" if args.ops
         else "odds-lab" if args.odds_lab
+        else "odds-intake" if args.odds_intake
         else "big5-xg" if args.big5_xg
         else "xg-understat" if args.xg_understat
         else "full" if args.full
@@ -933,6 +1037,14 @@ def main(argv=None) -> None:
         )
     elif mode == "odds-lab":
         commands = odds_lab_commands(
+            ledger=args.ledger,
+            snapshots=args.snapshots,
+            skip_evidence=args.skip_evidence,
+            skip_quality=args.skip_quality,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "odds-intake":
+        commands = odds_intake_commands(
             ledger=args.ledger,
             snapshots=args.snapshots,
             skip_evidence=args.skip_evidence,

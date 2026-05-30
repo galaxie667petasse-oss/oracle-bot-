@@ -56,6 +56,9 @@ ESSENTIAL_FILES = [
     "odds_to_shadow.py",
     "odds_closing_matcher.py",
     "odds_source_quality_report.py",
+    "odds_lab_wizard.py",
+    "odds_intake_audit.py",
+    "odds_e2e_demo.py",
     "config/odds_sources.example.json",
     "report_runner.py",
     "dashboard_builder.py",
@@ -71,6 +74,8 @@ SENSITIVE_PATTERNS = [
     ".env",
     "variable/",
     "reports/",
+    "reports/odds_snapshots.csv",
+    "reports/manual_odds_snapshot*.csv",
     "config/odds_sources.json",
     "*.env",
 ]
@@ -111,6 +116,9 @@ MAIN_TESTS = [
     "test_odds_to_shadow.py",
     "test_odds_closing_matcher.py",
     "test_odds_source_quality_report.py",
+    "test_odds_lab_wizard.py",
+    "test_odds_intake_audit.py",
+    "test_odds_e2e_demo.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -171,6 +179,9 @@ IMPORT_MODULES = [
     "odds_to_shadow",
     "odds_closing_matcher",
     "odds_source_quality_report",
+    "odds_lab_wizard",
+    "odds_intake_audit",
+    "odds_e2e_demo",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -220,6 +231,9 @@ OFFLINE_COMMAND_FILES = [
     "odds_to_shadow.py",
     "odds_closing_matcher.py",
     "odds_source_quality_report.py",
+    "odds_lab_wizard.py",
+    "odds_intake_audit.py",
+    "odds_e2e_demo.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [
@@ -277,7 +291,8 @@ def _pattern_present(lines: Sequence[str], pattern: str) -> bool:
         cleaned = _normalise_gitignore_line(line)
         if not cleaned or cleaned.startswith("#"):
             continue
-        if cleaned.rstrip("/") == wanted:
+        cleaned = cleaned.rstrip("/")
+        if cleaned == wanted or wanted.startswith(cleaned + "/"):
             return True
     return False
 
@@ -339,7 +354,7 @@ def check_odds_secret_hygiene(root: Path, result: AuditResult, use_git: bool = T
         result.add_warning("Verification git des secrets odds ignoree par le test.")
         return
     try:
-        tracked_config = _git_ls_files(root, ["config/odds_sources.json", ".env", "*.env", "reports/odds_snapshots.csv"])
+        tracked_config = _git_ls_files(root, ["config/odds_sources.json", ".env", "*.env", "reports/odds_snapshots.csv", "reports/manual_odds_snapshot*.csv"])
         tracked_files = _git_ls_files(root, ["*.py", "*.md", "*.json", "*.txt", "config/*"])
     except Exception as exc:
         result.add_warning(f"Impossible de verifier les secrets odds par git: {exc}")
@@ -359,6 +374,47 @@ def check_odds_secret_hygiene(root: Path, result: AuditResult, use_git: bool = T
         result.add_error("Affectation de cle API trouvee dans fichiers suivis: " + ", ".join(risky))
     else:
         result.add_ok("Aucune affectation de cle API odds detectee dans les fichiers suivis.")
+    fixture_risky = []
+    for rel in _git_ls_files(root, ["tests/fixtures/*"]):
+        text = _read_text(root / rel)
+        if "sk_live" in text or "secret" in text.lower() or "api_key" in text.lower():
+            fixture_risky.append(rel)
+    if fixture_risky:
+        result.add_error("Fixture potentiellement secrete: " + ", ".join(fixture_risky))
+    else:
+        result.add_ok("Les fixtures odds ne contiennent pas de cle evidente.")
+
+
+def check_no_network_safety(root: Path, result: AuditResult) -> None:
+    problems = []
+    for filename in ["api_football_odds_adapter.py", "the_odds_api_adapter.py"]:
+        text = _read_text(root / filename)
+        if text.strip() == "# fichier test":
+            continue
+        if "--allow-network" not in text or "Reseau refuse par defaut" not in text:
+            problems.append(filename)
+    if problems:
+        result.add_error("Adaptateurs reseau sans garde --allow-network clair: " + ", ".join(problems))
+    else:
+        result.add_ok("Les adaptateurs odds gardent le reseau bloque par defaut.")
+
+
+def check_forbidden_wording(root: Path, result: AuditResult) -> None:
+    problems = []
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = str(path.relative_to(root)).replace("\\", "/")
+        if rel.startswith("reports/") or rel.startswith("external_data/") or rel.startswith("__pycache__/") or ".git/" in rel:
+            continue
+        text = _read_text(path).lower()
+        forbidden = "pari " + "conseillé"
+        if forbidden in text:
+            problems.append(rel)
+    if problems:
+        result.add_error("Expression interdite detectee: " + ", ".join(problems))
+    else:
+        result.add_ok("Expression interdite absente hors reports/external_data.")
 
 
 def check_tests(root: Path, result: AuditResult) -> None:
@@ -466,6 +522,8 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     check_gitignore(root, result)
     check_sensitive_tracking(root, result, use_git=use_git)
     check_odds_secret_hygiene(root, result, use_git=use_git)
+    check_no_network_safety(root, result)
+    check_forbidden_wording(root, result)
     check_tests(root, result)
     if check_import_modules:
         check_imports(result)

@@ -30,6 +30,10 @@ def main():
         assert report["invalid_rows"] == 1
         assert report["near_close_rows"] == 2
         assert report["clv_capacity"] == "usable"
+        assert report["taken_rows"] == 0
+        assert report["capability"]["can_match_closing"] is True
+        assert "manual_csv" in report["quality_by_source"]
+        assert report["invalid_odds_examples"]
         json_out = Path(tmp) / "reports" / "quality.json"
         html_out = Path(tmp) / "reports" / "quality.html"
         odds_source_quality_report.write_json(report, str(json_out))

@@ -85,6 +85,8 @@ def test_release_candidate_docs_exist_and_have_sections():
         "evidence gate",
         "odds source lab",
         "odds snapshot",
+        "manual odds workflow",
+        "odds intake",
         "statistical proof foundation",
         "clv",
         "reliability curves",
@@ -109,6 +111,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v8.1 shadow ux" in status
     assert "v8.2" in status
     assert "v8.3" in status
+    assert "v8.4" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -118,6 +121,9 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "odds_source_lab.md").exists()
     assert (root / "docs" / "free_odds_sources.md").exists()
     assert (root / "docs" / "odds_snapshot_format.md").exists()
+    assert (root / "docs" / "manual_odds_workflow.md").exists()
+    assert (root / "docs" / "odds_intake_audit.md").exists()
+    assert (root / "docs" / "odds_e2e_demo.md").exists()
 
 
 def main():

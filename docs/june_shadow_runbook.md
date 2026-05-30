@@ -91,3 +91,15 @@ Routine supplementaire pour juin :
 7. Matcher ce snapshot vers le ledger en dry-run.
 
 Un snapshot near-close aide le diagnostic, mais ne remplace pas une vraie source closing historique documentee.
+
+## Routine V8.4 recommandee
+
+```bash
+python odds_lab_wizard.py --status
+python odds_lab_wizard.py --make-templates
+python odds_lab_wizard.py --validate-manual reports/manual_odds_snapshot.csv
+python odds_lab_wizard.py --dry-run-full
+python odds_intake_audit.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --output reports/odds_intake_audit.json --html reports/odds_intake_audit.html
+```
+
+Lire d'abord les rejets et les ambiguites. Appliquer seulement apres verification humaine.

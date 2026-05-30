@@ -39,6 +39,10 @@ def main():
         assert Path(odds_lab["template"]["manual_odds_template"]).exists()
         assert oracle_ops.odds_summary(str(odds_store))["rows_total"] == 0
         assert oracle_ops.odds_config_report()["config_ok"] is True
+        status = oracle_ops.odds_wizard_status(str(odds_store), str(ledger), str(root / "reports"))
+        assert status["snapshots_total"] == 0
+        intake = oracle_ops.odds_intake_audit_report(str(root / "reports"), str(odds_store), str(ledger))
+        assert intake["verdict"] in {"shadow_started", "no_data", "snapshots_only"}
 
         absent = oracle_ops.build_health(root / "absent", str(ledger))
         assert absent["status"] == "bloquant"

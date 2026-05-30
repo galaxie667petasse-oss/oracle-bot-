@@ -714,3 +714,29 @@ python report_runner.py --odds-lab --skip-dashboard
 ```
 
 `C_LTH/C_LTA` dans `data/MATCHES.csv` restent rejetes comme cotes decimales non plausibles. V8.3 ne les transforme pas en CLV et ne fabrique aucune closing odds.
+
+## V8.4 Odds Lab Usability & Intake QA
+
+V8.4 rend le laboratoire odds utilisable au quotidien :
+
+- manual odds workflow documente pour les captures terrain ;
+- odds intake audit pour controler snapshots, shadow et closing ;
+- `odds_lab_wizard.py` guide le workflow manuel ;
+- `manual_odds_import.py` produit sorties valides, rejets, strict mode et resume JSON ;
+- `odds_snapshot_store.py` valide, filtre et exporte les snapshots near-close ;
+- `odds_to_shadow.py` ignore les near-close par defaut pour ne pas les confondre avec taken odds ;
+- `odds_closing_matcher.py` peut preferer le dernier snapshot avant kickoff et produire unmatched/ambiguous CSV ;
+- `odds_intake_audit.py` audite la chaine snapshots -> shadow -> closing ;
+- `odds_e2e_demo.py` cree une demo synthetique complete sans reseau.
+
+Commandes terrain :
+
+```bash
+python odds_lab_wizard.py --status
+python odds_lab_wizard.py --make-templates
+python odds_lab_wizard.py --validate-manual reports/manual_odds_snapshot.csv
+python odds_lab_wizard.py --dry-run-full
+python odds_lab_wizard.py --next-actions
+python odds_intake_audit.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --output reports/odds_intake_audit.json --html reports/odds_intake_audit.html
+python odds_e2e_demo.py --output-dir reports/odds_e2e_demo
+```

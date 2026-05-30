@@ -40,6 +40,7 @@ REPORT_FILES = {
     "odds_source_quality": "odds_source_quality.txt",
     "odds_to_shadow": "odds_to_shadow.txt",
     "odds_closing_matcher": "odds_closing_matcher.txt",
+    "odds_intake_audit": "odds_intake_audit.txt",
 }
 
 
@@ -149,6 +150,7 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     odds_summary = read_json_candidates(report_dir, ["odds_snapshot_summary.json"])
     odds_to_shadow = read_json_candidates(report_dir, ["odds_to_shadow_report.json"])
     odds_closing_matcher = read_json_candidates(report_dir, ["odds_closing_matcher_report.json"])
+    odds_intake = read_json_candidates(report_dir, ["odds_intake_audit.json"])
     pipeline_final = understat_pipeline.get("final_status") or {}
     pipeline_model = pipeline_final.get("xg_model") or {}
 
@@ -295,6 +297,16 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "odds_closing_matcher_available": bool(odds_closing_matcher),
         "odds_closing_updates": odds_closing_matcher.get("closing_updated"),
         "odds_closing_matches": odds_closing_matcher.get("matches_found"),
+        "odds_intake_available": bool(odds_intake),
+        "odds_intake_verdict": odds_intake.get("verdict"),
+        "odds_intake_taken": odds_intake.get("taken_snapshots"),
+        "odds_intake_near_close": odds_intake.get("near_close_snapshots"),
+        "odds_intake_valid": odds_intake.get("valid_odds"),
+        "odds_intake_invalid": odds_intake.get("invalid_odds"),
+        "odds_intake_linked": odds_intake.get("shadow_linked_to_snapshots"),
+        "odds_intake_possible_coverage": odds_intake.get("closing_coverage_possible"),
+        "odds_intake_real_coverage": odds_intake.get("closing_coverage_real"),
+        "odds_intake_next": odds_intake.get("recommendations") or [],
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -637,6 +649,22 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         f"recommandations: {', '.join(summary.get('odds_recommendations') or []) or 'aucune'}",
     ]
     parts.append(_card("Source Quality", "\n".join(source_quality_lines)))
+
+    intake_lines = [
+        f"rapport disponible: {summary.get('odds_intake_available')}",
+        f"taken snapshots: {summary.get('odds_intake_taken')}",
+        f"near-close snapshots: {summary.get('odds_intake_near_close')}",
+        f"valid odds: {summary.get('odds_intake_valid')}",
+        f"invalid odds: {summary.get('odds_intake_invalid')}",
+        f"observations shadow liees: {summary.get('odds_intake_linked')}",
+        f"closing match coverage possible: {summary.get('odds_intake_possible_coverage')}%",
+        f"closing coverage reelle: {summary.get('odds_intake_real_coverage')}%",
+        f"verdict intake: {summary.get('odds_intake_verdict')}",
+        f"next actions: {', '.join(summary.get('odds_intake_next') or []) or 'n/a'}",
+    ]
+    if texts["odds_intake_audit"]:
+        intake_lines.extend(_lines_matching(texts["odds_intake_audit"], ["Snapshots", "Coverage", "Verdict", "Action"], 20))
+    parts.append(_card("Odds Intake Workflow", "\n".join(intake_lines)))
 
     league_rows = []
     for item in (big5_xg.get("leagues") or []):

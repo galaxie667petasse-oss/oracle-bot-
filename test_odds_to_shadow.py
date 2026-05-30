@@ -25,17 +25,23 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         snapshots = Path(tmp) / "reports" / "odds.csv"
         ledger = Path(tmp) / "reports" / "shadow.csv"
-        odds_snapshot_store.append_snapshot_rows(str(snapshots), [snapshot()])
+        near = dict(snapshot())
+        near["is_near_close"] = "true"
+        odds_snapshot_store.append_snapshot_rows(str(snapshots), [snapshot(), near])
         dry = odds_to_shadow.snapshots_to_shadow(str(snapshots), str(ledger), dry_run=True)
         assert dry["rows_added"] == 1
+        assert dry["near_close_ignored"] == 1
         assert shadow_ledger.read_ledger(str(ledger)) == []
-        report = odds_to_shadow.snapshots_to_shadow(str(snapshots), str(ledger), dry_run=False)
+        report = odds_to_shadow.snapshots_to_shadow(str(snapshots), str(ledger), dry_run=False, source_filter="manual_csv", market_filter="h2h", max_rows=1)
         assert report["rows_added"] == 1
         assert len(shadow_ledger.read_ledger(str(ledger))) == 1
         dup = odds_to_shadow.snapshots_to_shadow(str(snapshots), str(ledger), dry_run=False)
         assert dup["duplicates_ignored"] == 1
         text = " ".join(row.get("reason", "") for row in shadow_ledger.read_ledger(str(ledger)))
         assert "selection active" not in text.lower()
+        summary = Path(tmp) / "reports" / "summary.json"
+        assert odds_to_shadow.main(["--snapshots", str(snapshots), "--ledger", str(ledger), "--dry-run", "--summary-json", str(summary)]) == 0
+        assert summary.exists()
 
     print("test_odds_to_shadow ok")
 

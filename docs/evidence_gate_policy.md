@@ -51,3 +51,14 @@ L'evidence gate peut etre informe par les rapports odds, mais ses seuils ne chan
 - source mal documentee : analyse approfondie requise.
 
 Les adaptateurs de cotes ne court-circuitent jamais la gouvernance.
+
+## V8.4 Intake QA
+
+L'audit intake peut ameliorer la qualite du ledger, mais il ne remplace pas les gates :
+
+- `taken_without_near_close` indique une CLV manquante ;
+- `near_close_without_taken` indique une capture non exploitable ;
+- `ledger_without_closing` garde le statut non valide ;
+- `ledger_without_result` empeche l'analyse ROI.
+
+Un intake propre permet de continuer la collecte, pas de conclure.

@@ -61,3 +61,18 @@ python oracle_ops.py --odds-lab
 ```
 
 Par defaut, `--odds-to-shadow` et `--closing-match` restent en dry-run. Utiliser `--apply` seulement apres verification humaine. Aucun reseau n'est lance par ces commandes.
+
+## V8.4 Odds intake
+
+Commandes ajoutees :
+
+```bash
+python oracle_ops.py --odds-status
+python oracle_ops.py --odds-wizard
+python oracle_ops.py --odds-validate-manual reports/manual_odds_snapshot.csv
+python oracle_ops.py --odds-import-manual reports/manual_odds_snapshot.csv --apply
+python oracle_ops.py --odds-intake-audit
+python oracle_ops.py --odds-next
+```
+
+Sans `--apply`, l'import manuel via ops reste une validation/dry-run.
