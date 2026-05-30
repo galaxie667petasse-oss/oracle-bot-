@@ -204,3 +204,14 @@ Regles :
 - Big 5 xG sans CLV reste observation.
 
 Aucun statut V8.2 ne declenche Telegram, Railway, staking ou mise automatique.
+
+## V8.3 Odds Source Lab et promotion
+
+Les snapshots de cotes ajoutes par V8.3 ne changent pas les seuils de promotion :
+
+- un snapshot `taken odds` ne prouve rien seul ;
+- un snapshot `near-close` aide la mesure CLV seulement si match, marche, side et timestamp sont fiables ;
+- une source API gratuite peut etre utile au laboratoire, mais ne remplace pas une closing historique documentee ;
+- sans CLV positive fiable et sample suffisant, tout signal reste `observation` ou `watchlist`.
+
+`odds_to_shadow.py` et `odds_closing_matcher.py` ne peuvent pas activer de strategie. Ils alimentent uniquement le ledger de preuve.

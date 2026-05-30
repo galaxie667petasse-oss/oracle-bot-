@@ -388,3 +388,14 @@ La couche V8.2 ne modifie pas les conclusions xG. Elle ajoute un controle operat
 - `shadow_simulator.py` permet de tester le pipeline sans vraie donnee.
 
 Le Big 5 xG complet reste une force technique, mais sans CLV live/manuelle fiable il ne valide aucun edge.
+
+## Lien avec V8.3 Odds Source Lab
+
+V8.3 prepare la collecte de cotes qui manque au laboratoire xG :
+
+- xG peut ameliorer legerement Brier/log loss ;
+- l'edge betting reste non prouve sans CLV ;
+- les snapshots de cotes doivent etre valides par marche et side ;
+- les observations shadow restent separees de toute activation.
+
+Cette couche ne change pas la conclusion : Big 5 xG reste observation technique tant que CLV, sample, ROI test et gouvernance complete ne convergent pas.
