@@ -61,7 +61,13 @@ def main():
         assert Path(matchday["output_dir"]).exists()
         matchday_status = oracle_ops.build_matchday_status(matchday["output_dir"])
         assert matchday_status["ready_for_dry_run"]
-        matchday_report = oracle_ops.matchday_report(matchday["output_dir"], str(ledger), str(odds_store), str(root / "reports"))
+        precheck = oracle_ops.matchday_precheck_report(matchday["output_dir"])
+        assert "phase_detected" in precheck
+        next_report = oracle_ops.matchday_next_report(matchday["output_dir"])
+        assert next_report["next_actions"]
+        phase_report = oracle_ops.matchday_phase_report(matchday["output_dir"], str(ledger), str(odds_store), str(root / "reports"), "pre_match")
+        assert phase_report["phase"]["phase"] == "pre_match"
+        matchday_report = oracle_ops.matchday_report(matchday["output_dir"], str(ledger), str(odds_store), str(root / "reports"), phase="pre_match")
         assert "evidence" in matchday_report
 
         absent = oracle_ops.build_health(root / "absent", str(ledger))

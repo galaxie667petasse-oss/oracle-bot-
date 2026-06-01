@@ -907,6 +907,39 @@ Report runner :
 python report_runner.py --matchday --matchday-pack reports/matchday_2026_06_01 --skip-dashboard
 ```
 
+## 29. V8.7 Matchday Phase Workflow
+
+Dry-run staging par phase :
+
+```bash
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase pre_match
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase near_close
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase post_match
+```
+
+Rapport statut pack :
+
+```bash
+python matchday_status_report.py --pack reports/matchday_2026_06_01 --output reports/matchday_status.json --html reports/matchday_status.html
+```
+
+Wizard / ops :
+
+```bash
+python odds_lab_wizard.py --matchday-precheck reports/matchday_2026_06_01
+python odds_lab_wizard.py --matchday-next reports/matchday_2026_06_01
+python odds_lab_wizard.py --matchday-phase reports/matchday_2026_06_01 --phase pre_match
+python oracle_ops.py --matchday-precheck reports/matchday_2026_06_01
+python oracle_ops.py --matchday-next reports/matchday_2026_06_01
+python oracle_ops.py --matchday-phase reports/matchday_2026_06_01 --phase pre_match
+```
+
+Report runner phase-aware :
+
+```bash
+python report_runner.py --matchday --matchday-pack reports/matchday_2026_06_01 --phase pre_match --skip-dashboard
+```
+
 ```bash
 git status --short
 git diff

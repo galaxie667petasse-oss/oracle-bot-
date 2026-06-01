@@ -917,13 +917,28 @@ def matchday_commands(
     matchday_pack: str = "reports/matchday_2026_06_01",
     ledger: str = "reports/shadow_ledger.csv",
     snapshots: str = "reports/odds_snapshots.csv",
+    phase: str = "full_day",
     skip_dashboard: bool = False,
 ) -> List[ReportCommand]:
     commands = [
         ReportCommand(
             "Matchday status",
             "matchday_status.txt",
-            ["matchday_pack.py", "--status", matchday_pack],
+            [
+                "matchday_status_report.py",
+                "--pack",
+                matchday_pack,
+                "--output",
+                "{report_dir}/matchday_status.json",
+                "--html",
+                "{report_dir}/matchday_status.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Matchday runner dry-run",
+            "matchday_runner.txt",
+            ["matchday_runner.py", "--pack", matchday_pack, "--full-dry-run", "--phase", phase],
             timeout=300,
         ),
         ReportCommand(
@@ -939,6 +954,8 @@ def matchday_commands(
                 "{report_dir}/real_observation_guard.json",
                 "--html",
                 "{report_dir}/real_observation_guard.html",
+                "--phase",
+                phase,
             ],
             timeout=300,
         ),
@@ -1002,7 +1019,7 @@ def matchday_commands(
                 "--real-guard",
                 "{report_dir}/real_observation_guard.json",
                 "--matchday-status",
-                f"{matchday_pack}/matchday_status.json",
+                "{report_dir}/matchday_status.json",
                 "--output",
                 "{report_dir}/evidence_gate.json",
                 "--html",
@@ -1198,6 +1215,7 @@ def parse_args(argv=None):
     parser.add_argument("--simulated-ledger", default="", help="Pour --ops: ledger shadow simule a utiliser")
     parser.add_argument("--skip-model", action="store_true", help="Pour --xg-understat: ignore xg_model_lab")
     parser.add_argument("--dry-run", action="store_true", help="Pour --xg-understat: affiche les etapes sans lancer le pipeline")
+    parser.add_argument("--phase", default="full_day", help="Phase matchday: pre_match, near_close, post_match ou full_day")
     return parser.parse_args(argv)
 
 
@@ -1297,6 +1315,7 @@ def main(argv=None) -> None:
             matchday_pack=args.matchday_pack,
             ledger=args.ledger,
             snapshots=args.snapshots,
+            phase=args.phase,
             skip_dashboard=args.skip_dashboard,
         )
     else:

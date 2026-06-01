@@ -140,3 +140,26 @@ Routine :
 - fin de journee : lancer `matchday_runner.py --report` puis lire `evidence_gate.py`.
 
 Ne jamais melanger demo/test/fictif et reel dans le meme cycle.
+## V8.7 routine matchday phase-aware
+
+Avant match :
+
+```bash
+python matchday_runner.py --pack reports/matchday_YYYY_MM_DD --full-dry-run --phase pre_match
+```
+
+Si une taken odds est valide, le dry-run doit simuler `staged_shadow_created=1` pour une ligne. Near-close absente est normale.
+
+Proche du coup d'envoi :
+
+```bash
+python matchday_runner.py --pack reports/matchday_YYYY_MM_DD --full-dry-run --phase near_close
+```
+
+Apres match :
+
+```bash
+python matchday_runner.py --pack reports/matchday_YYYY_MM_DD --full-dry-run --phase post_match
+```
+
+Toujours relire `next_actions`. Le workflow reste observation shadow, sans mise.

@@ -16,6 +16,7 @@ from shadow_ledger import DEFAULT_LEDGER, init_ledger, summarize_ledger
 from shadow_templates import create_candidates_template, create_closing_template, create_results_template
 from matchday_pack import create_pack, pack_status
 from matchday_runner import full_apply as matchday_full_apply, full_dry_run as matchday_full_dry_run
+from matchday_status_report import build_status_report as build_matchday_status_report
 from real_observation_guard import build_guard_report
 from test_archive_manager import archive_and_reset
 
@@ -214,6 +215,26 @@ def matchday_pack_command(match_date: str, reports_dir: str = "reports", from_cs
     return create_pack(match_date, str(Path(reports_dir) / f"matchday_{safe}"), from_csv=from_csv)
 
 
+def matchday_precheck(pack: str) -> Dict[str, Any]:
+    return build_matchday_status_report(pack)
+
+
+def matchday_next(pack: str) -> Dict[str, Any]:
+    report = build_matchday_status_report(pack)
+    return {
+        "pack": pack,
+        "phase_detected": report.get("phase_detected"),
+        "warnings": report.get("warnings") or [],
+        "blockers": report.get("blockers") or [],
+        "next_actions": report.get("next_actions") or [],
+        "lab_only": True,
+    }
+
+
+def matchday_phase(pack: str, phase: str, ledger: str, store: str, reports_dir: str) -> Dict[str, Any]:
+    return matchday_full_dry_run(pack, ledger, store, reports_dir, phase=phase)
+
+
 def print_json(title: str, payload: Any) -> None:
     print(title)
     print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -236,6 +257,9 @@ def parse_args(argv=None):
     group.add_argument("--matchday-status", default="")
     group.add_argument("--matchday-dry-run", default="")
     group.add_argument("--matchday-apply", default="")
+    group.add_argument("--matchday-precheck", default="")
+    group.add_argument("--matchday-next", default="")
+    group.add_argument("--matchday-phase", default="")
     parser.add_argument("--store", default=DEFAULT_STORE)
     parser.add_argument("--ledger", default=DEFAULT_LEDGER)
     parser.add_argument("--reports-dir", default="reports")
@@ -244,6 +268,7 @@ def parse_args(argv=None):
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--date", default="")
     parser.add_argument("--from-csv", default="")
+    parser.add_argument("--phase", default="full_day")
     return parser.parse_args(argv)
 
 
@@ -276,9 +301,15 @@ def main(argv=None) -> int:
         elif args.matchday_status:
             print_json("Odds Lab Wizard - matchday status", pack_status(args.matchday_status))
         elif args.matchday_dry_run:
-            print_json("Odds Lab Wizard - matchday dry-run", matchday_full_dry_run(args.matchday_dry_run, args.ledger, args.store, args.reports_dir))
+            print_json("Odds Lab Wizard - matchday dry-run", matchday_full_dry_run(args.matchday_dry_run, args.ledger, args.store, args.reports_dir, phase=args.phase))
         elif args.matchday_apply:
-            print_json("Odds Lab Wizard - matchday apply", matchday_full_apply(args.matchday_apply, args.ledger, args.store, args.reports_dir))
+            print_json("Odds Lab Wizard - matchday apply", matchday_full_apply(args.matchday_apply, args.ledger, args.store, args.reports_dir, phase=args.phase))
+        elif args.matchday_precheck:
+            print_json("Odds Lab Wizard - matchday precheck", matchday_precheck(args.matchday_precheck))
+        elif args.matchday_next:
+            print_json("Odds Lab Wizard - matchday next", matchday_next(args.matchday_next))
+        elif args.matchday_phase:
+            print_json("Odds Lab Wizard - matchday phase", matchday_phase(args.matchday_phase, args.phase, args.ledger, args.store, args.reports_dir))
         else:
             print_json("Odds Lab Wizard - status", build_status(args.store, args.ledger, args.reports_dir))
         return 0

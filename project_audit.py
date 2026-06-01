@@ -70,6 +70,9 @@ ESSENTIAL_FILES = [
     "real_observation_guard.py",
     "matchday_pack.py",
     "matchday_runner.py",
+    "matchday_status_report.py",
+    "docs/matchday_phase_workflow.md",
+    "docs/dry_run_staging.md",
     "config/odds_sources.example.json",
     "docs/canonical_architecture.md",
     "docs/llm_analyst_role.md",
@@ -146,6 +149,7 @@ MAIN_TESTS = [
     "test_real_observation_guard.py",
     "test_matchday_pack.py",
     "test_matchday_runner.py",
+    "test_matchday_status_report.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -220,6 +224,7 @@ IMPORT_MODULES = [
     "real_observation_guard",
     "matchday_pack",
     "matchday_runner",
+    "matchday_status_report",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -283,6 +288,7 @@ OFFLINE_COMMAND_FILES = [
     "real_observation_guard.py",
     "matchday_pack.py",
     "matchday_runner.py",
+    "matchday_status_report.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [

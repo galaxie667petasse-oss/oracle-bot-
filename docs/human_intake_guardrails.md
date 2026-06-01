@@ -20,3 +20,20 @@ python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots 
 ```
 
 Le guard ne prouve rien. Il empeche surtout une mauvaise collecte de contaminer les observations reelles.
+## V8.7 phase-aware guardrails
+
+Les controles humains dependent maintenant de la phase :
+
+- en `pre_match`, une taken odds sans near-close correspondante est un warning normal ;
+- en `near_close`, la near-close devient attendue ;
+- en `post_match`, les resultats deviennent attendus ;
+- une near-close sans taken odds correspondant reste un blocage ;
+- les lignes demo/test/fictives doivent rester archivees avant une vraie collecte.
+
+Commande utile :
+
+```bash
+python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --phase pre_match --output reports/real_observation_guard.json --html reports/real_observation_guard.html
+```
+
+Le guard ne valide aucune performance. Il protege seulement la qualite de collecte.

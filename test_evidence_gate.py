@@ -55,6 +55,12 @@ def main():
         assert any("near-close sans taken" in blocker for blocker in guarded["blockers"])
         assert any("resultats manquants" in blocker for blocker in guarded["blockers"])
 
+        write_json(guard, {"verdict": "needs_review", "phase": "pre_match", "near_close_without_taken_count": 0, "taken_without_near_close_count": 1})
+        write_json(matchday, {"phase_detected": "pre_match_ready", "taken": {"valid_rows": 1}, "near_close": {"valid_rows": 0}, "results": {"valid_rows": 0}, "blockers": []})
+        pre_match = evidence_gate.build_evidence_gate(str(shadow), str(quality), real_guard_path=str(guard), matchday_status_path=str(matchday))
+        assert not any("matchday sans near-close" in blocker for blocker in pre_match["blockers"])
+        assert any("Collecter la near-close" in step for step in pre_match["required_next_steps"])
+
         out_json = root / "reports" / "evidence_gate.json"
         out_html = root / "reports" / "evidence_gate.html"
         evidence_gate.write_json(big5_blocked, str(out_json))

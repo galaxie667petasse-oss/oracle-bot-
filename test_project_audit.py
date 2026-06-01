@@ -91,6 +91,8 @@ def test_release_candidate_docs_exist_and_have_sections():
         "llm analyste",
         "boucle de progression",
         "real matchday workflow",
+        "matchday phase workflow",
+        "dry-run staging",
         "human intake",
         "june collection",
         "statistical proof foundation",
@@ -120,6 +122,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v8.4" in status
     assert "v8.5" in status
     assert "v8.6" in status
+    assert "v8.7" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -140,6 +143,8 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "real_matchday_workflow.md").exists()
     assert (root / "docs" / "test_archive_policy.md").exists()
     assert (root / "docs" / "human_intake_guardrails.md").exists()
+    assert (root / "docs" / "matchday_phase_workflow.md").exists()
+    assert (root / "docs" / "dry_run_staging.md").exists()
 
 
 def main():

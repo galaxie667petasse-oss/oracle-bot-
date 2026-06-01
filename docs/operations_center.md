@@ -104,3 +104,14 @@ python oracle_ops.py --archive-tests --apply
 ```
 
 Sans `--apply`, les operations sensibles restent en verification. Le but est de preparer la collecte reelle, pas d'activer une action automatique.
+## V8.7 matchday operations
+
+Operations Center expose les controles matchday phase-aware :
+
+```bash
+python oracle_ops.py --matchday-precheck reports/matchday_2026_06_01
+python oracle_ops.py --matchday-next reports/matchday_2026_06_01
+python oracle_ops.py --matchday-phase reports/matchday_2026_06_01 --phase pre_match
+```
+
+Ces commandes ne lancent aucun reseau et ne modifient pas `data/`. Elles servent a savoir quelle saisie humaine manque encore.

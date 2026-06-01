@@ -129,6 +129,7 @@ def build_evidence_gate(
             strengths.append("calibration disponible")
     if real_guard:
         verdict = real_guard.get("verdict")
+        guard_phase = real_guard.get("phase") or "full_day"
         if verdict == "clean_real_collection":
             strengths.append("guard reel clean")
         elif verdict == "empty":
@@ -139,20 +140,38 @@ def build_evidence_gate(
             blockers.append("guard reel: verification humaine requise")
         if real_guard.get("near_close_without_taken_count", 0):
             blockers.append("near-close sans taken")
-        if real_guard.get("taken_without_near_close_count", 0):
+        if real_guard.get("taken_without_near_close_count", 0) and guard_phase in {"near_close", "post_match", "full_day"}:
             blockers.append("taken sans near-close")
     if matchday_status:
+        detected = matchday_status.get("phase_detected")
         taken = matchday_status.get("taken") or {}
         near = matchday_status.get("near_close") or {}
         results = matchday_status.get("results") or {}
-        if not matchday_status.get("ready_for_dry_run"):
-            blockers.append("matchday incomplet")
-        if (taken.get("filled") or 0) == 0:
-            blockers.append("matchday sans taken odds")
-        if (near.get("filled") or 0) == 0:
-            blockers.append("matchday sans near-close")
-        if (results.get("filled") or 0) == 0:
-            blockers.append("resultats manquants")
+        if detected:
+            if detected == "invalid":
+                blockers.append("matchday invalid")
+            elif detected == "empty":
+                blockers.append("matchday vide")
+                next_steps.append("Renseigner les taken odds reelles du pack matchday")
+            elif detected in {"pre_match_ready", "waiting_near_close"}:
+                strengths.append("matchday pre_match pret")
+                next_steps.append("Collecter la near-close reelle plus tard")
+            elif detected in {"near_close_ready", "waiting_results"}:
+                strengths.append("matchday near_close pret")
+                next_steps.append("Collecter le resultat manuel apres match")
+            elif detected in {"post_match_ready", "complete"}:
+                strengths.append("matchday post_match pret")
+            for item in matchday_status.get("blockers") or []:
+                blockers.append(f"matchday: {item}")
+        else:
+            if not matchday_status.get("ready_for_dry_run"):
+                blockers.append("matchday incomplet")
+            if (taken.get("filled") or 0) == 0:
+                blockers.append("matchday sans taken odds")
+            if (near.get("filled") or 0) == 0:
+                blockers.append("matchday sans near-close")
+            if (results.get("filled") or 0) == 0:
+                blockers.append("resultats manquants")
     if real_guard and real_guard.get("verdict") in {"mixed_test_and_real", "invalid"}:
         status = "blocked"
     elif quality.get("verdict") == "invalid" or any("CLV moyenne <= 0" == item for item in blockers):

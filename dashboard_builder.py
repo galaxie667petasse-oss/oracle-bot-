@@ -335,6 +335,11 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "matchday_near_close_count": ((matchday_status.get("near_close") or {}).get("filled") if matchday_status.get("near_close") else ((matchday_status.get("matchday_status") or {}).get("near_close") or {}).get("filled")),
         "matchday_results_count": ((matchday_status.get("results") or {}).get("filled") if matchday_status.get("results") else ((matchday_status.get("matchday_status") or {}).get("results") or {}).get("filled")),
         "matchday_warnings": matchday_status.get("warnings") or ((matchday_status.get("matchday_status") or {}).get("warnings") or []),
+        "matchday_phase_detected": matchday_status.get("phase_detected") or ((matchday_status.get("phase") or {}).get("phase_status")),
+        "matchday_phase_status": (matchday_status.get("phase") or {}).get("phase_status") or matchday_status.get("phase_detected"),
+        "matchday_phase_warnings": (matchday_status.get("phase") or {}).get("phase_warnings") or matchday_status.get("warnings") or [],
+        "matchday_phase_blockers": (matchday_status.get("phase") or {}).get("phase_blockers") or matchday_status.get("blockers") or [],
+        "matchday_next_actions": (matchday_status.get("phase") or {}).get("next_actions") or matchday_status.get("next_actions") or [],
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -713,6 +718,19 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     if texts["matchday_status"]:
         matchday_lines.extend(_lines_matching(texts["matchday_status"], ["taken", "near", "results", "warnings"], 20))
     parts.append(_card("Real Matchday Collection", "\n".join(matchday_lines)))
+
+    matchday_phase_lines = [
+        f"phase detectee: {summary.get('matchday_phase_detected')}",
+        f"status phase: {summary.get('matchday_phase_status')}",
+        f"taken count: {summary.get('matchday_taken_count')}",
+        f"near-close count: {summary.get('matchday_near_close_count')}",
+        f"resultats count: {summary.get('matchday_results_count')}",
+        f"warnings: {', '.join(summary.get('matchday_phase_warnings') or []) or 'aucun'}",
+        f"blockers: {', '.join(summary.get('matchday_phase_blockers') or []) or 'aucun'}",
+        f"next actions: {', '.join(summary.get('matchday_next_actions') or []) or 'n/a'}",
+        "statut: workflow local, observation seulement.",
+    ]
+    parts.append(_card("Matchday Phase", "\n".join(matchday_phase_lines)))
 
     architecture_lines = [
         f"blocs detectes: {summary.get('architecture_blocks')}",

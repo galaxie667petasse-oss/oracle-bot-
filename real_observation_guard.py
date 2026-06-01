@@ -65,7 +65,11 @@ def build_guard_report(
     ledger: str = "reports/shadow_ledger.csv",
     snapshots: str = "reports/odds_snapshots.csv",
     max_near_close_minutes: int = 30,
+    phase: str = "full_day",
 ) -> Dict[str, Any]:
+    phase = str(phase or "full_day").strip().lower()
+    if phase not in {"pre_match", "near_close", "post_match", "full_day"}:
+        raise ValueError("phase invalide: pre_match, near_close, post_match, full_day")
     ledger_rows = read_ledger(ledger)
     snapshot_rows = load_snapshots(snapshots)
     warnings: List[str] = []
@@ -100,7 +104,16 @@ def build_guard_report(
     if near_without_taken:
         blockers.append("near-close sans taken correspondant")
     if taken_without_near:
-        warnings.append("taken sans near-close correspondant")
+        if phase in {"near_close", "post_match"}:
+            blockers.append("taken sans near-close correspondant")
+        else:
+            warnings.append("taken sans near-close correspondant")
+    missing_results = [
+        row for row in ledger_rows
+        if str(row.get("result") or "unknown").strip().lower() == "unknown"
+    ]
+    if phase == "post_match" and ledger_rows and missing_results:
+        blockers.append("resultats manquants en phase post_match")
     odds_values = [str(row.get("odds") or "").strip() for row in snapshot_rows if str(row.get("odds") or "").strip()]
     if len(odds_values) >= 5 and len(set(odds_values)) == 1:
         warnings.append("cotes identiques partout, verification humaine requise")
@@ -119,6 +132,7 @@ def build_guard_report(
         verdict = "clean_real_collection"
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "phase": phase,
         "ledger": ledger,
         "snapshots": snapshots,
         "ledger_rows": len(ledger_rows),
@@ -127,6 +141,7 @@ def build_guard_report(
         "real_like_rows": len(real_rows),
         "near_close_without_taken_count": len(near_without_taken),
         "taken_without_near_close_count": len(taken_without_near),
+        "missing_results_count": len(missing_results),
         "near_close_without_taken": ["|".join(item) for item in near_without_taken[:20]],
         "taken_without_near_close": ["|".join(item) for item in taken_without_near[:20]],
         "warnings": warnings,
@@ -170,6 +185,7 @@ def write_html(report: Dict[str, Any], output: str) -> Path:
 def print_report(report: Dict[str, Any]) -> None:
     print("Real Observation Guard Oracle")
     print(f"- Verdict: {report.get('verdict')}")
+    print(f"- Phase: {report.get('phase') or 'n/a'}")
     print(f"- Lignes ledger: {report.get('ledger_rows')}")
     print(f"- Lignes snapshots: {report.get('snapshot_rows')}")
     print(f"- Near-close sans taken: {report.get('near_close_without_taken_count')}")
@@ -189,6 +205,7 @@ def parse_args(argv=None):
     parser.add_argument("--output", default="")
     parser.add_argument("--html", default="")
     parser.add_argument("--max-near-close-minutes", type=int, default=30)
+    parser.add_argument("--phase", default="full_day", choices=["pre_match", "near_close", "post_match", "full_day"])
     return parser.parse_args(argv)
 
 
@@ -198,7 +215,7 @@ def main(argv=None) -> int:
         if args.check_notes:
             report = check_notes(args.check_notes)
         else:
-            report = build_guard_report(args.ledger, args.snapshots, args.max_near_close_minutes)
+            report = build_guard_report(args.ledger, args.snapshots, args.max_near_close_minutes, phase=args.phase)
         if args.output:
             write_json(report, args.output)
         if args.html:

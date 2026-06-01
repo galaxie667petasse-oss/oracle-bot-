@@ -21,6 +21,15 @@ def fill_manual(path: Path, near_close: bool = False) -> None:
         writer.writerows(rows)
 
 
+def fill_results(path: Path) -> None:
+    rows = list(csv.DictReader(path.open(newline="", encoding="utf-8")))
+    rows.append({"shadow_id": "", "result": "win", "notes": "resultat manuel"})
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["shadow_id", "result", "notes"])
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -37,9 +46,27 @@ def main():
         store = root / "reports" / "odds_snapshots.csv"
         reports = root / "reports"
         assert matchday_runner.validate_pack(str(pack))["valid"]
-        dry = matchday_runner.full_dry_run(str(pack), str(ledger), str(store), str(reports))
+        dry = matchday_runner.full_dry_run(str(pack), str(ledger), str(store), str(reports), phase="near_close")
         assert dry["dry_run"] is True
+        assert dry["staged_shadow_created"] == 1
+        assert dry["staged_closing_matched"] == 1
         assert not ledger.exists()
+        assert not store.exists()
+        pre_pack = root / "reports" / "matchday_pre"
+        matchday_pack.create_pack("2026-06-01", str(pre_pack), str(source))
+        fill_manual(pre_pack / "matchday_manual_odds.csv", near_close=False)
+        pre = matchday_runner.full_dry_run(str(pre_pack), str(ledger), str(store), str(reports), phase="pre_match")
+        assert pre["staged_shadow_created"] == 1
+        assert pre["phase"]["phase_status"] == "ready_pre_match"
+        assert not pre["phase"]["phase_blockers"]
+        assert not ledger.exists()
+        near_block = matchday_runner.full_dry_run(str(pre_pack), str(ledger), str(store), str(reports), phase="near_close")
+        assert near_block["phase"]["phase_status"] == "blocked_near_close"
+        assert near_block["phase"]["phase_blockers"]
+        fill_results(pack / "matchday_results.csv")
+        post = matchday_runner.full_dry_run(str(pack), str(ledger), str(store), str(reports), phase="post_match")
+        assert post["staged_results_imported"] == 1
+        assert post["phase"]["phase_status"] == "ready_post_match"
         assert matchday_runner.import_taken(str(pack), str(store), apply=True)["valid_taken_rows"] == 1
         assert matchday_runner.to_shadow(str(store), str(ledger), apply=True)["rows_added"] == 1
         assert matchday_runner.import_near_close(str(pack), str(store), apply=True)["valid_near_close_rows"] == 1

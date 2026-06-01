@@ -52,6 +52,14 @@ def main():
         bad = guard.build_guard_report(str(ledger), str(snapshots))
         assert bad["near_close_without_taken_count"] == 1
         assert bad["verdict"] == "invalid"
+        rows = rows[:1]
+        write_normalized_csv(rows, str(snapshots))
+        pre = guard.build_guard_report(str(ledger), str(snapshots), phase="pre_match")
+        assert pre["taken_without_near_close_count"] == 1
+        assert "taken sans near-close correspondant" in pre["warnings"]
+        assert "taken sans near-close correspondant" not in pre["blockers"]
+        near_phase = guard.build_guard_report(str(ledger), str(snapshots), phase="near_close")
+        assert "taken sans near-close correspondant" in near_phase["blockers"]
         notes = guard.check_notes(str(snapshots))
         assert notes["exists"] is True
         output = root / "reports" / "guard.json"

@@ -19,7 +19,7 @@ def _safe_dir(path: str) -> Path:
     return target
 
 
-def _read_source_matches(path: str, match_date: str) -> List[Dict[str, str]]:
+def _read_source_matches(path: str, match_date: str, market: str = "h2h", league_default: str = "International") -> List[Dict[str, str]]:
     if not path:
         return []
     source = Path(path)
@@ -32,13 +32,13 @@ def _read_source_matches(path: str, match_date: str) -> List[Dict[str, str]]:
         out.append({
             "captured_at": "",
             "source": "manual_csv",
-            "league": row.get("league", ""),
+            "league": row.get("league", "") or league_default,
             "match_date": row.get("match_date") or row.get("date") or match_date,
             "kickoff_time": row.get("kickoff_time", ""),
             "home_team": row.get("home_team") or row.get("home") or "",
             "away_team": row.get("away_team") or row.get("away") or "",
             "bookmaker": "",
-            "market_type": row.get("market_type") or "h2h",
+            "market_type": row.get("market_type") or market,
             "side": row.get("side") or "",
             "odds": "",
             "is_live": "false",
@@ -93,23 +93,80 @@ def _readme(match_date: str) -> str:
         "- matchday_manual_odds.csv : taken odds reelles.",
         "- matchday_near_close.csv : near-close reelles.",
         "- matchday_results.csv : resultats manuels.",
+        "- matchday_examples.csv : exemples a copier puis remplacer si genere.",
         "",
         "Toujours lancer un full-dry-run avant toute application.",
     ])
 
 
-def create_pack(match_date: str, output_dir: str, from_csv: str = "") -> Dict[str, Any]:
+def _example_rows(match_date: str, market: str, bookmaker: str, league: str) -> List[Dict[str, Any]]:
+    return [
+        {
+            "captured_at": f"{match_date}T10:00:00",
+            "source": "manual_csv",
+            "league": league,
+            "match_date": match_date,
+            "kickoff_time": f"{match_date}T19:00:00",
+            "home_team": "Equipe Domicile",
+            "away_team": "Equipe Exterieur",
+            "bookmaker": bookmaker,
+            "market_type": market,
+            "side": "home",
+            "odds": "2.10",
+            "is_live": "false",
+            "is_near_close": "false",
+            "notes": "exemple taken a remplacer",
+        },
+        {
+            "captured_at": f"{match_date}T18:55:00",
+            "source": "manual_csv",
+            "league": league,
+            "match_date": match_date,
+            "kickoff_time": f"{match_date}T19:00:00",
+            "home_team": "Equipe Domicile",
+            "away_team": "Equipe Exterieur",
+            "bookmaker": bookmaker,
+            "market_type": market,
+            "side": "home",
+            "odds": "2.00",
+            "is_live": "false",
+            "is_near_close": "true",
+            "notes": "exemple near-close a remplacer",
+        },
+    ]
+
+
+def create_pack(
+    match_date: str,
+    output_dir: str,
+    from_csv: str = "",
+    with_example_row: bool = False,
+    market: str = "h2h",
+    bookmaker: str = "manual",
+    league: str = "International",
+) -> Dict[str, Any]:
     target = _safe_dir(output_dir)
-    rows = _read_source_matches(from_csv, match_date)
+    rows = _read_source_matches(from_csv, match_date, market=market, league_default=league)
     if not rows:
         rows = []
     near_rows = [dict(row, is_near_close="true", odds="", captured_at="") for row in rows]
     _write_csv(target / "matchday_manual_odds.csv", MANUAL_COLUMNS, rows)
     _write_csv(target / "matchday_near_close.csv", MANUAL_COLUMNS, near_rows)
     _write_csv(target / "matchday_results.csv", RESULT_COLUMNS, [])
+    if with_example_row:
+        _write_csv(target / "matchday_examples.csv", MANUAL_COLUMNS, _example_rows(match_date, market, bookmaker, league))
     (target / "matchday_checklist.md").write_text(_checklist(match_date), encoding="utf-8")
     (target / "matchday_readme.md").write_text(_readme(match_date), encoding="utf-8")
-    meta = {"date": match_date, "created_at": datetime.now().isoformat(timespec="seconds"), "from_csv": from_csv, "output_dir": str(target)}
+    meta = {
+        "date": match_date,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "from_csv": from_csv,
+        "output_dir": str(target),
+        "market": market,
+        "bookmaker": bookmaker,
+        "league": league,
+        "with_example_row": with_example_row,
+    }
     (target / "matchday_meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     return {**meta, "files": sorted(path.name for path in target.iterdir())}
 
@@ -123,7 +180,7 @@ def _count_filled(path: Path, key_columns: List[str]) -> Dict[str, Any]:
     return {"exists": True, "rows": len(rows), "filled": filled}
 
 
-def pack_status(pack_dir: str) -> Dict[str, Any]:
+def pack_status(pack_dir: str, write: bool = True) -> Dict[str, Any]:
     target = Path(pack_dir)
     meta = {}
     if (target / "matchday_meta.json").exists():
@@ -152,7 +209,7 @@ def pack_status(pack_dir: str) -> Dict[str, Any]:
         "lab_only": True,
     }
     status_path = target / "matchday_status.json"
-    if target.exists():
+    if target.exists() and write:
         status_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return report
 
@@ -169,6 +226,10 @@ def parse_args(argv=None):
     parser.add_argument("--from-csv", default="")
     parser.add_argument("--output-dir", default="")
     parser.add_argument("--status", default="")
+    parser.add_argument("--with-example-row", action="store_true")
+    parser.add_argument("--market", default="h2h")
+    parser.add_argument("--bookmaker", default="manual")
+    parser.add_argument("--league", default="International")
     return parser.parse_args(argv)
 
 
@@ -180,7 +241,18 @@ def main(argv=None) -> int:
         else:
             if not args.date or not args.output_dir:
                 raise ValueError("--date et --output-dir sont requis")
-            print_report("Creation matchday pack Oracle", create_pack(args.date, args.output_dir, args.from_csv))
+            print_report(
+                "Creation matchday pack Oracle",
+                create_pack(
+                    args.date,
+                    args.output_dir,
+                    args.from_csv,
+                    with_example_row=args.with_example_row,
+                    market=args.market,
+                    bookmaker=args.bookmaker,
+                    league=args.league,
+                ),
+            )
         return 0
     except Exception as exc:
         print(f"Erreur: {exc}")

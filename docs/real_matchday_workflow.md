@@ -23,3 +23,19 @@ python matchday_runner.py --pack reports/matchday_2026_06_01 --full-apply
 ```
 
 Tout reste en observation shadow. Une near-close sans taken odds correspondant est un blocage, pas une preuve.
+
+## V8.7 phases
+
+Le workflow est maintenant phase-aware :
+
+- `pre_match` : remplir seulement les taken odds. Near-close absente = normal.
+- `near_close` : remplir les near-close reelles et relancer le dry-run.
+- `post_match` : remplir les resultats et generer les rapports.
+
+Le full-dry-run utilise un staging temporaire. Il montre ce qui serait ecrit dans le store odds et le ledger sans modifier les fichiers reels.
+
+```bash
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase pre_match
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase near_close
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase post_match
+```

@@ -25,7 +25,8 @@ from oracle_architecture_map import build_architecture_map, write_html as write_
 from oracle_project_scorecard import build_scorecard, write_html as write_scorecard_html, write_json as write_scorecard_json
 from progress_loop import summarize_progress
 from matchday_pack import create_pack as create_matchday_pack, pack_status as build_matchday_status
-from matchday_runner import write_matchday_report
+from matchday_runner import full_dry_run as matchday_full_dry_run, write_matchday_report
+from matchday_status_report import build_status_report as build_matchday_status_report
 from real_observation_guard import build_guard_report as build_real_guard, write_html as write_guard_html, write_json as write_guard_json
 from test_archive_manager import archive_and_reset as archive_tests_and_reset
 
@@ -66,6 +67,7 @@ KEY_MODULES = [
     "real_observation_guard.py",
     "matchday_pack.py",
     "matchday_runner.py",
+    "matchday_status_report.py",
 ]
 
 
@@ -318,8 +320,28 @@ def matchday_create_report(match_date: str, reports_dir: str) -> Dict[str, Any]:
     return create_matchday_pack(match_date, str(Path(reports_dir) / f"matchday_{safe}"))
 
 
-def matchday_report(pack: str, ledger: str, snapshots: str, reports_dir: str) -> Dict[str, Any]:
-    return write_matchday_report(pack, ledger, snapshots, reports_dir)
+def matchday_report(pack: str, ledger: str, snapshots: str, reports_dir: str, phase: str = "full_day") -> Dict[str, Any]:
+    return write_matchday_report(pack, ledger, snapshots, reports_dir, phase=phase)
+
+
+def matchday_precheck_report(pack: str) -> Dict[str, Any]:
+    return build_matchday_status_report(pack)
+
+
+def matchday_next_report(pack: str) -> Dict[str, Any]:
+    report = build_matchday_status_report(pack)
+    return {
+        "pack": pack,
+        "phase_detected": report.get("phase_detected"),
+        "warnings": report.get("warnings") or [],
+        "blockers": report.get("blockers") or [],
+        "next_actions": report.get("next_actions") or [],
+        "lab_only": True,
+    }
+
+
+def matchday_phase_report(pack: str, ledger: str, snapshots: str, reports_dir: str, phase: str) -> Dict[str, Any]:
+    return matchday_full_dry_run(pack, ledger, snapshots, reports_dir, phase=phase)
 
 
 def full_local(ledger: str, reports_dir: str, skip_benchmark: bool = False, skip_dashboard: bool = False) -> Dict[str, Any]:
@@ -412,6 +434,9 @@ def parse_args(argv=None):
     actions.add_argument("--matchday", action="store_true")
     actions.add_argument("--matchday-status", default="")
     actions.add_argument("--matchday-report", default="")
+    actions.add_argument("--matchday-precheck", default="")
+    actions.add_argument("--matchday-next", default="")
+    actions.add_argument("--matchday-phase", default="")
     actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
@@ -421,6 +446,7 @@ def parse_args(argv=None):
     parser.add_argument("--skip-benchmark", action="store_true")
     parser.add_argument("--skip-dashboard", action="store_true")
     parser.add_argument("--date", default="")
+    parser.add_argument("--phase", default="full_day")
     return parser.parse_args(argv)
 
 
@@ -516,7 +542,13 @@ def main(argv=None) -> int:
         elif args.matchday_status:
             print_odds_report("matchday status", build_matchday_status(args.matchday_status))
         elif args.matchday_report:
-            print_odds_report("matchday report", matchday_report(args.matchday_report, args.ledger, args.snapshots, args.reports_dir))
+            print_odds_report("matchday report", matchday_report(args.matchday_report, args.ledger, args.snapshots, args.reports_dir, phase=args.phase))
+        elif args.matchday_precheck:
+            print_odds_report("matchday precheck", matchday_precheck_report(args.matchday_precheck))
+        elif args.matchday_next:
+            print_odds_report("matchday next", matchday_next_report(args.matchday_next))
+        elif args.matchday_phase:
+            print_odds_report("matchday phase", matchday_phase_report(args.matchday_phase, args.ledger, args.snapshots, args.reports_dir, args.phase))
         elif args.archive_tests:
             if not args.apply:
                 print_odds_report("archive tests dry-run", {"dry_run": True, "message": "Relancer avec --apply pour archiver et reset."})

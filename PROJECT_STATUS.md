@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V8.6 Real Matchday Workflow, Test Archive Manager, Human Intake Guardrails & June Collection Pack.
+V8.7 Matchday Runner Dry-Run Staging, Phase-Aware Workflow & Real Collection UX Fixes.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. Aucun signal robuste active. Aucun changement V8.6 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. V8.7 rend le matchday runner phase-aware et le full-dry-run predictif via staging temporaire. Aucun signal robuste active. Aucun changement V8.7 ne branche Telegram, Railway ou un pick automatique.
 
 V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre operations et le gate de preuve.
 
@@ -48,6 +48,9 @@ V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre opera
 - Guard observations reelles disponible via `real_observation_guard.py`.
 - Matchday pack disponible via `matchday_pack.py`.
 - Matchday runner disponible via `matchday_runner.py`.
+- Matchday status report disponible via `matchday_status_report.py`.
+- Matchday runner phase-aware : `pre_match`, `near_close`, `post_match`, `full_day`.
+- Full-dry-run staging : simulation temporaire taken -> snapshot -> shadow -> closing -> resultats sans modifier le store reel.
 - Preview features closing disponible via `features_closing_enricher.py`, sortie limitee a `reports/`.
 - CLV partielle H2H home/away disponible uniquement si la closing exacte du cote joue existe.
 - CLV / Closing Line Value disponible si des cotes closing sont presentes.
@@ -190,3 +193,17 @@ V8.4 rend la collecte manuelle praticable :
 - demo end-to-end synthetique.
 
 Le statut reste laboratoire local. Les snapshots ne deviennent une preuve que si les cotes sont reelles, horodatees, matchables et accumulees sur un sample significatif.
+
+## V8.7 Matchday Runner Dry-Run Staging
+
+V8.7 corrige le workflow reel observe pendant les tests de juin :
+
+- `matchday_runner.py --full-dry-run` cree un store et un ledger temporaires ;
+- une taken odds valide peut maintenant simuler une observation shadow meme si le store reel est vide ;
+- `--phase pre_match` ne bloque pas l'absence normale de near-close ;
+- `--phase near_close` exige taken + near-close ;
+- `--phase post_match` exige taken + near-close + resultats ;
+- `matchday_status_report.py` lit un pack et produit `phase_detected`, warnings, blockers et prochaines actions ;
+- `evidence_gate.py`, `real_observation_guard.py`, `odds_lab_wizard.py`, `oracle_ops.py`, `report_runner.py` et `dashboard_builder.py` lisent la phase.
+
+Le statut reste non valide pour toute conclusion de performance. La phase aide seulement a savoir quoi collecter ensuite.

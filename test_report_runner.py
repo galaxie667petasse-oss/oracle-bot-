@@ -261,10 +261,12 @@ Understat xG Full Pipeline Quality Gate
         }, ensure_ascii=False), encoding="utf-8")
         (report_dir / "matchday_status.json").write_text(json.dumps({
             "date": "2026-06-01",
+            "phase_detected": "pre_match_ready",
             "taken": {"filled": 2},
             "near_close": {"filled": 1},
             "results": {"filled": 0},
             "warnings": ["resultats manquants"],
+            "next_actions": ["collecter near-close"],
         }, ensure_ascii=False), encoding="utf-8")
         write_report(report_dir / "architecture_map.txt", "Architecture canonique\n- Sources de donnees\n- LLM analyste\n")
         write_report(report_dir / "pipeline_contracts.txt", "Contrats disponibles\n- odds_snapshot\n- shadow_ledger\n")
@@ -340,7 +342,9 @@ Understat xG Full Pipeline Quality Gate
         assert any("oracle_architecture_map.py" in command.args for command in blueprint_cmds)
         assert any("pipeline_contracts.py" in command.args for command in blueprint_cmds)
         assert not any("dashboard_builder.py" in command.args for command in blueprint_cmds)
-        matchday_cmds = matchday_commands(str(root / "reports" / "matchday_2026_06_01"), str(root / "reports" / "shadow_ledger.csv"), str(root / "reports" / "odds_snapshots.csv"), skip_dashboard=True)
+        matchday_cmds = matchday_commands(str(root / "reports" / "matchday_2026_06_01"), str(root / "reports" / "shadow_ledger.csv"), str(root / "reports" / "odds_snapshots.csv"), phase="pre_match", skip_dashboard=True)
+        assert any("matchday_status_report.py" in command.args for command in matchday_cmds)
+        assert any("matchday_runner.py" in command.args and "--phase" in command.args for command in matchday_cmds)
         assert any("real_observation_guard.py" in command.args for command in matchday_cmds)
         assert any("evidence_gate.py" in command.args for command in matchday_cmds)
         assert not any("dashboard_builder.py" in command.args for command in matchday_cmds)
@@ -382,6 +386,7 @@ Understat xG Full Pipeline Quality Gate
         assert "Agent dry-run" in html
         assert "Next actions" in html
         assert "Real Matchday Collection" in html
+        assert "Matchday Phase" in html
         assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 

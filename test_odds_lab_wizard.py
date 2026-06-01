@@ -65,6 +65,12 @@ def main():
         assert status_pack["ready_for_dry_run"]
         dry_matchday = odds_lab_wizard.matchday_full_dry_run(pack["output_dir"], str(ledger), str(store), str(reports))
         assert dry_matchday["dry_run"] is True
+        precheck = odds_lab_wizard.matchday_precheck(pack["output_dir"])
+        assert "phase_detected" in precheck
+        next_report = odds_lab_wizard.matchday_next(pack["output_dir"])
+        assert next_report["next_actions"]
+        phase = odds_lab_wizard.matchday_phase(pack["output_dir"], "pre_match", str(ledger), str(store), str(reports))
+        assert phase["phase"]["phase"] == "pre_match"
 
     print("test_odds_lab_wizard ok")
 

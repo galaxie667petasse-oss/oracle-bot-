@@ -793,3 +793,33 @@ python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run
 ```
 
 Une near-close seule ne suffit pas. Une observation reelle ne doit pas etre melangee avec demo/test/fictif. Le statut reste observation shadow tant que la preuve reste insuffisante.
+
+## V8.7 Matchday Phase Workflow & Dry-Run Staging
+
+V8.7 corrige l'UX du runner matchday reel. Le `--full-dry-run` utilise maintenant un staging temporaire pour simuler la chaine taken odds -> snapshots -> shadow ledger -> near-close -> closing -> resultats sans ecrire dans les vrais fichiers `reports/odds_snapshots.csv` ou `reports/shadow_ledger.csv`.
+
+La phase matchday est explicite :
+
+- `pre_match` : taken odds attendues ; near-close et resultats absents normalement ;
+- `near_close` : taken odds + near-close attendues ; resultats absents normalement ;
+- `post_match` : taken odds + near-close + resultats attendus ;
+- `full_day` : etat partiel accepte avec warnings.
+
+Nouveautes :
+
+- `matchday_runner.py --phase ...` avec `ready_pre_match`, `ready_near_close`, `ready_post_match` ou blockers clairs ;
+- `matchday_status_report.py` pour lire l'etat d'un pack sans le modifier ;
+- `real_observation_guard.py --phase ...` pour eviter de bloquer une phase `pre_match` normale ;
+- `odds_lab_wizard.py --matchday-next` et `oracle_ops.py --matchday-phase` pour guider la suite ;
+- `report_runner.py --matchday --phase pre_match` et dashboard section Matchday Phase.
+
+Commandes rapides :
+
+```bash
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase pre_match
+python matchday_status_report.py --pack reports/matchday_2026_06_01 --output reports/matchday_status.json --html reports/matchday_status.html
+python odds_lab_wizard.py --matchday-next reports/matchday_2026_06_01
+python report_runner.py --matchday --matchday-pack reports/matchday_2026_06_01 --phase pre_match --skip-dashboard
+```
+
+Une near-close absente est normale avant match. Elle devient attendue en phase `near_close`. Le projet reste en observation shadow : aucune mise, aucun Telegram, aucun Railway.

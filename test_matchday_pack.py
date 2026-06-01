@@ -14,9 +14,14 @@ def main():
             writer.writeheader()
             writer.writerow({"match_date": "2026-06-01", "league": "EPL", "home_team": "Arsenal", "away_team": "Chelsea", "kickoff_time": "2026-06-01T19:00:00"})
         pack = root / "reports" / "matchday_2026_06_01"
-        created = matchday_pack.create_pack("2026-06-01", str(pack), str(source))
+        created = matchday_pack.create_pack("2026-06-01", str(pack), str(source), with_example_row=True, market="h2h", bookmaker="manual", league="International")
         assert "matchday_manual_odds.csv" in created["files"]
+        assert "matchday_examples.csv" in created["files"]
         assert (pack / "matchday_checklist.md").exists()
+        examples = list(csv.DictReader((pack / "matchday_examples.csv").open(newline="", encoding="utf-8")))
+        assert len(examples) == 2
+        assert examples[0]["is_near_close"] == "false"
+        assert examples[1]["is_near_close"] == "true"
         status = matchday_pack.pack_status(str(pack))
         assert status["taken"]["rows"] == 1
         assert status["near_close"]["rows"] == 1
