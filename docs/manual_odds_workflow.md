@@ -62,3 +62,12 @@ python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots 
 ```
 
 Le guard signale les lignes demo/test/fictives, les near-close sans taken, les taken sans near-close et les champs manuels incomplets. Corriger le CSV manuel avant d'appliquer.
+## V8.7 matchday staging
+
+Pour un pack matchday, ne pas confondre dry-run et application :
+
+```bash
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase pre_match
+```
+
+Le dry-run cree un store et un ledger temporaires. Il peut donc simuler la conversion taken -> shadow sans toucher aux fichiers reels. Appliquer seulement apres lecture humaine des warnings et blockers.

@@ -58,3 +58,13 @@ Les snapshots suivent le contrat `odds_snapshot` de `pipeline_contracts.py`. `or
 ## V8.6 matchday
 
 `matchday_pack.py` cree les fichiers terrain d'une journee. `matchday_runner.py` importe taken odds et near-close dans le bon ordre, puis `real_observation_guard.py` bloque les melanges test/reel et les near-close orphelines.
+## V8.7 UX matchday
+
+Les snapshots odds peuvent maintenant etre testes dans un full-dry-run matchday predictif. Le staging temporaire evite de lire un store reel vide apres validation d'une taken odds.
+
+```bash
+python matchday_status_report.py --pack reports/matchday_2026_06_01
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase pre_match
+```
+
+Une near-close doit etre collectee plus tard et ne doit pas etre inventee.
