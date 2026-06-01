@@ -55,6 +55,14 @@ def main():
         assert agent["ok"]
         project_map = oracle_ops.project_map_report(str(root / "reports"), skip_dashboard=True)
         assert project_map["architecture_blocks"] == 7
+        real_start = oracle_ops.real_start_report(str(root / "reports"), str(ledger), str(odds_store))
+        assert "guard" in real_start
+        matchday = oracle_ops.matchday_create_report("2026-06-01", str(root / "reports"))
+        assert Path(matchday["output_dir"]).exists()
+        matchday_status = oracle_ops.build_matchday_status(matchday["output_dir"])
+        assert matchday_status["ready_for_dry_run"]
+        matchday_report = oracle_ops.matchday_report(matchday["output_dir"], str(ledger), str(odds_store), str(root / "reports"))
+        assert "evidence" in matchday_report
 
         absent = oracle_ops.build_health(root / "absent", str(ledger))
         assert absent["status"] == "bloquant"

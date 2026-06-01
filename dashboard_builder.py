@@ -48,6 +48,8 @@ REPORT_FILES = {
     "progress_loop": "progress_loop.txt",
     "project_scorecard": "project_scorecard.txt",
     "agent_orchestrator_dryrun": "agent_orchestrator_dryrun.txt",
+    "real_observation_guard": "real_observation_guard.txt",
+    "matchday_status": "matchday_status.txt",
 }
 
 
@@ -161,6 +163,8 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     architecture_map = read_json_candidates(report_dir, ["architecture_map.json"])
     pipeline_contracts = read_json_candidates(report_dir, ["pipeline_contracts.json"])
     project_scorecard = read_json_candidates(report_dir, ["project_scorecard.json"])
+    real_guard = read_json_candidates(report_dir, ["real_observation_guard.json"])
+    matchday_status = read_json_candidates(report_dir, ["matchday_status.json", "matchday_runner_summary.json"])
     pipeline_final = understat_pipeline.get("final_status") or {}
     pipeline_model = pipeline_final.get("xg_model") or {}
 
@@ -321,6 +325,16 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "pipeline_contracts_count": len((pipeline_contracts.get("contracts") or {})),
         "project_scorecard_global": project_scorecard.get("global_score"),
         "project_scorecard_real_proof": ((project_scorecard.get("scores") or {}).get("preuve betting reelle") or {}).get("score"),
+        "real_guard_verdict": real_guard.get("verdict"),
+        "real_guard_blockers": real_guard.get("blockers") or [],
+        "real_guard_warnings": real_guard.get("warnings") or [],
+        "real_guard_near_without_taken": real_guard.get("near_close_without_taken_count"),
+        "real_guard_taken_without_near": real_guard.get("taken_without_near_close_count"),
+        "matchday_date": matchday_status.get("date") or ((matchday_status.get("matchday_status") or {}).get("date")),
+        "matchday_taken_count": ((matchday_status.get("taken") or {}).get("filled") if matchday_status.get("taken") else ((matchday_status.get("matchday_status") or {}).get("taken") or {}).get("filled")),
+        "matchday_near_close_count": ((matchday_status.get("near_close") or {}).get("filled") if matchday_status.get("near_close") else ((matchday_status.get("matchday_status") or {}).get("near_close") or {}).get("filled")),
+        "matchday_results_count": ((matchday_status.get("results") or {}).get("filled") if matchday_status.get("results") else ((matchday_status.get("matchday_status") or {}).get("results") or {}).get("filled")),
+        "matchday_warnings": matchday_status.get("warnings") or ((matchday_status.get("matchday_status") or {}).get("warnings") or []),
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -679,6 +693,26 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     if texts["odds_intake_audit"]:
         intake_lines.extend(_lines_matching(texts["odds_intake_audit"], ["Snapshots", "Coverage", "Verdict", "Action"], 20))
     parts.append(_card("Odds Intake Workflow", "\n".join(intake_lines)))
+
+    matchday_lines = [
+        f"date pack: {summary.get('matchday_date')}",
+        f"taken odds remplies: {summary.get('matchday_taken_count')}",
+        f"near-close remplies: {summary.get('matchday_near_close_count')}",
+        f"resultats remplis: {summary.get('matchday_results_count')}",
+        f"guard verdict: {summary.get('real_guard_verdict')}",
+        f"near-close sans taken: {summary.get('real_guard_near_without_taken')}",
+        f"taken sans near-close: {summary.get('real_guard_taken_without_near')}",
+        f"CLV coverage: {summary.get('shadow_clv_coverage')}%",
+        f"evidence status: {summary.get('evidence_gate_status')}",
+        f"blockers guard: {', '.join(summary.get('real_guard_blockers') or []) or 'aucun'}",
+        f"warnings matchday: {', '.join(summary.get('matchday_warnings') or []) or 'aucun'}",
+        "statut: observation seulement, aucune mise.",
+    ]
+    if texts["real_observation_guard"]:
+        matchday_lines.extend(_lines_matching(texts["real_observation_guard"], ["Verdict", "Bloquant", "Warning", "Near-close"], 20))
+    if texts["matchday_status"]:
+        matchday_lines.extend(_lines_matching(texts["matchday_status"], ["taken", "near", "results", "warnings"], 20))
+    parts.append(_card("Real Matchday Collection", "\n".join(matchday_lines)))
 
     architecture_lines = [
         f"blocs detectes: {summary.get('architecture_blocks')}",

@@ -39,6 +39,8 @@ def build_evidence_gate(
     benchmark_summary_path: str = "",
     statistical_validation_path: str = "",
     calibration_report_path: str = "",
+    real_guard_path: str = "",
+    matchday_status_path: str = "",
 ) -> Dict[str, Any]:
     shadow = read_json(shadow_report_path)
     quality = read_json(quality_audit_path)
@@ -47,10 +49,12 @@ def build_evidence_gate(
     benchmark = read_json(benchmark_summary_path)
     stats = read_json(statistical_validation_path)
     calibration = read_json(calibration_report_path)
+    real_guard = read_json(real_guard_path)
+    matchday_status = read_json(matchday_status_path)
     blockers: List[str] = []
     strengths: List[str] = []
     next_steps: List[str] = []
-    if not any([shadow, quality, big5, clv, benchmark, stats, calibration]):
+    if not any([shadow, quality, big5, clv, benchmark, stats, calibration, real_guard, matchday_status]):
         blockers.append("Aucun rapport de preuve disponible")
         next_steps.append("Generer shadow_clv_report.py et shadow_quality_audit.py")
         status = "not_started"
@@ -123,7 +127,35 @@ def build_evidence_gate(
     if calibration:
         if calibration.get("ece") is not None:
             strengths.append("calibration disponible")
-    if quality.get("verdict") == "invalid" or any("CLV moyenne <= 0" == item for item in blockers):
+    if real_guard:
+        verdict = real_guard.get("verdict")
+        if verdict == "clean_real_collection":
+            strengths.append("guard reel clean")
+        elif verdict == "empty":
+            blockers.append("guard reel: collecte vide")
+        elif verdict in {"mixed_test_and_real", "invalid"}:
+            blockers.append(f"guard reel: {verdict}")
+        elif verdict == "needs_review":
+            blockers.append("guard reel: verification humaine requise")
+        if real_guard.get("near_close_without_taken_count", 0):
+            blockers.append("near-close sans taken")
+        if real_guard.get("taken_without_near_close_count", 0):
+            blockers.append("taken sans near-close")
+    if matchday_status:
+        taken = matchday_status.get("taken") or {}
+        near = matchday_status.get("near_close") or {}
+        results = matchday_status.get("results") or {}
+        if not matchday_status.get("ready_for_dry_run"):
+            blockers.append("matchday incomplet")
+        if (taken.get("filled") or 0) == 0:
+            blockers.append("matchday sans taken odds")
+        if (near.get("filled") or 0) == 0:
+            blockers.append("matchday sans near-close")
+        if (results.get("filled") or 0) == 0:
+            blockers.append("resultats manquants")
+    if real_guard and real_guard.get("verdict") in {"mixed_test_and_real", "invalid"}:
+        status = "blocked"
+    elif quality.get("verdict") == "invalid" or any("CLV moyenne <= 0" == item for item in blockers):
         status = "blocked"
     elif sample >= 1000 and clv_coverage >= 80.0 and clv_mean is not None and _num(clv_mean) > 0 and roi is not None and _num(roi) > 0 and quality.get("verdict") in {"clean", "usable_with_warnings"}:
         status = "ready_for_deep_review"
@@ -162,6 +194,8 @@ def build_evidence_gate(
             "benchmark_summary": benchmark_summary_path or None,
             "statistical_validation": statistical_validation_path or None,
             "calibration_report": calibration_report_path or None,
+            "real_guard": real_guard_path or None,
+            "matchday_status": matchday_status_path or None,
         },
         "lab_only": True,
         "can_influence_picks": False,
@@ -216,6 +250,8 @@ def parse_args(argv=None):
     parser.add_argument("--benchmark-summary", default="")
     parser.add_argument("--statistical-validation", default="")
     parser.add_argument("--calibration-report", default="")
+    parser.add_argument("--real-guard", default="")
+    parser.add_argument("--matchday-status", default="")
     parser.add_argument("--output", default="")
     parser.add_argument("--html", default="")
     return parser.parse_args(argv)
@@ -232,6 +268,8 @@ def main(argv=None) -> int:
             benchmark_summary_path=args.benchmark_summary,
             statistical_validation_path=args.statistical_validation,
             calibration_report_path=args.calibration_report,
+            real_guard_path=args.real_guard,
+            matchday_status_path=args.matchday_status,
         )
         if args.output:
             write_json(report, args.output)

@@ -52,3 +52,13 @@ python pipeline_contracts.py --show shadow_ledger
 ```
 
 La restitution finale doit rester une observation shadow ou un refus tant que la preuve est insuffisante.
+
+## Garde-fous V8.6
+
+Pour une vraie collecte :
+
+```bash
+python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv
+```
+
+Le guard signale les lignes demo/test/fictives, les near-close sans taken, les taken sans near-close et les champs manuels incomplets. Corriger le CSV manuel avant d'appliquer.

@@ -1,0 +1,54 @@
+import csv
+import tempfile
+from pathlib import Path
+
+import matchday_pack
+import matchday_runner
+
+
+def fill_manual(path: Path, near_close: bool = False) -> None:
+    rows = list(csv.DictReader(path.open(newline="", encoding="utf-8")))
+    for row in rows:
+        row["captured_at"] = "2026-06-01T18:55:00" if near_close else "2026-06-01T10:00:00"
+        row["bookmaker"] = "Book"
+        row["side"] = "home"
+        row["odds"] = "2.00" if near_close else "2.10"
+        row["is_near_close"] = "true" if near_close else "false"
+        row["notes"] = "source manuelle reelle"
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def main():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "matches.csv"
+        with source.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=["match_date", "league", "home_team", "away_team", "kickoff_time"])
+            writer.writeheader()
+            writer.writerow({"match_date": "2026-06-01", "league": "EPL", "home_team": "Arsenal", "away_team": "Chelsea", "kickoff_time": "2026-06-01T19:00:00"})
+        pack = root / "reports" / "matchday_2026_06_01"
+        matchday_pack.create_pack("2026-06-01", str(pack), str(source))
+        fill_manual(pack / "matchday_manual_odds.csv", near_close=False)
+        fill_manual(pack / "matchday_near_close.csv", near_close=True)
+        ledger = root / "reports" / "shadow_ledger.csv"
+        store = root / "reports" / "odds_snapshots.csv"
+        reports = root / "reports"
+        assert matchday_runner.validate_pack(str(pack))["valid"]
+        dry = matchday_runner.full_dry_run(str(pack), str(ledger), str(store), str(reports))
+        assert dry["dry_run"] is True
+        assert not ledger.exists()
+        assert matchday_runner.import_taken(str(pack), str(store), apply=True)["valid_taken_rows"] == 1
+        assert matchday_runner.to_shadow(str(store), str(ledger), apply=True)["rows_added"] == 1
+        assert matchday_runner.import_near_close(str(pack), str(store), apply=True)["valid_near_close_rows"] == 1
+        assert matchday_runner.match_closing(str(store), str(ledger), apply=True)["closing_updated"] == 1
+        report = matchday_runner.write_matchday_report(str(pack), str(ledger), str(store), str(reports))
+        assert "evidence" in report
+        assert (reports / "matchday_runner_summary.json").exists()
+    print("test_matchday_runner ok")
+
+
+if __name__ == "__main__":
+    main()

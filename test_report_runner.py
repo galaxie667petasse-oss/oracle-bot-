@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, run_report, shadow_commands, xg_understat_commands
+from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, run_report, shadow_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -252,6 +252,20 @@ Understat xG Full Pipeline Quality Gate
             "global_score": 70,
             "scores": {"preuve betting reelle": {"score": 20}},
         }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "real_observation_guard.json").write_text(json.dumps({
+            "verdict": "needs_review",
+            "blockers": ["taken sans near-close"],
+            "warnings": ["verification humaine"],
+            "near_close_without_taken_count": 0,
+            "taken_without_near_close_count": 1,
+        }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "matchday_status.json").write_text(json.dumps({
+            "date": "2026-06-01",
+            "taken": {"filled": 2},
+            "near_close": {"filled": 1},
+            "results": {"filled": 0},
+            "warnings": ["resultats manquants"],
+        }, ensure_ascii=False), encoding="utf-8")
         write_report(report_dir / "architecture_map.txt", "Architecture canonique\n- Sources de donnees\n- LLM analyste\n")
         write_report(report_dir / "pipeline_contracts.txt", "Contrats disponibles\n- odds_snapshot\n- shadow_ledger\n")
         write_report(report_dir / "llm_analyst_contract.txt", "Contrat LLM analyste\n- Le LLM n'est pas source de verite\n")
@@ -259,6 +273,8 @@ Understat xG Full Pipeline Quality Gate
         write_report(report_dir / "progress_loop.txt", "Resume boucle de progression\nentries: 0\n")
         write_report(report_dir / "project_scorecard.txt", "Scorecard projet Oracle\n- Score global: 70\n- Preuve betting reelle: 20\n")
         write_report(report_dir / "agent_orchestrator_dryrun.txt", "Agent orchestrator dry-run Oracle\n- Dry-run uniquement\n")
+        write_report(report_dir / "real_observation_guard.txt", "Real Observation Guard Oracle\n- Verdict: needs_review\n")
+        write_report(report_dir / "matchday_status.txt", "Status matchday pack Oracle\n- taken: 2\n")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -284,6 +300,7 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Odds source config" for command in command_set("odds-lab"))
         assert any(command.name == "Odds intake audit" for command in command_set("odds-intake"))
         assert any(command.name == "Architecture canonique" for command in command_set("project-blueprint"))
+        assert any(command.name == "Matchday status" for command in command_set("matchday"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
@@ -323,6 +340,10 @@ Understat xG Full Pipeline Quality Gate
         assert any("oracle_architecture_map.py" in command.args for command in blueprint_cmds)
         assert any("pipeline_contracts.py" in command.args for command in blueprint_cmds)
         assert not any("dashboard_builder.py" in command.args for command in blueprint_cmds)
+        matchday_cmds = matchday_commands(str(root / "reports" / "matchday_2026_06_01"), str(root / "reports" / "shadow_ledger.csv"), str(root / "reports" / "odds_snapshots.csv"), skip_dashboard=True)
+        assert any("real_observation_guard.py" in command.args for command in matchday_cmds)
+        assert any("evidence_gate.py" in command.args for command in matchday_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in matchday_cmds)
         try:
             closing_preview_commands("features.csv", "matches.csv", str(root / "data" / "preview.csv"))
             raise AssertionError("preview data non bloquee")
@@ -360,6 +381,7 @@ Understat xG Full Pipeline Quality Gate
         assert "Project scorecard" in html
         assert "Agent dry-run" in html
         assert "Next actions" in html
+        assert "Real Matchday Collection" in html
         assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 

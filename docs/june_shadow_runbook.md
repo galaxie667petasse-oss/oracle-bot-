@@ -119,3 +119,24 @@ python oracle_ops.py --project-map
 ```
 
 Le LLM analyste reste explicatif : il ne remplace jamais les mesures, la CLV, le sample ou l'evidence gate.
+
+## V8.6 collecte reelle
+
+Avant une vraie journee de juin :
+
+```bash
+python test_archive_manager.py --status
+python odds_lab_wizard.py --real-start
+python matchday_pack.py --date 2026-06-01 --output-dir reports/matchday_2026_06_01
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run
+```
+
+Routine :
+
+- matin : preparer le pack et verifier que les tests sont archives ;
+- avant match : remplir les taken odds reelles ;
+- juste avant kickoff : remplir les near-close reelles ;
+- apres match : renseigner les resultats ;
+- fin de journee : lancer `matchday_runner.py --report` puis lire `evidence_gate.py`.
+
+Ne jamais melanger demo/test/fictif et reel dans le meme cycle.

@@ -45,6 +45,15 @@ def main():
         big5_blocked = evidence_gate.build_evidence_gate(str(shadow), str(quality), str(big5), str(clv))
         assert any("Big5 sans CLV" in blocker for blocker in big5_blocked["blockers"])
         assert any("CLV readiness" in blocker for blocker in big5_blocked["blockers"])
+        guard = root / "reports" / "guard.json"
+        matchday = root / "reports" / "matchday_status.json"
+        write_json(guard, {"verdict": "mixed_test_and_real", "near_close_without_taken_count": 1, "taken_without_near_close_count": 1})
+        write_json(matchday, {"ready_for_dry_run": True, "taken": {"filled": 1}, "near_close": {"filled": 0}, "results": {"filled": 0}})
+        guarded = evidence_gate.build_evidence_gate(str(shadow), str(quality), real_guard_path=str(guard), matchday_status_path=str(matchday))
+        assert guarded["global_status"] == "blocked"
+        assert any("guard reel" in blocker for blocker in guarded["blockers"])
+        assert any("near-close sans taken" in blocker for blocker in guarded["blockers"])
+        assert any("resultats manquants" in blocker for blocker in guarded["blockers"])
 
         out_json = root / "reports" / "evidence_gate.json"
         out_html = root / "reports" / "evidence_gate.html"

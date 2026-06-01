@@ -66,6 +66,10 @@ ESSENTIAL_FILES = [
     "progress_loop.py",
     "oracle_project_scorecard.py",
     "agent_orchestrator_dryrun.py",
+    "test_archive_manager.py",
+    "real_observation_guard.py",
+    "matchday_pack.py",
+    "matchday_runner.py",
     "config/odds_sources.example.json",
     "docs/canonical_architecture.md",
     "docs/llm_analyst_role.md",
@@ -138,6 +142,10 @@ MAIN_TESTS = [
     "test_progress_loop.py",
     "test_oracle_project_scorecard.py",
     "test_agent_orchestrator_dryrun.py",
+    "test_test_archive_manager.py",
+    "test_real_observation_guard.py",
+    "test_matchday_pack.py",
+    "test_matchday_runner.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -208,6 +216,10 @@ IMPORT_MODULES = [
     "progress_loop",
     "oracle_project_scorecard",
     "agent_orchestrator_dryrun",
+    "test_archive_manager",
+    "real_observation_guard",
+    "matchday_pack",
+    "matchday_runner",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -267,6 +279,10 @@ OFFLINE_COMMAND_FILES = [
     "progress_loop.py",
     "oracle_project_scorecard.py",
     "agent_orchestrator_dryrun.py",
+    "test_archive_manager.py",
+    "real_observation_guard.py",
+    "matchday_pack.py",
+    "matchday_runner.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [

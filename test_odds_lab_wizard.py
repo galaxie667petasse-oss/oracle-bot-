@@ -55,6 +55,16 @@ def main():
         assert "Demo synthetique" in demo["message"]
         actions = odds_lab_wizard.next_actions(str(store), str(ledger))
         assert actions
+        real = odds_lab_wizard.real_start(str(store), str(ledger))
+        assert "guard" in real
+        archive = odds_lab_wizard.archive_tests(str(reports), label="before_real")
+        assert "archive" in archive and "reset" in archive
+        pack = odds_lab_wizard.matchday_pack_command("2026-06-01", str(reports))
+        assert Path(pack["output_dir"]).exists()
+        status_pack = odds_lab_wizard.pack_status(pack["output_dir"])
+        assert status_pack["ready_for_dry_run"]
+        dry_matchday = odds_lab_wizard.matchday_full_dry_run(pack["output_dir"], str(ledger), str(store), str(reports))
+        assert dry_matchday["dry_run"] is True
 
     print("test_odds_lab_wizard ok")
 

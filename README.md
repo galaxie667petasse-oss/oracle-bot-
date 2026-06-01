@@ -772,3 +772,24 @@ python report_runner.py --project-blueprint --skip-dashboard
 ```
 
 Cette phase ne modifie pas `data/`, ne lance aucun reseau, ne contacte pas Telegram et ne change aucun statut de production.
+
+## V8.6 Real Matchday Workflow, Human Intake & June Collection
+
+V8.6 prepare la collecte terrain de juin sans reseau et sans activation automatique. Elle ajoute :
+
+- `test_archive_manager.py` pour archiver les tests/demo avant le reel ;
+- `real_observation_guard.py` pour separer demo/test/fictif/reel ;
+- `matchday_pack.py` pour creer les CSV d'une journee ;
+- `matchday_runner.py` pour valider, importer, matcher closing et generer les rapports ;
+- integration `odds_lab_wizard.py`, `oracle_ops.py`, `report_runner.py`, `dashboard_builder.py` et `evidence_gate.py`.
+
+Workflow :
+
+```bash
+python test_archive_manager.py --archive-and-reset --label before_real_june
+python odds_lab_wizard.py --real-start
+python matchday_pack.py --date 2026-06-01 --output-dir reports/matchday_2026_06_01
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run
+```
+
+Une near-close seule ne suffit pas. Une observation reelle ne doit pas etre melangee avec demo/test/fictif. Le statut reste observation shadow tant que la preuve reste insuffisante.

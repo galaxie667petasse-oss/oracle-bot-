@@ -862,6 +862,51 @@ python report_runner.py --project-blueprint --skip-dashboard
 
 ## 27. Git workflow
 
+## 28. V8.6 Real Matchday Workflow
+
+Archive/reset :
+
+```bash
+python test_archive_manager.py --archive-and-reset --label before_real_june
+```
+
+Real start :
+
+```bash
+python odds_lab_wizard.py --real-start
+```
+
+Pack matchday :
+
+```bash
+python matchday_pack.py --date 2026-06-01 --output-dir reports/matchday_2026_06_01
+```
+
+Runner matchday :
+
+```bash
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run
+python matchday_runner.py --pack reports/matchday_2026_06_01 --full-apply
+```
+
+Guard reel :
+
+```bash
+python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --output reports/real_observation_guard.json --html reports/real_observation_guard.html
+```
+
+Evidence gate avec guard :
+
+```bash
+python evidence_gate.py --shadow-report reports/shadow_clv_report.json --quality-audit reports/shadow_quality_audit.json --big5-summary reports/big5_xg_summary.json --clv-readiness reports/clv_readiness.json --real-guard reports/real_observation_guard.json --output reports/evidence_gate.json --html reports/evidence_gate.html
+```
+
+Report runner :
+
+```bash
+python report_runner.py --matchday --matchday-pack reports/matchday_2026_06_01 --skip-dashboard
+```
+
 ```bash
 git status --short
 git diff

@@ -14,6 +14,10 @@ from odds_to_shadow import snapshots_to_shadow
 from shadow_clv_report import build_shadow_clv_report
 from shadow_ledger import DEFAULT_LEDGER, init_ledger, summarize_ledger
 from shadow_templates import create_candidates_template, create_closing_template, create_results_template
+from matchday_pack import create_pack, pack_status
+from matchday_runner import full_apply as matchday_full_apply, full_dry_run as matchday_full_dry_run
+from real_observation_guard import build_guard_report
+from test_archive_manager import archive_and_reset
 
 
 def _read_optional_json(path: str) -> Dict[str, Any]:
@@ -185,6 +189,31 @@ def next_actions(store: str = DEFAULT_STORE, ledger: str = DEFAULT_LEDGER) -> Li
     return actions[:6]
 
 
+def real_start(store: str = DEFAULT_STORE, ledger: str = DEFAULT_LEDGER) -> Dict[str, Any]:
+    guard = build_guard_report(ledger, store)
+    commands = [
+        "python test_archive_manager.py --archive-and-reset --label before_real_june",
+        "python matchday_pack.py --date YYYY-MM-DD --output-dir reports/matchday_YYYY_MM_DD",
+        "python matchday_runner.py --pack reports/matchday_YYYY_MM_DD --full-dry-run",
+    ]
+    if guard.get("verdict") in {"mixed_test_and_real", "needs_review", "invalid"} or guard.get("test_like_rows", 0):
+        recommendation = "archiver les tests avant collecte reelle"
+    else:
+        recommendation = "workspace pret ou vide pour collecte reelle"
+    return {"guard": guard, "recommendation": recommendation, "commands": commands}
+
+
+def archive_tests(reports_dir: str = "reports", label: str = "before_real_june") -> Dict[str, Any]:
+    return archive_and_reset(reports_dir, label=label, include_templates=False)
+
+
+def matchday_pack_command(match_date: str, reports_dir: str = "reports", from_csv: str = "") -> Dict[str, Any]:
+    if not match_date:
+        raise ValueError("--date requis avec --matchday-pack")
+    safe = match_date.replace("-", "_")
+    return create_pack(match_date, str(Path(reports_dir) / f"matchday_{safe}"), from_csv=from_csv)
+
+
 def print_json(title: str, payload: Any) -> None:
     print(title)
     print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -201,12 +230,20 @@ def parse_args(argv=None):
     group.add_argument("--dry-run-full", action="store_true")
     group.add_argument("--demo", action="store_true")
     group.add_argument("--next-actions", action="store_true")
+    group.add_argument("--real-start", action="store_true")
+    group.add_argument("--archive-tests", action="store_true")
+    group.add_argument("--matchday-pack", action="store_true")
+    group.add_argument("--matchday-status", default="")
+    group.add_argument("--matchday-dry-run", default="")
+    group.add_argument("--matchday-apply", default="")
     parser.add_argument("--store", default=DEFAULT_STORE)
     parser.add_argument("--ledger", default=DEFAULT_LEDGER)
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--allow-errors", action="store_true")
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--date", default="")
+    parser.add_argument("--from-csv", default="")
     return parser.parse_args(argv)
 
 
@@ -230,6 +267,18 @@ def main(argv=None) -> int:
             print_json("Odds Lab Wizard - demo", demo(args.reports_dir, args.store, args.ledger, apply=args.apply, force=args.force))
         elif args.next_actions:
             print_json("Odds Lab Wizard - prochaines actions", next_actions(args.store, args.ledger))
+        elif args.real_start:
+            print_json("Odds Lab Wizard - demarrage reel", real_start(args.store, args.ledger))
+        elif args.archive_tests:
+            print_json("Odds Lab Wizard - archive tests", archive_tests(args.reports_dir))
+        elif args.matchday_pack:
+            print_json("Odds Lab Wizard - matchday pack", matchday_pack_command(args.date, args.reports_dir, args.from_csv))
+        elif args.matchday_status:
+            print_json("Odds Lab Wizard - matchday status", pack_status(args.matchday_status))
+        elif args.matchday_dry_run:
+            print_json("Odds Lab Wizard - matchday dry-run", matchday_full_dry_run(args.matchday_dry_run, args.ledger, args.store, args.reports_dir))
+        elif args.matchday_apply:
+            print_json("Odds Lab Wizard - matchday apply", matchday_full_apply(args.matchday_apply, args.ledger, args.store, args.reports_dir))
         else:
             print_json("Odds Lab Wizard - status", build_status(args.store, args.ledger, args.reports_dir))
         return 0

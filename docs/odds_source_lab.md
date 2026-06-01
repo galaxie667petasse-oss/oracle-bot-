@@ -54,3 +54,7 @@ Le principe important : les snapshots `is_near_close=true` ne sont jamais conver
 ## Lien V8.5
 
 Les snapshots suivent le contrat `odds_snapshot` de `pipeline_contracts.py`. `oracle_architecture_map.py` classe ce laboratoire dans les blocs Sources de donnees et Collecte & nettoyage. Le LLM analyste peut expliquer un snapshot valide, mais il ne doit jamais inventer une cote manquante.
+
+## V8.6 matchday
+
+`matchday_pack.py` cree les fichiers terrain d'une journee. `matchday_runner.py` importe taken odds et near-close dans le bon ordre, puis `real_observation_guard.py` bloque les melanges test/reel et les near-close orphelines.

@@ -913,6 +913,109 @@ def project_blueprint_commands(skip_evidence: bool = False, skip_dashboard: bool
     return commands
 
 
+def matchday_commands(
+    matchday_pack: str = "reports/matchday_2026_06_01",
+    ledger: str = "reports/shadow_ledger.csv",
+    snapshots: str = "reports/odds_snapshots.csv",
+    skip_dashboard: bool = False,
+) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "Matchday status",
+            "matchday_status.txt",
+            ["matchday_pack.py", "--status", matchday_pack],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Real observation guard",
+            "real_observation_guard.txt",
+            [
+                "real_observation_guard.py",
+                "--ledger",
+                ledger,
+                "--snapshots",
+                snapshots,
+                "--output",
+                "{report_dir}/real_observation_guard.json",
+                "--html",
+                "{report_dir}/real_observation_guard.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Shadow CLV report matchday",
+            "shadow_clv_report.txt",
+            [
+                "shadow_clv_report.py",
+                "--ledger",
+                ledger,
+                "--output",
+                "{report_dir}/shadow_clv_report.json",
+                "--html",
+                "{report_dir}/shadow_clv_report.html",
+            ],
+            timeout=600,
+        ),
+        ReportCommand(
+            "Shadow quality audit matchday",
+            "shadow_quality_audit.txt",
+            [
+                "shadow_quality_audit.py",
+                "--ledger",
+                ledger,
+                "--output",
+                "{report_dir}/shadow_quality_audit.json",
+                "--html",
+                "{report_dir}/shadow_quality_audit.html",
+            ],
+            timeout=600,
+        ),
+        ReportCommand(
+            "Odds intake audit matchday",
+            "odds_intake_audit.txt",
+            [
+                "odds_intake_audit.py",
+                "--snapshots",
+                snapshots,
+                "--ledger",
+                ledger,
+                "--output",
+                "{report_dir}/odds_intake_audit.json",
+                "--html",
+                "{report_dir}/odds_intake_audit.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Evidence gate matchday",
+            "evidence_gate.txt",
+            [
+                "evidence_gate.py",
+                "--shadow-report",
+                "{report_dir}/shadow_clv_report.json",
+                "--quality-audit",
+                "{report_dir}/shadow_quality_audit.json",
+                "--big5-summary",
+                "reports/big5_xg_summary.json",
+                "--clv-readiness",
+                "reports/clv_readiness.json",
+                "--real-guard",
+                "{report_dir}/real_observation_guard.json",
+                "--matchday-status",
+                f"{matchday_pack}/matchday_status.json",
+                "--output",
+                "{report_dir}/evidence_gate.json",
+                "--html",
+                "{report_dir}/evidence_gate.html",
+            ],
+            timeout=600,
+        ),
+    ]
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard matchday", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
 def timestamp() -> str:
     return datetime.now().strftime("%Y_%m_%d_%H%M%S")
 
@@ -953,6 +1056,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return odds_intake_commands()
     if mode == "project-blueprint":
         return project_blueprint_commands()
+    if mode == "matchday":
+        return matchday_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -1073,6 +1178,7 @@ def parse_args(argv=None):
     mode.add_argument("--odds-lab", action="store_true", help="Lance le laboratoire local des sources de cotes")
     mode.add_argument("--odds-intake", action="store_true", help="Lance l'audit local du workflow odds intake")
     mode.add_argument("--project-blueprint", action="store_true", help="Lance la carte architecture, contrats, scorecard et restitution")
+    mode.add_argument("--matchday", action="store_true", help="Lance le rapport local de collecte matchday")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
@@ -1082,6 +1188,7 @@ def parse_args(argv=None):
     parser.add_argument("--preview-output", default="reports/features_with_closing_preview.csv", help="Sortie preview CLV partielle dans reports/")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv", help="Ledger shadow mode pour --shadow")
     parser.add_argument("--snapshots", default="reports/odds_snapshots.csv", help="Snapshots de cotes pour --odds-lab")
+    parser.add_argument("--matchday-pack", default="reports/matchday_2026_06_01", help="Pack matchday pour --matchday")
     parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
     parser.add_argument("--skip-benchmark", action="store_true", help="Pour --xg-understat/--big5-xg: ignore benchmark_governance")
     parser.add_argument("--skip-dashboard", action="store_true", help="Pour --daily-shadow: ignore dashboard_builder")
@@ -1105,6 +1212,7 @@ def main(argv=None) -> None:
         else "odds-lab" if args.odds_lab
         else "odds-intake" if args.odds_intake
         else "project-blueprint" if args.project_blueprint
+        else "matchday" if args.matchday
         else "big5-xg" if args.big5_xg
         else "xg-understat" if args.xg_understat
         else "full" if args.full
@@ -1182,6 +1290,13 @@ def main(argv=None) -> None:
     elif mode == "project-blueprint":
         commands = project_blueprint_commands(
             skip_evidence=args.skip_evidence,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "matchday":
+        commands = matchday_commands(
+            matchday_pack=args.matchday_pack,
+            ledger=args.ledger,
+            snapshots=args.snapshots,
             skip_dashboard=args.skip_dashboard,
         )
     else:

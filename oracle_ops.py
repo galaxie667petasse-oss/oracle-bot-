@@ -24,6 +24,10 @@ from odds_to_shadow import snapshots_to_shadow
 from oracle_architecture_map import build_architecture_map, write_html as write_architecture_html, write_json as write_architecture_json
 from oracle_project_scorecard import build_scorecard, write_html as write_scorecard_html, write_json as write_scorecard_json
 from progress_loop import summarize_progress
+from matchday_pack import create_pack as create_matchday_pack, pack_status as build_matchday_status
+from matchday_runner import write_matchday_report
+from real_observation_guard import build_guard_report as build_real_guard, write_html as write_guard_html, write_json as write_guard_json
+from test_archive_manager import archive_and_reset as archive_tests_and_reset
 
 
 KEY_MODULES = [
@@ -58,6 +62,10 @@ KEY_MODULES = [
     "progress_loop.py",
     "oracle_project_scorecard.py",
     "agent_orchestrator_dryrun.py",
+    "test_archive_manager.py",
+    "real_observation_guard.py",
+    "matchday_pack.py",
+    "matchday_runner.py",
 ]
 
 
@@ -292,6 +300,28 @@ def project_map_report(reports_dir: str, skip_dashboard: bool = True) -> Dict[st
     }
 
 
+def real_start_report(reports_dir: str, ledger: str, snapshots: str) -> Dict[str, Any]:
+    report = build_real_guard(ledger, snapshots)
+    write_guard_json(report, _reports_path(reports_dir, "real_observation_guard.json"))
+    write_guard_html(report, _reports_path(reports_dir, "real_observation_guard.html"))
+    return {
+        "guard": report,
+        "recommendation": "archiver les tests" if report.get("verdict") in {"mixed_test_and_real", "needs_review", "invalid"} else "pret pour observations reelles",
+        "message": "Observation seulement, aucune mise.",
+    }
+
+
+def matchday_create_report(match_date: str, reports_dir: str) -> Dict[str, Any]:
+    if not match_date:
+        raise ValueError("--date requis avec --matchday")
+    safe = match_date.replace("-", "_")
+    return create_matchday_pack(match_date, str(Path(reports_dir) / f"matchday_{safe}"))
+
+
+def matchday_report(pack: str, ledger: str, snapshots: str, reports_dir: str) -> Dict[str, Any]:
+    return write_matchday_report(pack, ledger, snapshots, reports_dir)
+
+
 def full_local(ledger: str, reports_dir: str, skip_benchmark: bool = False, skip_dashboard: bool = False) -> Dict[str, Any]:
     Path(reports_dir).mkdir(parents=True, exist_ok=True)
     health = build_health(Path("."), ledger)
@@ -378,6 +408,11 @@ def parse_args(argv=None):
     actions.add_argument("--llm-contract", action="store_true")
     actions.add_argument("--agent-dryrun", action="store_true")
     actions.add_argument("--project-map", action="store_true")
+    actions.add_argument("--real-start", action="store_true")
+    actions.add_argument("--matchday", action="store_true")
+    actions.add_argument("--matchday-status", default="")
+    actions.add_argument("--matchday-report", default="")
+    actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--odds-store", default=DEFAULT_ODDS_STORE)
@@ -474,6 +509,19 @@ def main(argv=None) -> int:
             print_odds_report("agent dry-run", agent_dryrun_report(args.reports_dir))
         elif args.project_map:
             print_odds_report("project map", project_map_report(args.reports_dir, skip_dashboard=args.skip_dashboard))
+        elif args.real_start:
+            print_odds_report("real start", real_start_report(args.reports_dir, args.ledger, args.snapshots))
+        elif args.matchday:
+            print_odds_report("matchday", matchday_create_report(args.date, args.reports_dir))
+        elif args.matchday_status:
+            print_odds_report("matchday status", build_matchday_status(args.matchday_status))
+        elif args.matchday_report:
+            print_odds_report("matchday report", matchday_report(args.matchday_report, args.ledger, args.snapshots, args.reports_dir))
+        elif args.archive_tests:
+            if not args.apply:
+                print_odds_report("archive tests dry-run", {"dry_run": True, "message": "Relancer avec --apply pour archiver et reset."})
+            else:
+                print_odds_report("archive tests", archive_tests_and_reset(args.reports_dir, label="before_real_june"))
         else:
             print_health(build_health(Path("."), args.ledger))
         return 0
