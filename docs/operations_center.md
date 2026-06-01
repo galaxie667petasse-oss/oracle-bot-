@@ -92,3 +92,15 @@ python oracle_ops.py --project-map
 ```
 
 Ces commandes decrivent l'architecture, les contrats, la scorecard et la boucle progressive. Elles restent locales : aucun reseau, aucun Telegram, aucune modification de `data/`.
+
+## V8.6 matchday operations
+
+```bash
+python oracle_ops.py --real-start
+python oracle_ops.py --matchday --date 2026-06-01
+python oracle_ops.py --matchday-status reports/matchday_2026_06_01
+python oracle_ops.py --matchday-report reports/matchday_2026_06_01
+python oracle_ops.py --archive-tests --apply
+```
+
+Sans `--apply`, les operations sensibles restent en verification. Le but est de preparer la collecte reelle, pas d'activer une action automatique.
