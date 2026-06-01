@@ -87,6 +87,9 @@ def test_release_candidate_docs_exist_and_have_sections():
         "odds snapshot",
         "manual odds workflow",
         "odds intake",
+        "canonical architecture blueprint",
+        "llm analyste",
+        "boucle de progression",
         "statistical proof foundation",
         "clv",
         "reliability curves",
@@ -112,6 +115,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v8.2" in status
     assert "v8.3" in status
     assert "v8.4" in status
+    assert "v8.5" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -124,6 +128,11 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "manual_odds_workflow.md").exists()
     assert (root / "docs" / "odds_intake_audit.md").exists()
     assert (root / "docs" / "odds_e2e_demo.md").exists()
+    assert (root / "docs" / "canonical_architecture.md").exists()
+    assert (root / "docs" / "llm_analyst_role.md").exists()
+    assert (root / "docs" / "restitution_standard.md").exists()
+    assert (root / "docs" / "progressive_loop.md").exists()
+    assert (root / "docs" / "local_machine_strategy.md").exists()
 
 
 def main():

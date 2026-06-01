@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, odds_intake_commands, odds_lab_commands, ops_commands, run_report, shadow_commands, xg_understat_commands
+from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, run_report, shadow_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -246,6 +246,19 @@ Understat xG Full Pipeline Quality Gate
         write_report(report_dir / "odds_snapshot_store.txt", "Resume snapshots de cotes Oracle\n- Lignes totales: 3\n")
         write_report(report_dir / "odds_source_quality.txt", "Qualite des sources de cotes Oracle\n- Capacite CLV: partial\n")
         write_report(report_dir / "odds_intake_audit.txt", "Audit intake odds Oracle\n- Verdict: shadow_started\n")
+        (report_dir / "architecture_map.json").write_text(json.dumps({"blocks": [{"name": "Sources de donnees"}]}, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "pipeline_contracts.json").write_text(json.dumps({"contracts": {"odds_snapshot": {}, "shadow_ledger": {}}}, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "project_scorecard.json").write_text(json.dumps({
+            "global_score": 70,
+            "scores": {"preuve betting reelle": {"score": 20}},
+        }, ensure_ascii=False), encoding="utf-8")
+        write_report(report_dir / "architecture_map.txt", "Architecture canonique\n- Sources de donnees\n- LLM analyste\n")
+        write_report(report_dir / "pipeline_contracts.txt", "Contrats disponibles\n- odds_snapshot\n- shadow_ledger\n")
+        write_report(report_dir / "llm_analyst_contract.txt", "Contrat LLM analyste\n- Le LLM n'est pas source de verite\n")
+        write_report(report_dir / "restitution_schema.txt", "Restitution Oracle\nDecision: non valide\n")
+        write_report(report_dir / "progress_loop.txt", "Resume boucle de progression\nentries: 0\n")
+        write_report(report_dir / "project_scorecard.txt", "Scorecard projet Oracle\n- Score global: 70\n- Preuve betting reelle: 20\n")
+        write_report(report_dir / "agent_orchestrator_dryrun.txt", "Agent orchestrator dry-run Oracle\n- Dry-run uniquement\n")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -270,6 +283,7 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Oracle ops health" for command in command_set("ops"))
         assert any(command.name == "Odds source config" for command in command_set("odds-lab"))
         assert any(command.name == "Odds intake audit" for command in command_set("odds-intake"))
+        assert any(command.name == "Architecture canonique" for command in command_set("project-blueprint"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
@@ -305,6 +319,10 @@ Understat xG Full Pipeline Quality Gate
         intake_cmds = odds_intake_commands(str(root / "reports" / "shadow_ledger.csv"), str(root / "reports" / "odds_snapshots.csv"), skip_evidence=True, skip_quality=True, skip_dashboard=True)
         assert any("odds_intake_audit.py" in command.args for command in intake_cmds)
         assert not any("dashboard_builder.py" in command.args for command in intake_cmds)
+        blueprint_cmds = project_blueprint_commands(skip_evidence=True, skip_dashboard=True)
+        assert any("oracle_architecture_map.py" in command.args for command in blueprint_cmds)
+        assert any("pipeline_contracts.py" in command.args for command in blueprint_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in blueprint_cmds)
         try:
             closing_preview_commands("features.csv", "matches.csv", str(root / "data" / "preview.csv"))
             raise AssertionError("preview data non bloquee")
@@ -334,6 +352,14 @@ Understat xG Full Pipeline Quality Gate
         assert "Closing Matcher Status" in html
         assert "Source Quality" in html
         assert "Odds Intake Workflow" in html
+        assert "Architecture canonique" in html
+        assert "Pipeline contracts" in html
+        assert "LLM analyst contract" in html
+        assert "Restitution schema" in html
+        assert "Progress loop" in html
+        assert "Project scorecard" in html
+        assert "Agent dry-run" in html
+        assert "Next actions" in html
         assert "Promotion blockers" in html
         assert "aucun pick automatique" in html.lower()
 

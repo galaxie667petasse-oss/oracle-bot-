@@ -59,7 +59,19 @@ ESSENTIAL_FILES = [
     "odds_lab_wizard.py",
     "odds_intake_audit.py",
     "odds_e2e_demo.py",
+    "oracle_architecture_map.py",
+    "pipeline_contracts.py",
+    "llm_analyst_contract.py",
+    "restitution_schema.py",
+    "progress_loop.py",
+    "oracle_project_scorecard.py",
+    "agent_orchestrator_dryrun.py",
     "config/odds_sources.example.json",
+    "docs/canonical_architecture.md",
+    "docs/llm_analyst_role.md",
+    "docs/restitution_standard.md",
+    "docs/progressive_loop.md",
+    "docs/local_machine_strategy.md",
     "report_runner.py",
     "dashboard_builder.py",
     "model_registry.json",
@@ -119,6 +131,13 @@ MAIN_TESTS = [
     "test_odds_lab_wizard.py",
     "test_odds_intake_audit.py",
     "test_odds_e2e_demo.py",
+    "test_oracle_architecture_map.py",
+    "test_pipeline_contracts.py",
+    "test_llm_analyst_contract.py",
+    "test_restitution_schema.py",
+    "test_progress_loop.py",
+    "test_oracle_project_scorecard.py",
+    "test_agent_orchestrator_dryrun.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -182,6 +201,13 @@ IMPORT_MODULES = [
     "odds_lab_wizard",
     "odds_intake_audit",
     "odds_e2e_demo",
+    "oracle_architecture_map",
+    "pipeline_contracts",
+    "llm_analyst_contract",
+    "restitution_schema",
+    "progress_loop",
+    "oracle_project_scorecard",
+    "agent_orchestrator_dryrun",
 ]
 
 OFFLINE_COMMAND_FILES = [
@@ -234,6 +260,13 @@ OFFLINE_COMMAND_FILES = [
     "odds_lab_wizard.py",
     "odds_intake_audit.py",
     "odds_e2e_demo.py",
+    "oracle_architecture_map.py",
+    "pipeline_contracts.py",
+    "llm_analyst_contract.py",
+    "restitution_schema.py",
+    "progress_loop.py",
+    "oracle_project_scorecard.py",
+    "agent_orchestrator_dryrun.py",
 ]
 
 TELEGRAM_FORBIDDEN_SNIPPETS = [
@@ -408,8 +441,8 @@ def check_forbidden_wording(root: Path, result: AuditResult) -> None:
         if rel.startswith("reports/") or rel.startswith("external_data/") or rel.startswith("__pycache__/") or ".git/" in rel:
             continue
         text = _read_text(path).lower()
-        forbidden = "pari " + "conseillé"
-        if forbidden in text:
+        forbidden_terms = ["pari " + "conseillé", "pari " + "conseille"]
+        if any(term in text for term in forbidden_terms):
             problems.append(rel)
     if problems:
         result.add_error("Expression interdite detectee: " + ", ".join(problems))

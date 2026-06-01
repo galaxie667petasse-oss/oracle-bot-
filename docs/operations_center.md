@@ -76,3 +76,19 @@ python oracle_ops.py --odds-next
 ```
 
 Sans `--apply`, l'import manuel via ops reste une validation/dry-run.
+
+## V8.5 Project blueprint
+
+Commandes ajoutees :
+
+```bash
+python oracle_ops.py --architecture
+python oracle_ops.py --contracts
+python oracle_ops.py --scorecard
+python oracle_ops.py --progress
+python oracle_ops.py --llm-contract
+python oracle_ops.py --agent-dryrun
+python oracle_ops.py --project-map
+```
+
+Ces commandes decrivent l'architecture, les contrats, la scorecard et la boucle progressive. Elles restent locales : aucun reseau, aucun Telegram, aucune modification de `data/`.

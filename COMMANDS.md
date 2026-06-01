@@ -808,6 +808,60 @@ python report_runner.py --odds-intake --skip-dashboard
 
 ## 26. Git workflow
 
+## 26. V8.5 Canonical Architecture Blueprint
+
+Architecture :
+
+```bash
+python oracle_architecture_map.py --show
+python oracle_architecture_map.py --status
+```
+
+Contrats :
+
+```bash
+python pipeline_contracts.py --list
+```
+
+Contrat LLM analyste :
+
+```bash
+python llm_analyst_contract.py --show
+```
+
+Restitution :
+
+```bash
+python restitution_schema.py --template reports/restitution_template.json
+```
+
+Boucle de progression :
+
+```bash
+python progress_loop.py --init
+```
+
+Scorecard :
+
+```bash
+python oracle_project_scorecard.py --output reports/project_scorecard.json --html reports/project_scorecard.html
+```
+
+Agent dry-run :
+
+```bash
+python agent_orchestrator_dryrun.py --full
+```
+
+Ops blueprint :
+
+```bash
+python oracle_ops.py --project-map
+python report_runner.py --project-blueprint --skip-dashboard
+```
+
+## 27. Git workflow
+
 ```bash
 git status --short
 git diff

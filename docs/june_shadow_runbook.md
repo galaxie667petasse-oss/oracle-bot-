@@ -103,3 +103,19 @@ python odds_intake_audit.py --snapshots reports/odds_snapshots.csv --ledger repo
 ```
 
 Lire d'abord les rejets et les ambiguites. Appliquer seulement apres verification humaine.
+
+## Routine V8.5 blueprint
+
+En fin de journee, journaliser la boucle :
+
+```bash
+python progress_loop.py --add --phase mesurer --title "Rapport shadow du jour" --status done --notes "lecture evidence gate"
+```
+
+Relire la carte projet si le workflow devient confus :
+
+```bash
+python oracle_ops.py --project-map
+```
+
+Le LLM analyste reste explicatif : il ne remplace jamais les mesures, la CLV, le sample ou l'evidence gate.

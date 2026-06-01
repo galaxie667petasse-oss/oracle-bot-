@@ -740,3 +740,35 @@ python odds_lab_wizard.py --next-actions
 python odds_intake_audit.py --snapshots reports/odds_snapshots.csv --ledger reports/shadow_ledger.csv --output reports/odds_intake_audit.json --html reports/odds_intake_audit.html
 python odds_e2e_demo.py --output-dir reports/odds_e2e_demo
 ```
+
+## V8.5 Canonical Architecture Blueprint
+
+V8.5 fixe l'architecture canonique du projet : sources de donnees, collecte & nettoyage, base & versioning, moteur de signaux, LLM analyste, restitution et boucle de progression.
+
+Principe obligatoire : le LLM n'est pas source de verite. Les donnees alimentent, les modules mesurent, l'agent orchestre et le LLM explique. Le LLM ne calcule pas un edge non fourni, ne cree aucune cote et ne peut pas produire une decision plus forte que `decision_policy.py` ou `evidence_gate.py`.
+
+Nouveaux modules :
+
+- `oracle_architecture_map.py` : carte officielle des blocs et risques ;
+- `pipeline_contracts.py` : contrats CSV/JSON entre les briques ;
+- `llm_analyst_contract.py` : contrat du futur analyste LLM, sans appel LLM reel ;
+- `restitution_schema.py` : format humain standardise ;
+- `progress_loop.py` : journal collecter/tester/mesurer/corriger ;
+- `oracle_project_scorecard.py` : score de maturite prudent ;
+- `agent_orchestrator_dryrun.py` : simulation locale de l'agent, sans reseau.
+
+Commandes principales :
+
+```bash
+python oracle_architecture_map.py --show
+python pipeline_contracts.py --list
+python llm_analyst_contract.py --show
+python restitution_schema.py --template reports/restitution_template.json
+python progress_loop.py --init
+python oracle_project_scorecard.py --output reports/project_scorecard.json --html reports/project_scorecard.html
+python agent_orchestrator_dryrun.py --full
+python oracle_ops.py --project-map
+python report_runner.py --project-blueprint --skip-dashboard
+```
+
+Cette phase ne modifie pas `data/`, ne lance aucun reseau, ne contacte pas Telegram et ne change aucun statut de production.

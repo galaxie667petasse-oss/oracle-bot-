@@ -62,3 +62,7 @@ L'audit intake peut ameliorer la qualite du ledger, mais il ne remplace pas les 
 - `ledger_without_result` empeche l'analyse ROI.
 
 Un intake propre permet de continuer la collecte, pas de conclure.
+
+## Lien V8.5
+
+`llm_analyst_contract.py` doit respecter ce gate. Si `evidence_gate.py` ne renvoie pas `ready_for_deep_review`, la restitution maximale reste `non valide` ou `observation shadow`. Le schema `restitution_schema.py` force les actions interdites a rester visibles.

@@ -43,6 +43,18 @@ def main():
         assert status["snapshots_total"] == 0
         intake = oracle_ops.odds_intake_audit_report(str(root / "reports"), str(odds_store), str(ledger))
         assert intake["verdict"] in {"shadow_started", "no_data", "snapshots_only"}
+        architecture = oracle_ops.architecture_report(str(root / "reports"))
+        assert len(architecture["blocks"]) == 7
+        scorecard = oracle_ops.scorecard_report(str(root / "reports"))
+        assert scorecard["global_score"] > 0
+        contracts = oracle_ops.contracts_report(str(root / "reports"))
+        assert contracts["ok"]
+        llm = oracle_ops.llm_contract_report(str(root / "reports"))
+        assert llm["ok"]
+        agent = oracle_ops.agent_dryrun_report(str(root / "reports"))
+        assert agent["ok"]
+        project_map = oracle_ops.project_map_report(str(root / "reports"), skip_dashboard=True)
+        assert project_map["architecture_blocks"] == 7
 
         absent = oracle_ops.build_health(root / "absent", str(ledger))
         assert absent["status"] == "bloquant"

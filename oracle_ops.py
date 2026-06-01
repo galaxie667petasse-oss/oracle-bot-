@@ -21,6 +21,9 @@ from odds_snapshot_store import DEFAULT_STORE as DEFAULT_ODDS_STORE, init_store,
 from odds_source_config import load_odds_source_config, validate_config, write_example
 from odds_source_quality_report import build_quality_report, write_html as write_odds_quality_html, write_json as write_odds_quality_json
 from odds_to_shadow import snapshots_to_shadow
+from oracle_architecture_map import build_architecture_map, write_html as write_architecture_html, write_json as write_architecture_json
+from oracle_project_scorecard import build_scorecard, write_html as write_scorecard_html, write_json as write_scorecard_json
+from progress_loop import summarize_progress
 
 
 KEY_MODULES = [
@@ -48,6 +51,13 @@ KEY_MODULES = [
     "odds_lab_wizard.py",
     "odds_intake_audit.py",
     "odds_e2e_demo.py",
+    "oracle_architecture_map.py",
+    "pipeline_contracts.py",
+    "llm_analyst_contract.py",
+    "restitution_schema.py",
+    "progress_loop.py",
+    "oracle_project_scorecard.py",
+    "agent_orchestrator_dryrun.py",
 ]
 
 
@@ -233,6 +243,55 @@ def odds_intake_audit_report(reports_dir: str, snapshots: str, ledger: str) -> D
     return report
 
 
+def architecture_report(reports_dir: str) -> Dict[str, Any]:
+    report = build_architecture_map(check_files=True)
+    write_architecture_json(report, _reports_path(reports_dir, "architecture_map.json"))
+    write_architecture_html(report, _reports_path(reports_dir, "architecture_map.html"))
+    return report
+
+
+def contracts_report(reports_dir: str) -> Dict[str, Any]:
+    result = run_subprocess(["pipeline_contracts.py", "--list", "--json", _reports_path(reports_dir, "pipeline_contracts.json"), "--html", _reports_path(reports_dir, "pipeline_contracts.html")])
+    return result
+
+
+def scorecard_report(reports_dir: str) -> Dict[str, Any]:
+    report = build_scorecard(reports_dir)
+    write_scorecard_json(report, _reports_path(reports_dir, "project_scorecard.json"))
+    write_scorecard_html(report, _reports_path(reports_dir, "project_scorecard.html"))
+    return report
+
+
+def llm_contract_report(reports_dir: str) -> Dict[str, Any]:
+    result = run_subprocess(["llm_analyst_contract.py", "--show", "--template-json", _reports_path(reports_dir, "llm_analyst_input_template.json")])
+    return result
+
+
+def agent_dryrun_report(reports_dir: str) -> Dict[str, Any]:
+    result = run_subprocess(["agent_orchestrator_dryrun.py", "--full"])
+    target = Path(_reports_path(reports_dir, "agent_orchestrator_dryrun.txt"))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text((result.get("stdout") or "") + (result.get("stderr") or ""), encoding="utf-8")
+    return result
+
+
+def project_map_report(reports_dir: str, skip_dashboard: bool = True) -> Dict[str, Any]:
+    Path(reports_dir).mkdir(parents=True, exist_ok=True)
+    architecture = architecture_report(reports_dir)
+    scorecard = scorecard_report(reports_dir)
+    evidence = evidence_report(reports_dir)
+    optional = []
+    if not skip_dashboard:
+        optional.append(run_subprocess(["dashboard_builder.py", "--input", reports_dir]))
+    return {
+        "architecture_blocks": len(architecture.get("blocks") or []),
+        "scorecard_global": scorecard.get("global_score"),
+        "evidence_status": evidence.get("global_status"),
+        "optional": optional,
+        "lab_only": True,
+    }
+
+
 def full_local(ledger: str, reports_dir: str, skip_benchmark: bool = False, skip_dashboard: bool = False) -> Dict[str, Any]:
     Path(reports_dir).mkdir(parents=True, exist_ok=True)
     health = build_health(Path("."), ledger)
@@ -312,6 +371,13 @@ def parse_args(argv=None):
     actions.add_argument("--odds-import-manual", default="")
     actions.add_argument("--odds-intake-audit", action="store_true")
     actions.add_argument("--odds-next", action="store_true")
+    actions.add_argument("--architecture", action="store_true")
+    actions.add_argument("--contracts", action="store_true")
+    actions.add_argument("--scorecard", action="store_true")
+    actions.add_argument("--progress", action="store_true")
+    actions.add_argument("--llm-contract", action="store_true")
+    actions.add_argument("--agent-dryrun", action="store_true")
+    actions.add_argument("--project-map", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--odds-store", default=DEFAULT_ODDS_STORE)
@@ -394,6 +460,20 @@ def main(argv=None) -> int:
             print_odds_report("odds intake audit", odds_intake_audit_report(args.reports_dir, args.snapshots, args.ledger))
         elif args.odds_next:
             print_odds_report("odds next", {"next_actions": odds_wizard_next(args.odds_store, args.ledger)})
+        elif args.architecture:
+            print_odds_report("architecture", architecture_report(args.reports_dir))
+        elif args.contracts:
+            print_odds_report("pipeline contracts", contracts_report(args.reports_dir))
+        elif args.scorecard:
+            print_odds_report("project scorecard", scorecard_report(args.reports_dir))
+        elif args.progress:
+            print_odds_report("progress loop", summarize_progress(_reports_path(args.reports_dir, "progress_loop.csv")))
+        elif args.llm_contract:
+            print_odds_report("LLM analyst contract", llm_contract_report(args.reports_dir))
+        elif args.agent_dryrun:
+            print_odds_report("agent dry-run", agent_dryrun_report(args.reports_dir))
+        elif args.project_map:
+            print_odds_report("project map", project_map_report(args.reports_dir, skip_dashboard=args.skip_dashboard))
         else:
             print_health(build_health(Path("."), args.ledger))
         return 0

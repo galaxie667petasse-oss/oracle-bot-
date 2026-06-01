@@ -41,3 +41,14 @@ python odds_to_shadow.py --snapshots reports/odds_snapshots.csv --ledger reports
 - les near-close ne deviennent pas des taken odds par defaut ;
 - toute ecriture ledger passe par une action explicite ;
 - aucune mise n'est creee.
+
+## Contrats V8.5
+
+Avant import, le CSV manuel doit respecter le contrat `odds_snapshot` apres normalisation. Le ledger respecte le contrat `shadow_ledger`.
+
+```bash
+python pipeline_contracts.py --show odds_snapshot
+python pipeline_contracts.py --show shadow_ledger
+```
+
+La restitution finale doit rester une observation shadow ou un refus tant que la preuve est insuffisante.

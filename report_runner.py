@@ -789,6 +789,130 @@ def odds_intake_commands(
     return commands
 
 
+def project_blueprint_commands(skip_evidence: bool = False, skip_dashboard: bool = False) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "Architecture canonique",
+            "architecture_map.txt",
+            [
+                "oracle_architecture_map.py",
+                "--show",
+                "--status",
+                "--json",
+                "{report_dir}/architecture_map.json",
+                "--html",
+                "{report_dir}/architecture_map.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Pipeline contracts",
+            "pipeline_contracts.txt",
+            [
+                "pipeline_contracts.py",
+                "--list",
+                "--json",
+                "{report_dir}/pipeline_contracts.json",
+                "--html",
+                "{report_dir}/pipeline_contracts.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Project scorecard",
+            "project_scorecard.txt",
+            [
+                "oracle_project_scorecard.py",
+                "--output",
+                "{report_dir}/project_scorecard.json",
+                "--html",
+                "{report_dir}/project_scorecard.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "LLM analyst contract",
+            "llm_analyst_contract.txt",
+            [
+                "llm_analyst_contract.py",
+                "--show",
+                "--template-json",
+                "{report_dir}/llm_analyst_input_template.json",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Restitution schema",
+            "restitution_schema.txt",
+            [
+                "restitution_schema.py",
+                "--template",
+                "{report_dir}/restitution_template.json",
+                "--render",
+                "{report_dir}/restitution_template.json",
+                "--output",
+                "{report_dir}/restitution_preview.txt",
+                "--html",
+                "{report_dir}/restitution_preview.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Progress loop",
+            "progress_loop.txt",
+            [
+                "progress_loop.py",
+                "--path",
+                "{report_dir}/progress_loop.csv",
+                "--init",
+                "--summary",
+                "--html",
+                "{report_dir}/progress_loop.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Agent dry-run",
+            "agent_orchestrator_dryrun.txt",
+            ["agent_orchestrator_dryrun.py", "--full"],
+            timeout=300,
+        ),
+    ]
+    if not skip_evidence:
+        commands.append(
+            ReportCommand(
+                "Evidence gate blueprint",
+                "evidence_gate.txt",
+                [
+                    "evidence_gate.py",
+                    "--shadow-report",
+                    "reports/shadow_clv_report.json",
+                    "--quality-audit",
+                    "reports/shadow_quality_audit.json",
+                    "--big5-summary",
+                    "reports/big5_xg_summary.json",
+                    "--clv-readiness",
+                    "reports/clv_readiness.json",
+                    "--output",
+                    "{report_dir}/evidence_gate.json",
+                    "--html",
+                    "{report_dir}/evidence_gate.html",
+                ],
+                timeout=600,
+            )
+        )
+    if not skip_dashboard:
+        commands.append(
+            ReportCommand(
+                "Dashboard blueprint",
+                "dashboard_builder.txt",
+                ["dashboard_builder.py", "--input", "{report_dir}"],
+                timeout=300,
+            )
+        )
+    return commands
+
+
 def timestamp() -> str:
     return datetime.now().strftime("%Y_%m_%d_%H%M%S")
 
@@ -827,6 +951,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return odds_lab_commands()
     if mode == "odds-intake":
         return odds_intake_commands()
+    if mode == "project-blueprint":
+        return project_blueprint_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -946,6 +1072,7 @@ def parse_args(argv=None):
     mode.add_argument("--ops", action="store_true", help="Lance le centre operations shadow local")
     mode.add_argument("--odds-lab", action="store_true", help="Lance le laboratoire local des sources de cotes")
     mode.add_argument("--odds-intake", action="store_true", help="Lance l'audit local du workflow odds intake")
+    mode.add_argument("--project-blueprint", action="store_true", help="Lance la carte architecture, contrats, scorecard et restitution")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
@@ -977,6 +1104,7 @@ def main(argv=None) -> None:
         else "ops" if args.ops
         else "odds-lab" if args.odds_lab
         else "odds-intake" if args.odds_intake
+        else "project-blueprint" if args.project_blueprint
         else "big5-xg" if args.big5_xg
         else "xg-understat" if args.xg_understat
         else "full" if args.full
@@ -1049,6 +1177,11 @@ def main(argv=None) -> None:
             snapshots=args.snapshots,
             skip_evidence=args.skip_evidence,
             skip_quality=args.skip_quality,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "project-blueprint":
+        commands = project_blueprint_commands(
+            skip_evidence=args.skip_evidence,
             skip_dashboard=args.skip_dashboard,
         )
     else:

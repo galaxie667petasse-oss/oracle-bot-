@@ -50,3 +50,7 @@ V8.4 ajoute :
 - `odds_e2e_demo.py` pour tester le workflow sans vraie donnee.
 
 Le principe important : les snapshots `is_near_close=true` ne sont jamais convertis en taken odds par defaut.
+
+## Lien V8.5
+
+Les snapshots suivent le contrat `odds_snapshot` de `pipeline_contracts.py`. `oracle_architecture_map.py` classe ce laboratoire dans les blocs Sources de donnees et Collecte & nettoyage. Le LLM analyste peut expliquer un snapshot valide, mais il ne doit jamais inventer une cote manquante.

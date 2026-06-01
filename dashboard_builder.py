@@ -41,6 +41,13 @@ REPORT_FILES = {
     "odds_to_shadow": "odds_to_shadow.txt",
     "odds_closing_matcher": "odds_closing_matcher.txt",
     "odds_intake_audit": "odds_intake_audit.txt",
+    "architecture_map": "architecture_map.txt",
+    "pipeline_contracts": "pipeline_contracts.txt",
+    "llm_analyst_contract": "llm_analyst_contract.txt",
+    "restitution_schema": "restitution_schema.txt",
+    "progress_loop": "progress_loop.txt",
+    "project_scorecard": "project_scorecard.txt",
+    "agent_orchestrator_dryrun": "agent_orchestrator_dryrun.txt",
 }
 
 
@@ -151,6 +158,9 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     odds_to_shadow = read_json_candidates(report_dir, ["odds_to_shadow_report.json"])
     odds_closing_matcher = read_json_candidates(report_dir, ["odds_closing_matcher_report.json"])
     odds_intake = read_json_candidates(report_dir, ["odds_intake_audit.json"])
+    architecture_map = read_json_candidates(report_dir, ["architecture_map.json"])
+    pipeline_contracts = read_json_candidates(report_dir, ["pipeline_contracts.json"])
+    project_scorecard = read_json_candidates(report_dir, ["project_scorecard.json"])
     pipeline_final = understat_pipeline.get("final_status") or {}
     pipeline_model = pipeline_final.get("xg_model") or {}
 
@@ -307,6 +317,10 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "odds_intake_possible_coverage": odds_intake.get("closing_coverage_possible"),
         "odds_intake_real_coverage": odds_intake.get("closing_coverage_real"),
         "odds_intake_next": odds_intake.get("recommendations") or [],
+        "architecture_blocks": len(architecture_map.get("blocks") or []),
+        "pipeline_contracts_count": len((pipeline_contracts.get("contracts") or {})),
+        "project_scorecard_global": project_scorecard.get("global_score"),
+        "project_scorecard_real_proof": ((project_scorecard.get("scores") or {}).get("preuve betting reelle") or {}).get("score"),
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -665,6 +679,74 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     if texts["odds_intake_audit"]:
         intake_lines.extend(_lines_matching(texts["odds_intake_audit"], ["Snapshots", "Coverage", "Verdict", "Action"], 20))
     parts.append(_card("Odds Intake Workflow", "\n".join(intake_lines)))
+
+    architecture_lines = [
+        f"blocs detectes: {summary.get('architecture_blocks')}",
+        "regle: les donnees alimentent, les modules mesurent, l'agent orchestre, le LLM explique.",
+        "statut: architecture locale de laboratoire, aucune activation automatique.",
+    ]
+    if texts["architecture_map"]:
+        architecture_lines.extend(_lines_matching(texts["architecture_map"], ["Sources", "Collecte", "Moteur", "LLM", "Restitution", "Boucle"], 20))
+    parts.append(_card("Architecture canonique", "\n".join(architecture_lines)))
+
+    contract_lines = [
+        f"contrats disponibles: {summary.get('pipeline_contracts_count')}",
+        "contrats: match_source, odds_snapshot, feature_row, shadow_ledger, closing_import, result_import, signal_evaluation, llm_analyst_input, restitution_output, evidence_gate.",
+        "validation: les fichiers sont lus seulement, jamais modifies.",
+    ]
+    if texts["pipeline_contracts"]:
+        contract_lines.extend(_lines_matching(texts["pipeline_contracts"], ["Contrats", "odds_snapshot", "shadow_ledger", "evidence_gate"], 20))
+    parts.append(_card("Pipeline contracts", "\n".join(contract_lines)))
+
+    llm_lines = [
+        "Le LLM analyste explique seulement les mesures fournies.",
+        "Il ne calcule pas l'edge, ne cree aucune cote et ne depasse pas evidence_gate.",
+        "Sortie maximale: analyse approfondie requise.",
+    ]
+    if texts["llm_analyst_contract"]:
+        llm_lines.extend(_lines_matching(texts["llm_analyst_contract"], ["LLM", "source", "Labels", "evidence"], 20))
+    parts.append(_card("LLM analyst contract", "\n".join(llm_lines)))
+
+    restitution_lines = [
+        "format: evenement, analyse, observation, confiance, risques, limites, decision, prochaine action.",
+        "actions autorisees limitees: collecter closing, attendre resultat, relancer evidence gate, observation seulement, refuser.",
+    ]
+    if texts["restitution_schema"]:
+        restitution_lines.extend(_lines_matching(texts["restitution_schema"], ["Restitution", "Decision", "Actions"], 20))
+    parts.append(_card("Restitution schema", "\n".join(restitution_lines)))
+
+    progress_lines = [
+        "boucle: collecter -> tester -> mesurer -> corriger -> documenter.",
+        "journal local dans reports/progress_loop.csv si initialise.",
+    ]
+    if texts["progress_loop"]:
+        progress_lines.extend(_lines_matching(texts["progress_loop"], ["Resume", "entries", "collecter", "corriger"], 20))
+    parts.append(_card("Progress loop", "\n".join(progress_lines)))
+
+    scorecard_lines = [
+        f"score global: {summary.get('project_scorecard_global')}",
+        f"preuve betting reelle: {summary.get('project_scorecard_real_proof')}",
+        "candidats robustes: 0 tant que CLV/sample restent insuffisants.",
+    ]
+    if texts["project_scorecard"]:
+        scorecard_lines.extend(_lines_matching(texts["project_scorecard"], ["Score", "Preuve", "Statut"], 20))
+    parts.append(_card("Project scorecard", "\n".join(scorecard_lines)))
+
+    agent_lines = [
+        "dry-run uniquement: verification health, snapshots, ledger, templates, audits, evidence gate, restitution.",
+        "aucun reseau, aucun Telegram, aucune mise.",
+    ]
+    if texts["agent_orchestrator_dryrun"]:
+        agent_lines.extend(_lines_matching(texts["agent_orchestrator_dryrun"], ["Dry-run", "Verifier", "evidence", "Telegram"], 24))
+    parts.append(_card("Agent dry-run", "\n".join(agent_lines)))
+
+    parts.append(_card("Next actions", "\n".join([
+        "1. Continuer la collecte shadow.",
+        "2. Renseigner near-close reelles.",
+        "3. Relancer evidence gate.",
+        "4. Journaliser la boucle de progression.",
+        "5. Ne pas conclure avant sample significatif.",
+    ])))
 
     league_rows = []
     for item in (big5_xg.get("leagues") or []):
