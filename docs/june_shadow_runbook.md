@@ -163,3 +163,29 @@ python matchday_runner.py --pack reports/matchday_YYYY_MM_DD --full-dry-run --ph
 ```
 
 Toujours relire `next_actions`. Le workflow reste observation shadow, sans mise.
+
+## V8.8 API odds en journee
+
+Si l'utilisateur choisit The Odds API, le reseau reste une action manuelle :
+
+```bash
+python soccer_odds_sport_scanner.py --dry-run
+python the_odds_api_adapter.py --allow-network --sport soccer_japan_j_league --regions us,uk,eu --markets h2h --max-events 3 --one-side-per-event --output reports/the_odds_api_jleague_today.csv
+python odds_shadow_selector.py --snapshots reports/the_odds_api_jleague_today.csv --output reports/api_shadow_selection.csv --summary-json reports/api_shadow_selection_summary.json --max-events 3 --one-side-per-event --prefer-side home
+python odds_to_shadow.py --selection-csv reports/api_shadow_selection.csv --ledger reports/shadow_ledger.csv --dry-run
+```
+
+Avant kickoff, verifier les pending closing :
+
+```bash
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --status
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --suggest-commands
+```
+
+Le guard reel doit cibler les observations du ledger :
+
+```bash
+python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --phase pre_match --scope ledger
+```
+
+Cette routine collecte des preuves. Elle ne cree aucune mise, aucun message Telegram et aucune conclusion rapide.
