@@ -29,6 +29,9 @@ from matchday_runner import full_dry_run as matchday_full_dry_run, write_matchda
 from matchday_status_report import build_status_report as build_matchday_status_report
 from real_observation_guard import build_guard_report as build_real_guard, write_html as write_guard_html, write_json as write_guard_json
 from test_archive_manager import archive_and_reset as archive_tests_and_reset
+from api_odds_collection_runner import collect as api_collect, full_pre_match as api_full_pre_match
+from near_close_workflow import build_status as near_close_status_report, suggest_commands as near_close_suggest_commands
+from soccer_odds_sport_scanner import scan_sports as scan_soccer_sports
 
 
 KEY_MODULES = [
@@ -68,6 +71,10 @@ KEY_MODULES = [
     "matchday_pack.py",
     "matchday_runner.py",
     "matchday_status_report.py",
+    "soccer_odds_sport_scanner.py",
+    "odds_shadow_selector.py",
+    "near_close_workflow.py",
+    "api_odds_collection_runner.py",
 ]
 
 
@@ -313,6 +320,22 @@ def real_start_report(reports_dir: str, ledger: str, snapshots: str) -> Dict[str
     }
 
 
+def real_guard_ledger_report(reports_dir: str, ledger: str, snapshots: str) -> Dict[str, Any]:
+    report = build_real_guard(ledger, snapshots, phase="pre_match", scope="ledger")
+    write_guard_json(report, _reports_path(reports_dir, "real_observation_guard.json"))
+    write_guard_html(report, _reports_path(reports_dir, "real_observation_guard.html"))
+    return report
+
+
+def api_odds_status_report(reports_dir: str, ledger: str, snapshots: str) -> Dict[str, Any]:
+    return {
+        "odds_summary": summarize_snapshots(snapshots),
+        "near_close": near_close_status_report(ledger),
+        "real_guard_ledger": build_real_guard(ledger, snapshots, phase="pre_match", scope="ledger"),
+        "lab_only": True,
+    }
+
+
 def matchday_create_report(match_date: str, reports_dir: str) -> Dict[str, Any]:
     if not match_date:
         raise ValueError("--date requis avec --matchday")
@@ -437,6 +460,12 @@ def parse_args(argv=None):
     actions.add_argument("--matchday-precheck", default="")
     actions.add_argument("--matchday-next", default="")
     actions.add_argument("--matchday-phase", default="")
+    actions.add_argument("--scan-soccer-odds", action="store_true")
+    actions.add_argument("--api-odds-status", action="store_true")
+    actions.add_argument("--api-pre-match-jleague", action="store_true")
+    actions.add_argument("--near-close-status", action="store_true")
+    actions.add_argument("--near-close-next", action="store_true")
+    actions.add_argument("--real-guard-ledger", action="store_true")
     actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
@@ -549,6 +578,23 @@ def main(argv=None) -> int:
             print_odds_report("matchday next", matchday_next_report(args.matchday_next))
         elif args.matchday_phase:
             print_odds_report("matchday phase", matchday_phase_report(args.matchday_phase, args.ledger, args.snapshots, args.reports_dir, args.phase))
+        elif args.scan_soccer_odds:
+            print_odds_report("scan soccer odds", scan_soccer_sports(allow_network=False, dry_run=True))
+        elif args.api_odds_status:
+            print_odds_report("api odds status", api_odds_status_report(args.reports_dir, args.ledger, args.snapshots))
+        elif args.api_pre_match_jleague:
+            payload = {
+                "dry_run": True,
+                "command": "python api_odds_collection_runner.py --full-pre-match --sport soccer_japan_j_league --bookmaker Pinnacle --max-events 3 --allow-network",
+                "message": "Dry-run par defaut: relancer explicitement avec --allow-network dans le runner si necessaire.",
+            }
+            print_odds_report("api pre-match jleague", payload)
+        elif args.near_close_status:
+            print_odds_report("near-close status", near_close_status_report(args.ledger))
+        elif args.near_close_next:
+            print_odds_report("near-close next", near_close_suggest_commands(args.ledger))
+        elif args.real_guard_ledger:
+            print_odds_report("real guard ledger", real_guard_ledger_report(args.reports_dir, args.ledger, args.snapshots))
         elif args.archive_tests:
             if not args.apply:
                 print_odds_report("archive tests dry-run", {"dry_run": True, "message": "Relancer avec --apply pour archiver et reset."})

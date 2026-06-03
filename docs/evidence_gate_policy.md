@@ -63,6 +63,15 @@ L'audit intake peut ameliorer la qualite du ledger, mais il ne remplace pas les 
 
 Un intake propre permet de continuer la collecte, pas de conclure.
 
+## V8.8 API odds
+
+Le scanner The Odds API, la selection shadow et le workflow near-close alimentent les rapports de preuve, mais ne changent pas les seuils :
+
+- une selection API sans near-close reste non valide ;
+- une near-close sans taken odds correspondant est inutilisable ;
+- `--scope ledger` dans le guard verifie les observations retenues ;
+- sample < 1000 et CLV non robuste bloquent toute promotion.
+
 ## Lien V8.5
 
 `llm_analyst_contract.py` doit respecter ce gate. Si `evidence_gate.py` ne renvoie pas `ready_for_deep_review`, la restitution maximale reste `non valide` ou `observation shadow`. Le schema `restitution_schema.py` force les actions interdites a rester visibles.

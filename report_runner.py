@@ -789,6 +789,109 @@ def odds_intake_commands(
     return commands
 
 
+def api_odds_commands(
+    ledger: str = "reports/shadow_ledger.csv",
+    snapshots: str = "reports/odds_snapshots.csv",
+    scan_report: str = "{report_dir}/soccer_odds_sport_scan.json",
+    selection_summary: str = "reports/shadow_selection_summary.json",
+    near_close_plan: str = "{report_dir}/near_close_plan.json",
+    skip_evidence: bool = False,
+    skip_quality: bool = False,
+    skip_dashboard: bool = False,
+) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "Soccer odds sport scanner",
+            "soccer_odds_sport_scanner.txt",
+            [
+                "soccer_odds_sport_scanner.py",
+                "--dry-run",
+                "--output",
+                scan_report,
+                "--html",
+                "{report_dir}/soccer_odds_sport_scan.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Near-close workflow status",
+            "near_close_workflow.txt",
+            [
+                "near_close_workflow.py",
+                "--ledger",
+                ledger,
+                "--status",
+                "--output",
+                near_close_plan,
+                "--html",
+                "{report_dir}/near_close_plan.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Real guard ledger scope",
+            "real_observation_guard.txt",
+            [
+                "real_observation_guard.py",
+                "--ledger",
+                ledger,
+                "--snapshots",
+                snapshots,
+                "--phase",
+                "pre_match",
+                "--scope",
+                "ledger",
+                "--output",
+                "{report_dir}/real_observation_guard.json",
+                "--html",
+                "{report_dir}/real_observation_guard.html",
+            ],
+            timeout=300,
+        ),
+    ]
+    if not skip_quality:
+        commands.append(
+            ReportCommand(
+                "Odds source quality",
+                "odds_source_quality.txt",
+                [
+                    "odds_source_quality_report.py",
+                    "--snapshots",
+                    snapshots,
+                    "--output",
+                    "{report_dir}/odds_source_quality.json",
+                    "--html",
+                    "{report_dir}/odds_source_quality.html",
+                ],
+                timeout=300,
+            )
+        )
+    if not skip_evidence:
+        commands.append(
+            ReportCommand(
+                "Evidence gate API odds",
+                "evidence_gate.txt",
+                [
+                    "evidence_gate.py",
+                    "--real-guard",
+                    "{report_dir}/real_observation_guard.json",
+                    "--big5-summary",
+                    "reports/big5_xg_summary.json",
+                    "--clv-readiness",
+                    "reports/clv_readiness.json",
+                    "--output",
+                    "{report_dir}/evidence_gate.json",
+                    "--html",
+                    "{report_dir}/evidence_gate.html",
+                ],
+                timeout=600,
+            )
+        )
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard API odds", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
 def project_blueprint_commands(skip_evidence: bool = False, skip_dashboard: bool = False) -> List[ReportCommand]:
     commands = [
         ReportCommand(
@@ -1071,6 +1174,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return odds_lab_commands()
     if mode == "odds-intake":
         return odds_intake_commands()
+    if mode == "api-odds":
+        return api_odds_commands()
     if mode == "project-blueprint":
         return project_blueprint_commands()
     if mode == "matchday":
@@ -1194,6 +1299,7 @@ def parse_args(argv=None):
     mode.add_argument("--ops", action="store_true", help="Lance le centre operations shadow local")
     mode.add_argument("--odds-lab", action="store_true", help="Lance le laboratoire local des sources de cotes")
     mode.add_argument("--odds-intake", action="store_true", help="Lance l'audit local du workflow odds intake")
+    mode.add_argument("--api-odds", action="store_true", help="Lance les rapports API odds soccer sans reseau")
     mode.add_argument("--project-blueprint", action="store_true", help="Lance la carte architecture, contrats, scorecard et restitution")
     mode.add_argument("--matchday", action="store_true", help="Lance le rapport local de collecte matchday")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
@@ -1206,6 +1312,9 @@ def parse_args(argv=None):
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv", help="Ledger shadow mode pour --shadow")
     parser.add_argument("--snapshots", default="reports/odds_snapshots.csv", help="Snapshots de cotes pour --odds-lab")
     parser.add_argument("--matchday-pack", default="reports/matchday_2026_06_01", help="Pack matchday pour --matchday")
+    parser.add_argument("--scan-report", default="{report_dir}/soccer_odds_sport_scan.json", help="Rapport scan sports soccer a ecrire")
+    parser.add_argument("--selection-summary", default="reports/shadow_selection_summary.json", help="Resume selection shadow existant")
+    parser.add_argument("--near-close-plan", default="{report_dir}/near_close_plan.json", help="Plan near-close a ecrire")
     parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
     parser.add_argument("--skip-benchmark", action="store_true", help="Pour --xg-understat/--big5-xg: ignore benchmark_governance")
     parser.add_argument("--skip-dashboard", action="store_true", help="Pour --daily-shadow: ignore dashboard_builder")
@@ -1229,6 +1338,7 @@ def main(argv=None) -> None:
         else "ops" if args.ops
         else "odds-lab" if args.odds_lab
         else "odds-intake" if args.odds_intake
+        else "api-odds" if args.api_odds
         else "project-blueprint" if args.project_blueprint
         else "matchday" if args.matchday
         else "big5-xg" if args.big5_xg
@@ -1301,6 +1411,17 @@ def main(argv=None) -> None:
         commands = odds_intake_commands(
             ledger=args.ledger,
             snapshots=args.snapshots,
+            skip_evidence=args.skip_evidence,
+            skip_quality=args.skip_quality,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "api-odds":
+        commands = api_odds_commands(
+            ledger=args.ledger,
+            snapshots=args.snapshots,
+            scan_report=args.scan_report,
+            selection_summary=args.selection_summary,
+            near_close_plan=args.near_close_plan,
             skip_evidence=args.skip_evidence,
             skip_quality=args.skip_quality,
             skip_dashboard=args.skip_dashboard,

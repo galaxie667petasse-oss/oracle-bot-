@@ -23,6 +23,7 @@ def _shadow_key(row: Dict[str, Any]) -> tuple:
 def snapshots_to_shadow(
     snapshots_path: str,
     ledger_path: str,
+    selection_csv: str = "",
     mode: str = "observation",
     strategy_name: str = "odds_snapshot_watch",
     min_odds: float = 1.01,
@@ -34,9 +35,13 @@ def snapshots_to_shadow(
     market_filter: str = "",
     max_rows: int = 0,
     reason_prefix: str = "observation depuis snapshot de cotes",
+    reason: str = "",
     dry_run: bool = False,
 ) -> Dict[str, Any]:
-    snapshots = load_snapshots(snapshots_path)
+    source_path = selection_csv or snapshots_path
+    if not source_path:
+        raise ValueError("--snapshots ou --selection-csv requis")
+    snapshots = load_snapshots(source_path)
     existing = read_ledger(ledger_path)
     existing_keys = {_shadow_key(row) for row in existing}
     added = 0
@@ -83,7 +88,7 @@ def snapshots_to_shadow(
                 "taken_odds": odds,
                 "bookmaker": row.get("bookmaker"),
                 "strategy_name": strategy_name,
-                "reason": f"{reason_prefix}, aucune mise",
+                "reason": reason or f"{reason_prefix}, aucune mise",
                 "status": status,
                 "notes": f"source={row.get('source')}; snapshot_id={row.get('snapshot_id')}",
             }
@@ -103,6 +108,8 @@ def snapshots_to_shadow(
             errors.append(str(exc))
     return {
         "snapshots": snapshots_path,
+        "selection_csv": selection_csv,
+        "source_kind": "selection CSV" if selection_csv else "snapshots store",
         "ledger": ledger_path,
         "rows_read": len(snapshots),
         "snapshots_convertible": added + duplicates,
@@ -121,6 +128,7 @@ def snapshots_to_shadow(
 
 def print_report(report: Dict[str, Any]) -> None:
     print("Odds to Shadow Oracle")
+    print(f"- Source: {report.get('source_kind')}")
     print(f"- Snapshots lus: {report.get('rows_read')}")
     print(f"- Observations shadow {'simulees' if report.get('dry_run') else 'ajoutees'}: {report.get('rows_added')}")
     print(f"- Lignes ignorees: {report.get('rows_ignored')}")
@@ -133,7 +141,8 @@ def print_report(report: Dict[str, Any]) -> None:
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Convertit des snapshots de cotes en observations shadow.")
-    parser.add_argument("--snapshots", required=True)
+    parser.add_argument("--snapshots", default="")
+    parser.add_argument("--selection-csv", default="")
     parser.add_argument("--ledger", required=True)
     parser.add_argument("--mode", default="observation")
     parser.add_argument("--strategy-name", default="odds_snapshot_watch")
@@ -147,6 +156,7 @@ def parse_args(argv=None):
     parser.add_argument("--market-filter", default="")
     parser.add_argument("--max-rows", type=int, default=0)
     parser.add_argument("--reason-prefix", default="observation depuis snapshot de cotes")
+    parser.add_argument("--reason", default="")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--report", default="")
     parser.add_argument("--summary-json", default="")
@@ -159,6 +169,7 @@ def main(argv=None) -> int:
         report = snapshots_to_shadow(
             args.snapshots,
             args.ledger,
+            selection_csv=args.selection_csv,
             mode=args.mode,
             strategy_name=args.strategy_name,
             min_odds=args.min_odds,
@@ -170,6 +181,7 @@ def main(argv=None) -> int:
             market_filter=args.market_filter,
             max_rows=args.max_rows,
             reason_prefix=args.reason_prefix,
+            reason=args.reason,
             dry_run=args.dry_run,
         )
         print_report(report)

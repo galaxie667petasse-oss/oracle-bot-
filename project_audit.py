@@ -59,6 +59,10 @@ ESSENTIAL_FILES = [
     "odds_lab_wizard.py",
     "odds_intake_audit.py",
     "odds_e2e_demo.py",
+    "soccer_odds_sport_scanner.py",
+    "odds_shadow_selector.py",
+    "near_close_workflow.py",
+    "api_odds_collection_runner.py",
     "oracle_architecture_map.py",
     "pipeline_contracts.py",
     "llm_analyst_contract.py",
@@ -73,6 +77,10 @@ ESSENTIAL_FILES = [
     "matchday_status_report.py",
     "docs/matchday_phase_workflow.md",
     "docs/dry_run_staging.md",
+    "docs/api_soccer_odds_workflow.md",
+    "docs/near_close_capture_workflow.md",
+    "docs/shadow_selection_policy.md",
+    "docs/the_odds_api_sport_scanner.md",
     "config/odds_sources.example.json",
     "docs/canonical_architecture.md",
     "docs/llm_analyst_role.md",
@@ -138,6 +146,10 @@ MAIN_TESTS = [
     "test_odds_lab_wizard.py",
     "test_odds_intake_audit.py",
     "test_odds_e2e_demo.py",
+    "test_soccer_odds_sport_scanner.py",
+    "test_odds_shadow_selector.py",
+    "test_near_close_workflow.py",
+    "test_api_odds_collection_runner.py",
     "test_oracle_architecture_map.py",
     "test_pipeline_contracts.py",
     "test_llm_analyst_contract.py",
@@ -213,6 +225,10 @@ IMPORT_MODULES = [
     "odds_lab_wizard",
     "odds_intake_audit",
     "odds_e2e_demo",
+    "soccer_odds_sport_scanner",
+    "odds_shadow_selector",
+    "near_close_workflow",
+    "api_odds_collection_runner",
     "oracle_architecture_map",
     "pipeline_contracts",
     "llm_analyst_contract",
@@ -277,6 +293,10 @@ OFFLINE_COMMAND_FILES = [
     "odds_lab_wizard.py",
     "odds_intake_audit.py",
     "odds_e2e_demo.py",
+    "soccer_odds_sport_scanner.py",
+    "odds_shadow_selector.py",
+    "near_close_workflow.py",
+    "api_odds_collection_runner.py",
     "oracle_architecture_map.py",
     "pipeline_contracts.py",
     "llm_analyst_contract.py",
@@ -442,11 +462,19 @@ def check_odds_secret_hygiene(root: Path, result: AuditResult, use_git: bool = T
 
 def check_no_network_safety(root: Path, result: AuditResult) -> None:
     problems = []
-    for filename in ["api_football_odds_adapter.py", "the_odds_api_adapter.py"]:
+    for filename in [
+        "api_football_odds_adapter.py",
+        "the_odds_api_adapter.py",
+        "soccer_odds_sport_scanner.py",
+        "api_odds_collection_runner.py",
+    ]:
         text = _read_text(root / filename)
         if text.strip() == "# fichier test":
             continue
-        if "--allow-network" not in text or "Reseau refuse par defaut" not in text:
+        lower = text.lower()
+        has_network_flag = "--allow-network" in text or "allow_network" in text
+        has_default_guard = "reseau refuse par defaut" in lower or "aucun reseau" in lower
+        if not has_network_flag or not has_default_guard:
             problems.append(filename)
     if problems:
         result.add_error("Adaptateurs reseau sans garde --allow-network clair: " + ", ".join(problems))

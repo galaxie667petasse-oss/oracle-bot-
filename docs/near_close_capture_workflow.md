@@ -1,0 +1,40 @@
+# Near-Close Capture Workflow V8.8
+
+## Principe
+
+Une near-close est un snapshot capture pres du kickoff. Elle sert a renseigner `closing_odds` dans le shadow ledger si elle correspond exactement au match, marche et side.
+
+Elle n'est jamais inventee et ne remplace jamais une taken odds.
+
+## Routine
+
+1. Verifier les observations en attente :
+
+```bash
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --status
+```
+
+2. Afficher les commandes suggerees :
+
+```bash
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --suggest-commands
+```
+
+3. Importer un fichier near-close deja capture :
+
+```bash
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --near-close-file reports/the_odds_api_jleague_near_close.csv --dry-run
+```
+
+4. Appliquer seulement apres verification :
+
+```bash
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --near-close-file reports/the_odds_api_jleague_near_close.csv --apply
+```
+
+## Guardrails
+
+- `pre_match` : l'absence de near-close est normale ;
+- `near_close` : une observation shadow attend une near-close correspondante ;
+- ambiguite bookmaker/marche/side : pas de mise a jour automatique ;
+- CLV calculee seulement avec cote decimale plausible.

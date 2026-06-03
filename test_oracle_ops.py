@@ -2,6 +2,7 @@ import tempfile
 from pathlib import Path
 
 import oracle_ops
+import odds_snapshot_store
 import shadow_ledger
 
 
@@ -34,13 +35,26 @@ def main():
         assert full["evidence"]["global_status"] in {"insufficient_evidence", "blocked", "promising_but_unvalidated"}
         assert full["optional"] == []
         odds_store = root / "reports" / "odds_snapshots.csv"
+        odds_snapshot_store.append_snapshot_rows(str(odds_store), [{
+            "captured_at": "2026-06-01T09:00:00",
+            "source": "the_odds_api",
+            "league": "J League",
+            "match_date": "2026-06-01",
+            "kickoff_time": "2026-06-01T10:00:00",
+            "home_team": "A",
+            "away_team": "B",
+            "bookmaker": "Book",
+            "market_type": "h2h",
+            "side": "home",
+            "odds": "2.10",
+        }])
         odds_lab = oracle_ops.odds_lab(str(root / "reports"), str(odds_store))
-        assert odds_lab["summary"]["rows_total"] == 0
+        assert odds_lab["summary"]["rows_total"] == 1
         assert Path(odds_lab["template"]["manual_odds_template"]).exists()
-        assert oracle_ops.odds_summary(str(odds_store))["rows_total"] == 0
+        assert oracle_ops.odds_summary(str(odds_store))["rows_total"] == 1
         assert oracle_ops.odds_config_report()["config_ok"] is True
         status = oracle_ops.odds_wizard_status(str(odds_store), str(ledger), str(root / "reports"))
-        assert status["snapshots_total"] == 0
+        assert status["snapshots_total"] == 1
         intake = oracle_ops.odds_intake_audit_report(str(root / "reports"), str(odds_store), str(ledger))
         assert intake["verdict"] in {"shadow_started", "no_data", "snapshots_only"}
         architecture = oracle_ops.architecture_report(str(root / "reports"))
@@ -57,6 +71,16 @@ def main():
         assert project_map["architecture_blocks"] == 7
         real_start = oracle_ops.real_start_report(str(root / "reports"), str(ledger), str(odds_store))
         assert "guard" in real_start
+        api_status = oracle_ops.api_odds_status_report(str(root / "reports"), str(ledger), str(odds_store))
+        assert api_status["odds_summary"]["rows_total"] == 1
+        assert api_status["near_close"]["pending_closing_count"] == 1
+        soccer_scan = oracle_ops.scan_soccer_sports(allow_network=False, dry_run=True)
+        assert soccer_scan["active_sports"] == 0
+        near_next = oracle_ops.near_close_suggest_commands(str(ledger))
+        assert near_next["commands"]
+        guard_ledger = oracle_ops.real_guard_ledger_report(str(root / "reports"), str(ledger), str(odds_store))
+        assert guard_ledger["scope"] == "ledger"
+        assert oracle_ops.main(["--api-pre-match-jleague", "--ledger", str(ledger), "--snapshots", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
         matchday = oracle_ops.matchday_create_report("2026-06-01", str(root / "reports"))
         assert Path(matchday["output_dir"]).exists()
         matchday_status = oracle_ops.build_matchday_status(matchday["output_dir"])

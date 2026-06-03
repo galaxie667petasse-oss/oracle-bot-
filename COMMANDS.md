@@ -940,6 +940,49 @@ Report runner phase-aware :
 python report_runner.py --matchday --matchday-pack reports/matchday_2026_06_01 --phase pre_match --skip-dashboard
 ```
 
+## 30. V8.8 Soccer Odds API Automation & Near-Close Guardrails
+
+Scanner soccer The Odds API sans reseau :
+
+```bash
+python soccer_odds_sport_scanner.py --dry-run
+python api_odds_collection_runner.py --scan-sports --dry-run
+```
+
+Collecte pre-match manuelle avec reseau explicite :
+
+```bash
+python the_odds_api_adapter.py --allow-network --sport soccer_japan_j_league --regions us,uk,eu --markets h2h --bookmaker Pinnacle --max-events 3 --one-side-per-event --output reports/the_odds_api_jleague_today.csv
+```
+
+Selection shadow limitee :
+
+```bash
+python odds_shadow_selector.py --snapshots reports/the_odds_api_jleague_today.csv --output reports/api_shadow_selection.csv --summary-json reports/api_shadow_selection_summary.json --max-events 3 --one-side-per-event --prefer-side home
+python odds_to_shadow.py --selection-csv reports/api_shadow_selection.csv --ledger reports/shadow_ledger.csv --dry-run
+```
+
+Near-close :
+
+```bash
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --status
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --suggest-commands
+python the_odds_api_adapter.py --allow-network --sport soccer_japan_j_league --regions us,uk,eu --markets h2h --near-close --output reports/the_odds_api_jleague_near_close.csv
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --near-close-file reports/the_odds_api_jleague_near_close.csv --dry-run
+```
+
+Guard scope ledger et runner local :
+
+```bash
+python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --phase pre_match --scope ledger --output reports/real_observation_guard.json --html reports/real_observation_guard.html
+python oracle_ops.py --api-odds-status
+python oracle_ops.py --near-close-status
+python oracle_ops.py --near-close-next
+python report_runner.py --api-odds --skip-dashboard
+```
+
+Regles : aucun appel API sans `--allow-network`, aucune conversion automatique des near-close en taken odds, aucune ecriture dans `data/`, aucune activation Telegram/Railway.
+
 ```bash
 git status --short
 git diff

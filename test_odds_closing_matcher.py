@@ -10,8 +10,10 @@ def snap(book="Book", odds="2.00"):
     return {
         "captured_at": "2026-06-01T18:59:00",
         "source": "manual_csv",
+        "source_event_id": "evt1",
         "league": "EPL",
         "match_date": "2026-06-01",
+        "kickoff_time": "2026-06-01T19:00:00",
         "home_team": "Arsenal",
         "away_team": "Chelsea",
         "bookmaker": book,
@@ -45,6 +47,19 @@ def main():
         odds_snapshot_store.append_snapshot_rows(str(snapshots2), [snap("Book A"), snap("Book B")])
         ambiguous = odds_closing_matcher.match_closing_snapshots(str(ledger2), str(snapshots2), dry_run=False)
         assert ambiguous["ambiguous"] == 1
+        preferred = odds_closing_matcher.match_closing_snapshots(
+            str(ledger2),
+            str(snapshots2),
+            event_id="evt1",
+            league="EPL",
+            match_date="2026-06-01",
+            only_shadow_pending=True,
+            prefer_latest_before_kickoff=True,
+            dry_run=True,
+        )
+        assert preferred["matches_found"] == 1
+        assert preferred["filters"]["event_id"] == "evt1"
+        assert preferred["only_shadow_pending"] is True
         summary = Path(tmp) / "reports" / "match_summary.json"
         unmatched = Path(tmp) / "reports" / "unmatched.csv"
         ambiguous_csv = Path(tmp) / "reports" / "ambiguous.csv"

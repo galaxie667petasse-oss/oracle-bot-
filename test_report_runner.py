@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, run_report, shadow_commands, xg_understat_commands
+from report_runner import ReportCommand, api_odds_commands, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, run_report, shadow_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -246,6 +246,21 @@ Understat xG Full Pipeline Quality Gate
         write_report(report_dir / "odds_snapshot_store.txt", "Resume snapshots de cotes Oracle\n- Lignes totales: 3\n")
         write_report(report_dir / "odds_source_quality.txt", "Qualite des sources de cotes Oracle\n- Capacite CLV: partial\n")
         write_report(report_dir / "odds_intake_audit.txt", "Audit intake odds Oracle\n- Verdict: shadow_started\n")
+        (report_dir / "soccer_odds_sport_scan.json").write_text(json.dumps({
+            "active_sports": 1,
+            "high_priority": ["soccer_japan_j_league"],
+            "sports": [{"sport_key": "soccer_japan_j_league", "normalized_rows": 6}],
+        }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "shadow_selection_summary.json").write_text(json.dumps({
+            "selected_rows": 2,
+            "distinct_events": 2,
+            "warnings": [],
+        }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "near_close_plan.json").write_text(json.dumps({
+            "pending_closing_count": 2,
+            "next_match_date": "2026-06-01",
+            "commands": ["python the_odds_api_adapter.py --allow-network --sport soccer_japan_j_league --near-close"],
+        }, ensure_ascii=False), encoding="utf-8")
         (report_dir / "architecture_map.json").write_text(json.dumps({"blocks": [{"name": "Sources de donnees"}]}, ensure_ascii=False), encoding="utf-8")
         (report_dir / "pipeline_contracts.json").write_text(json.dumps({"contracts": {"odds_snapshot": {}, "shadow_ledger": {}}}, ensure_ascii=False), encoding="utf-8")
         (report_dir / "project_scorecard.json").write_text(json.dumps({
@@ -301,6 +316,7 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Oracle ops health" for command in command_set("ops"))
         assert any(command.name == "Odds source config" for command in command_set("odds-lab"))
         assert any(command.name == "Odds intake audit" for command in command_set("odds-intake"))
+        assert any(command.name == "Soccer odds sport scanner" for command in command_set("api-odds"))
         assert any(command.name == "Architecture canonique" for command in command_set("project-blueprint"))
         assert any(command.name == "Matchday status" for command in command_set("matchday"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
@@ -338,6 +354,11 @@ Understat xG Full Pipeline Quality Gate
         intake_cmds = odds_intake_commands(str(root / "reports" / "shadow_ledger.csv"), str(root / "reports" / "odds_snapshots.csv"), skip_evidence=True, skip_quality=True, skip_dashboard=True)
         assert any("odds_intake_audit.py" in command.args for command in intake_cmds)
         assert not any("dashboard_builder.py" in command.args for command in intake_cmds)
+        api_cmds = api_odds_commands(str(root / "reports" / "shadow_ledger.csv"), str(root / "reports" / "odds_snapshots.csv"), skip_dashboard=True)
+        assert any("soccer_odds_sport_scanner.py" in command.args for command in api_cmds)
+        assert any("near_close_workflow.py" in command.args for command in api_cmds)
+        assert any("real_observation_guard.py" in command.args and "--scope" in command.args for command in api_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in api_cmds)
         blueprint_cmds = project_blueprint_commands(skip_evidence=True, skip_dashboard=True)
         assert any("oracle_architecture_map.py" in command.args for command in blueprint_cmds)
         assert any("pipeline_contracts.py" in command.args for command in blueprint_cmds)
@@ -377,6 +398,10 @@ Understat xG Full Pipeline Quality Gate
         assert "Closing Matcher Status" in html
         assert "Source Quality" in html
         assert "Odds Intake Workflow" in html
+        assert "Soccer Odds API Availability" in html
+        assert "API Shadow Selection" in html
+        assert "Near-Close Pending Plan" in html
+        assert "Real Guard Ledger Scope" in html
         assert "Architecture canonique" in html
         assert "Pipeline contracts" in html
         assert "LLM analyst contract" in html

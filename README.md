@@ -823,3 +823,28 @@ python report_runner.py --matchday --matchday-pack reports/matchday_2026_06_01 -
 ```
 
 Une near-close absente est normale avant match. Elle devient attendue en phase `near_close`. Le projet reste en observation shadow : aucune mise, aucun Telegram, aucun Railway.
+
+## V8.8 Soccer Odds API Automation & Near-Close Guardrails
+
+V8.8 rend le Odds API Lab utilisable pour une collecte manuelle prudente :
+
+- `soccer_odds_sport_scanner.py` liste les sport keys soccer utiles sans reseau par defaut ;
+- `the_odds_api_adapter.py` accepte `--near-close`, filtres bookmaker/date et `--one-side-per-event` ;
+- `odds_shadow_selector.py` limite les snapshots pre-match avant conversion shadow ;
+- `near_close_workflow.py` guide les captures near-close des observations deja selectionnees ;
+- `api_odds_collection_runner.py` orchestre scan, collecte, selection et conversion en dry-run par defaut ;
+- `real_observation_guard.py --scope ledger` evite qu'un store de snapshots complet bloque des observations non selectionnees.
+
+Commandes principales :
+
+```bash
+python soccer_odds_sport_scanner.py --dry-run
+python the_odds_api_adapter.py --dry-run --sport soccer_japan_j_league --regions us,uk,eu --markets h2h
+python odds_shadow_selector.py --snapshots reports/the_odds_api_jleague_today.csv --output reports/api_shadow_selection.csv --summary-json reports/api_shadow_selection_summary.json --max-events 3 --one-side-per-event --prefer-side home
+python odds_to_shadow.py --selection-csv reports/api_shadow_selection.csv --ledger reports/shadow_ledger.csv --dry-run
+python near_close_workflow.py --ledger reports/shadow_ledger.csv --status
+python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --phase pre_match --scope ledger --output reports/real_observation_guard.json --html reports/real_observation_guard.html
+python report_runner.py --api-odds --skip-dashboard
+```
+
+Un appel reel The Odds API reste manuel et explicite avec `--allow-network`. Cette phase ne choisit pas automatiquement toutes les issues d'un match, ne cree aucune mise, n'envoie rien sur Telegram et ne promet rien. Elle collecte seulement des elements pour le shadow ledger et l'evidence gate.

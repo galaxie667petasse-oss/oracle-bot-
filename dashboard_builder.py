@@ -160,6 +160,9 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     odds_to_shadow = read_json_candidates(report_dir, ["odds_to_shadow_report.json"])
     odds_closing_matcher = read_json_candidates(report_dir, ["odds_closing_matcher_report.json"])
     odds_intake = read_json_candidates(report_dir, ["odds_intake_audit.json"])
+    soccer_scan = read_json_candidates(report_dir, ["soccer_odds_sport_scan.json"])
+    shadow_selection = read_json_candidates(report_dir, ["shadow_selection_summary.json", "api_shadow_selection_summary.json"])
+    near_close_plan = read_json_candidates(report_dir, ["near_close_plan.json"])
     architecture_map = read_json_candidates(report_dir, ["architecture_map.json"])
     pipeline_contracts = read_json_candidates(report_dir, ["pipeline_contracts.json"])
     project_scorecard = read_json_candidates(report_dir, ["project_scorecard.json"])
@@ -321,6 +324,15 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "odds_intake_possible_coverage": odds_intake.get("closing_coverage_possible"),
         "odds_intake_real_coverage": odds_intake.get("closing_coverage_real"),
         "odds_intake_next": odds_intake.get("recommendations") or [],
+        "soccer_scan_active": soccer_scan.get("active_sports"),
+        "soccer_scan_high_priority": soccer_scan.get("high_priority") or [],
+        "soccer_scan_sports": [(item.get("sport_key"), item.get("normalized_rows")) for item in (soccer_scan.get("sports") or [])[:12]],
+        "shadow_selection_rows": shadow_selection.get("selected_rows"),
+        "shadow_selection_events": shadow_selection.get("distinct_events"),
+        "shadow_selection_warnings": shadow_selection.get("warnings") or [],
+        "near_close_pending": near_close_plan.get("pending_closing_count") or ((near_close_plan.get("status") or {}).get("pending_closing_count")),
+        "near_close_next_match": near_close_plan.get("next_match_date") or ((near_close_plan.get("status") or {}).get("next_match_date")),
+        "near_close_commands": near_close_plan.get("commands") or [],
         "architecture_blocks": len(architecture_map.get("blocks") or []),
         "pipeline_contracts_count": len((pipeline_contracts.get("contracts") or {})),
         "project_scorecard_global": project_scorecard.get("global_score"),
@@ -698,6 +710,39 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     if texts["odds_intake_audit"]:
         intake_lines.extend(_lines_matching(texts["odds_intake_audit"], ["Snapshots", "Coverage", "Verdict", "Action"], 20))
     parts.append(_card("Odds Intake Workflow", "\n".join(intake_lines)))
+
+    soccer_scan_lines = [
+        f"sports actifs: {summary.get('soccer_scan_active')}",
+        f"high priority: {', '.join(summary.get('soccer_scan_high_priority') or []) or 'aucun'}",
+        f"sports scannes: {summary.get('soccer_scan_sports')}",
+        "reseau desactive par defaut; scanner reel seulement avec --allow-network.",
+    ]
+    parts.append(_card("Soccer Odds API Availability", "\n".join(soccer_scan_lines)))
+
+    selection_lines = [
+        f"lignes selectionnees: {summary.get('shadow_selection_rows')}",
+        f"events selectionnes: {summary.get('shadow_selection_events')}",
+        f"warnings: {', '.join(summary.get('shadow_selection_warnings') or []) or 'aucun'}",
+        "politique: selection shadow limitee, pas toutes les issues d'un match.",
+    ]
+    parts.append(_card("API Shadow Selection", "\n".join(selection_lines)))
+
+    near_close_plan_lines = [
+        f"pending closing: {summary.get('near_close_pending')}",
+        f"prochain match: {summary.get('near_close_next_match')}",
+        f"commandes suggerees: {', '.join(summary.get('near_close_commands') or []) or 'n/a'}",
+        "aucune closing n'est inventee; near-close requise depuis source reelle.",
+    ]
+    parts.append(_card("Near-Close Pending Plan", "\n".join(near_close_plan_lines)))
+
+    guard_ledger_lines = [
+        f"guard verdict: {summary.get('real_guard_verdict')}",
+        f"scope attendu: ledger",
+        f"taken sans near-close ledger: {summary.get('real_guard_taken_without_near')}",
+        f"blockers: {', '.join(summary.get('real_guard_blockers') or []) or 'aucun'}",
+        "le store snapshots complet ne doit pas bloquer les observations shadow non selectionnees.",
+    ]
+    parts.append(_card("Real Guard Ledger Scope", "\n".join(guard_ledger_lines)))
 
     matchday_lines = [
         f"date pack: {summary.get('matchday_date')}",

@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V8.7 Matchday Runner Dry-Run Staging, Phase-Aware Workflow & Real Collection UX Fixes.
+V8.8 Soccer Odds API Automation, Near-Close Capture, Sport Scanner & Shadow Selection Guardrails.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. V8.7 rend le matchday runner phase-aware et le full-dry-run predictif via staging temporaire. Aucun signal robuste active. Aucun changement V8.7 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. V8.7 rend le matchday runner phase-aware et le full-dry-run predictif via staging temporaire. V8.8 ajoute le scanner soccer The Odds API, la selection shadow limitee, le workflow near-close et le guard scope ledger. Aucun signal robuste active. Aucun changement V8.8 ne branche Telegram, Railway ou un pick automatique.
 
 V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre operations et le gate de preuve.
 
@@ -207,3 +207,18 @@ V8.7 corrige le workflow reel observe pendant les tests de juin :
 - `evidence_gate.py`, `real_observation_guard.py`, `odds_lab_wizard.py`, `oracle_ops.py`, `report_runner.py` et `dashboard_builder.py` lisent la phase.
 
 Le statut reste non valide pour toute conclusion de performance. La phase aide seulement a savoir quoi collecter ensuite.
+
+## V8.8 Soccer Odds API Automation & Near-Close Guardrails
+
+V8.8 rend la collecte The Odds API praticable sans automatisme reseau :
+
+- `soccer_odds_sport_scanner.py` scanne les sport keys soccer en dry-run ;
+- `the_odds_api_adapter.py` supporte `--near-close`, filtres bookmaker/date, `--max-events`, `--one-side-per-event` et `--raw-dump` hors `data/` ;
+- `odds_shadow_selector.py` choisit une selection limitee depuis les snapshots ;
+- `odds_to_shadow.py` accepte `--selection-csv` pour ne convertir que les observations choisies ;
+- `odds_closing_matcher.py` ajoute filtres event/ligue/date/bookmaker, `--only-shadow-pending` et preference latest-before-kickoff ;
+- `near_close_workflow.py` affiche les observations en attente de closing et les commandes near-close ;
+- `api_odds_collection_runner.py` orchestre scan/collect/select/to-shadow en dry-run ;
+- `oracle_ops.py --api-odds-status`, `--near-close-status`, `--near-close-next`, `--real-guard-ledger` et `report_runner.py --api-odds` exposent le workflow.
+
+Le reseau reste impossible sans `--allow-network`. Le guard recommande `--scope ledger` pour les runs reels afin que le store de snapshots complet ne bloque pas des lignes non selectionnees. Statut final inchange : observation shadow seulement, preuve insuffisante sans CLV reelle et sample significatif.

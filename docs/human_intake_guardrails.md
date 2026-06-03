@@ -37,3 +37,12 @@ python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots 
 ```
 
 Le guard ne valide aucune performance. Il protege seulement la qualite de collecte.
+
+## V8.8 API snapshots
+
+Avec The Odds API, un store peut contenir plusieurs bookmakers, marches et issues. Les garde-fous humains deviennent :
+
+- selectionner peu d'observations via `odds_shadow_selector.py` ;
+- garder `is_near_close=true` pour le matching closing seulement ;
+- utiliser `real_observation_guard.py --scope ledger` pour la collecte reelle ;
+- ne pas confondre un snapshot disponible avec une observation shadow retenue.

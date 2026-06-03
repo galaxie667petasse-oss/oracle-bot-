@@ -39,3 +39,13 @@ python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --ph
 python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase near_close
 python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --phase post_match
 ```
+
+## V8.8 scope ledger
+
+Pour une collecte reelle alimentee par API, le store `reports/odds_snapshots.csv` peut contenir beaucoup de cotes non selectionnees. Le guard doit donc verifier le ledger quand on veut savoir si les observations retenues ont une near-close :
+
+```bash
+python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots reports/odds_snapshots.csv --phase pre_match --scope ledger --output reports/real_observation_guard.json --html reports/real_observation_guard.html
+```
+
+Le scope snapshots reste utile pour auditer un store complet, mais il ne doit pas bloquer les observations shadow non selectionnees.

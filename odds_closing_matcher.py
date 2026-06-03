@@ -58,18 +58,39 @@ def _match_key(row: Dict[str, Any], same_bookmaker: bool = False) -> Tuple[str, 
 def match_closing_snapshots(
     ledger_path: str,
     snapshots_path: str,
+    event_id: str = "",
+    league: str = "",
+    match_date: str = "",
+    bookmaker: str = "",
     same_bookmaker_only: bool = False,
     overwrite: bool = False,
     allow_ambiguous: bool = False,
     time_window_minutes: int = 0,
     prefer_latest_before_kickoff: bool = False,
     prefer_same_bookmaker: bool = False,
+    only_shadow_pending: bool = False,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
-    ledger_rows = read_ledger(ledger_path)
+    ledger_rows_all = read_ledger(ledger_path)
+    ledger_rows = []
+    for row in ledger_rows_all:
+        if only_shadow_pending and str(row.get("closing_odds") or "").strip():
+            continue
+        if league and _norm(row.get("league")) != _norm(league):
+            continue
+        if match_date and _norm(row.get("match_date")) != _norm(match_date):
+            continue
+        if bookmaker and _norm(row.get("bookmaker")) != _norm(bookmaker):
+            continue
+        ledger_rows.append(row)
     snapshots = [
         row for row in load_snapshots(snapshots_path)
-        if str(row.get("is_near_close") or "").lower() == "true" and row.get("validation_status") == "valid"
+        if str(row.get("is_near_close") or "").lower() == "true"
+        and row.get("validation_status") == "valid"
+        and (not event_id or _norm(row.get("source_event_id")) == _norm(event_id))
+        and (not league or _norm(row.get("league")) == _norm(league))
+        and (not match_date or _norm(row.get("match_date")) == _norm(match_date))
+        and (not bookmaker or _norm(row.get("bookmaker")) == _norm(bookmaker))
     ]
     grouped: Dict[Tuple[str, ...], List[Dict[str, Any]]] = {}
     for row in snapshots:
@@ -97,10 +118,13 @@ def match_closing_snapshots(
                 if minutes is None or 0 <= minutes <= time_window_minutes:
                     filtered.append(candidate)
             candidates = filtered
+        warning_different_bookmaker = False
         if prefer_same_bookmaker and candidates:
             same = [candidate for candidate in candidates if _norm(candidate.get("bookmaker")) == _norm(row.get("bookmaker"))]
             if same:
                 candidates = same
+            else:
+                warning_different_bookmaker = True
         if not candidates:
             unmatched += 1
             unmatched_rows.append(row)
@@ -129,19 +153,26 @@ def match_closing_snapshots(
             "snapshot_id": candidate.get("snapshot_id"),
             "clv_percent": compute_clv(taken, closing)["clv_percent"],
         }
+        if warning_different_bookmaker:
+            change["warning"] = "bookmaker different, aucun exact bookmaker match"
         preview.append(change)
         clv_added.append(float(change["clv_percent"]))
         if not dry_run:
             row["closing_odds"] = str(closing)
-            row["closing_source"] = change["closing_source"]
+            row["closing_source"] = change["closing_source"] + ("; bookmaker different" if warning_different_bookmaker else "")
             row.update(compute_clv(taken, closing))
             updated += 1
     if not dry_run:
-        write_ledger(ledger_rows, ledger_path)
+        if len(ledger_rows) != len(ledger_rows_all):
+            # Les lignes filtrees sont les memes objets que dans ledger_rows_all.
+            write_ledger(ledger_rows_all, ledger_path)
+        else:
+            write_ledger(ledger_rows, ledger_path)
     return {
         "ledger": ledger_path,
         "snapshots": snapshots_path,
         "shadow_rows": len(ledger_rows),
+        "shadow_rows_total": len(ledger_rows_all),
         "near_close_snapshots": len(snapshots),
         "matches_found": matched,
         "matched": matched,
@@ -153,6 +184,8 @@ def match_closing_snapshots(
         "clv_mean_added": round(sum(clv_added) / len(clv_added), 6) if clv_added else None,
         "errors": errors,
         "dry_run": dry_run,
+        "only_shadow_pending": only_shadow_pending,
+        "filters": {"event_id": event_id, "league": league, "match_date": match_date, "bookmaker": bookmaker},
         "preview": preview[:20],
         "unmatched_rows": unmatched_rows[:50],
         "ambiguous_rows": ambiguous_rows[:50],
@@ -193,12 +226,18 @@ def parse_args(argv=None):
     parser.add_argument("--ledger", required=True)
     parser.add_argument("--snapshots", required=True)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--event-id", default="")
+    parser.add_argument("--league", default="")
+    parser.add_argument("--match-date", default="")
+    parser.add_argument("--bookmaker", default="")
     parser.add_argument("--same-bookmaker-only", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--allow-ambiguous", action="store_true")
     parser.add_argument("--time-window-minutes", type=int, default=0)
+    parser.add_argument("--max-time-before-kickoff-minutes", type=int, default=0)
     parser.add_argument("--prefer-latest-before-kickoff", action="store_true")
     parser.add_argument("--prefer-same-bookmaker", action="store_true")
+    parser.add_argument("--only-shadow-pending", action="store_true")
     parser.add_argument("--report", default="")
     parser.add_argument("--summary-json", default="")
     parser.add_argument("--unmatched-output", default="")
@@ -212,12 +251,17 @@ def main(argv=None) -> int:
         report = match_closing_snapshots(
             args.ledger,
             args.snapshots,
+            event_id=args.event_id,
+            league=args.league,
+            match_date=args.match_date,
+            bookmaker=args.bookmaker,
             same_bookmaker_only=args.same_bookmaker_only,
             overwrite=args.overwrite,
             allow_ambiguous=args.allow_ambiguous,
-            time_window_minutes=args.time_window_minutes,
+            time_window_minutes=args.max_time_before_kickoff_minutes or args.time_window_minutes,
             prefer_latest_before_kickoff=args.prefer_latest_before_kickoff,
             prefer_same_bookmaker=args.prefer_same_bookmaker,
+            only_shadow_pending=args.only_shadow_pending,
             dry_run=args.dry_run,
         )
         print_report(report)

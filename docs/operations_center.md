@@ -115,3 +115,18 @@ python oracle_ops.py --matchday-phase reports/matchday_2026_06_01 --phase pre_ma
 ```
 
 Ces commandes ne lancent aucun reseau et ne modifient pas `data/`. Elles servent a savoir quelle saisie humaine manque encore.
+
+## V8.8 API odds operations
+
+Commandes ajoutees :
+
+```bash
+python oracle_ops.py --scan-soccer-odds
+python oracle_ops.py --api-odds-status
+python oracle_ops.py --api-pre-match-jleague
+python oracle_ops.py --near-close-status
+python oracle_ops.py --near-close-next
+python oracle_ops.py --real-guard-ledger
+```
+
+`--api-pre-match-jleague` affiche une commande dry-run a relancer manuellement dans `api_odds_collection_runner.py`. Aucun reseau n'est lance par `oracle_ops.py`.

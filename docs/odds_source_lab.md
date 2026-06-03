@@ -68,3 +68,15 @@ python matchday_runner.py --pack reports/matchday_2026_06_01 --full-dry-run --ph
 ```
 
 Une near-close doit etre collectee plus tard et ne doit pas etre inventee.
+
+## V8.8 The Odds API soccer
+
+Le lab ajoute un chemin API plus guide :
+
+```bash
+python soccer_odds_sport_scanner.py --dry-run
+python the_odds_api_adapter.py --dry-run --sport soccer_japan_j_league --regions us,uk,eu --markets h2h
+python api_odds_collection_runner.py --scan-sports --dry-run
+```
+
+Un appel reel exige `--allow-network`. Les snapshots pre-match passent ensuite par `odds_shadow_selector.py` avant `odds_to_shadow.py`; les near-close restent separees et ne deviennent jamais des taken odds.

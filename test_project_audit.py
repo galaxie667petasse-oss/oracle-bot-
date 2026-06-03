@@ -123,6 +123,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v8.5" in status
     assert "v8.6" in status
     assert "v8.7" in status
+    assert "v8.8" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -145,6 +146,10 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "human_intake_guardrails.md").exists()
     assert (root / "docs" / "matchday_phase_workflow.md").exists()
     assert (root / "docs" / "dry_run_staging.md").exists()
+    assert (root / "docs" / "api_soccer_odds_workflow.md").exists()
+    assert (root / "docs" / "near_close_capture_workflow.md").exists()
+    assert (root / "docs" / "shadow_selection_policy.md").exists()
+    assert (root / "docs" / "the_odds_api_sport_scanner.md").exists()
 
 
 def main():

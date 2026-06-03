@@ -43,6 +43,17 @@ def main():
         assert odds_to_shadow.main(["--snapshots", str(snapshots), "--ledger", str(ledger), "--dry-run", "--summary-json", str(summary)]) == 0
         assert summary.exists()
 
+        selection = Path(tmp) / "reports" / "selection.csv"
+        odds_snapshot_store.append_snapshot_rows(str(selection), [snapshot()])
+        ledger2 = Path(tmp) / "reports" / "shadow_selection.csv"
+        selected = odds_to_shadow.snapshots_to_shadow("", str(ledger2), selection_csv=str(selection), dry_run=False, reason="observation selection API, aucune mise")
+        assert selected["source_kind"] == "selection CSV"
+        assert selected["rows_added"] == 1
+        assert shadow_ledger.read_ledger(str(ledger2))[0]["reason"] == "observation selection API, aucune mise"
+        selected_summary = Path(tmp) / "reports" / "selected_summary.json"
+        assert odds_to_shadow.main(["--selection-csv", str(selection), "--ledger", str(ledger2), "--dry-run", "--summary-json", str(selected_summary)]) == 0
+        assert selected_summary.exists()
+
     print("test_odds_to_shadow ok")
 
 
