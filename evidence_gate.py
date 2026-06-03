@@ -41,6 +41,7 @@ def build_evidence_gate(
     calibration_report_path: str = "",
     real_guard_path: str = "",
     matchday_status_path: str = "",
+    lifecycle_path: str = "",
 ) -> Dict[str, Any]:
     shadow = read_json(shadow_report_path)
     quality = read_json(quality_audit_path)
@@ -51,10 +52,12 @@ def build_evidence_gate(
     calibration = read_json(calibration_report_path)
     real_guard = read_json(real_guard_path)
     matchday_status = read_json(matchday_status_path)
+    lifecycle = read_json(lifecycle_path)
     blockers: List[str] = []
+    warnings: List[str] = []
     strengths: List[str] = []
     next_steps: List[str] = []
-    if not any([shadow, quality, big5, clv, benchmark, stats, calibration, real_guard, matchday_status]):
+    if not any([shadow, quality, big5, clv, benchmark, stats, calibration, real_guard, matchday_status, lifecycle]):
         blockers.append("Aucun rapport de preuve disponible")
         next_steps.append("Generer shadow_clv_report.py et shadow_quality_audit.py")
         status = "not_started"
@@ -172,6 +175,30 @@ def build_evidence_gate(
                 blockers.append("matchday sans near-close")
             if (results.get("filled") or 0) == 0:
                 blockers.append("resultats manquants")
+    if lifecycle:
+        counts = lifecycle.get("status_counts") or {}
+        pending_closing = int(_num(lifecycle.get("pending_closing"), 0))
+        completed = int(_num(lifecycle.get("completed"), 0))
+        near_overdue = int(_num(counts.get("near_close_overdue"), 0))
+        result_overdue = int(_num(counts.get("result_overdue"), 0))
+        due_soon = int(_num(counts.get("near_close_due_soon"), 0))
+        if near_overdue:
+            blockers.append("near-close overdue")
+            next_steps.append("Rattraper ou documenter les near-close manquees")
+        if result_overdue:
+            blockers.append("resultats overdue")
+            next_steps.append("Importer les resultats manuels dus")
+        if due_soon:
+            warnings.append("near-close due soon")
+            next_steps.append("Capturer les near-close proches du kickoff")
+        if pending_closing and near_overdue == 0:
+            warnings.append("pending closing futur normal en pre_match")
+        if pending_closing > max(completed * 3, 3):
+            warnings.append("pending closing eleve vs observations completes")
+        if completed < 30:
+            warnings.append("observations completes < 30")
+        if completed < 1000:
+            warnings.append("observations completes < 1000")
     if real_guard and real_guard.get("verdict") in {"mixed_test_and_real", "invalid"}:
         status = "blocked"
     elif quality.get("verdict") == "invalid" or any("CLV moyenne <= 0" == item for item in blockers):
@@ -203,6 +230,7 @@ def build_evidence_gate(
         "shadow_clv_mean": clv_mean,
         "shadow_roi": roi,
         "blockers": seen_blockers,
+        "warnings": sorted(set(warnings)),
         "strengths": sorted(set(strengths)),
         "required_next_steps": seen_steps,
         "source_reports": {
@@ -215,6 +243,7 @@ def build_evidence_gate(
             "calibration_report": calibration_report_path or None,
             "real_guard": real_guard_path or None,
             "matchday_status": matchday_status_path or None,
+            "lifecycle": lifecycle_path or None,
         },
         "lab_only": True,
         "can_influence_picks": False,
@@ -231,6 +260,7 @@ def write_json(report: Dict[str, Any], path: str) -> Path:
 def write_html(report: Dict[str, Any], path: str) -> Path:
     target = ensure_reports_path(path)
     blockers = "".join(f"<li>{html.escape(str(item))}</li>" for item in report.get("blockers") or [])
+    warnings = "".join(f"<li>{html.escape(str(item))}</li>" for item in report.get("warnings") or [])
     strengths = "".join(f"<li>{html.escape(str(item))}</li>" for item in report.get("strengths") or [])
     steps = "".join(f"<li>{html.escape(str(item))}</li>" for item in report.get("required_next_steps") or [])
     target.write_text("\n".join([
@@ -241,6 +271,7 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         f"<p><strong>Statut global:</strong> {html.escape(str(report.get('global_status')))}</p>",
         f"<p>{html.escape(str(report.get('message')))}</p>",
         f"<section class='warn'><h2>Blockers</h2><ul>{blockers or '<li>Aucun</li>'}</ul></section>",
+        f"<section><h2>Warnings</h2><ul>{warnings or '<li>Aucun</li>'}</ul></section>",
         f"<section><h2>Forces</h2><ul>{strengths or '<li>Aucune</li>'}</ul></section>",
         f"<section><h2>Prochaines actions</h2><ul>{steps}</ul></section>",
         "</body></html>",
@@ -255,6 +286,8 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- CLV coverage: {report.get('shadow_clv_coverage')}%")
     for blocker in report.get("blockers") or []:
         print(f"- Bloquant: {blocker}")
+    for warning in report.get("warnings") or []:
+        print(f"- Warning: {warning}")
     for step in report.get("required_next_steps") or []:
         print(f"- Action requise: {step}")
     print("- Observation seulement, aucune mise conseillee.")
@@ -271,6 +304,7 @@ def parse_args(argv=None):
     parser.add_argument("--calibration-report", default="")
     parser.add_argument("--real-guard", default="")
     parser.add_argument("--matchday-status", default="")
+    parser.add_argument("--lifecycle", default="")
     parser.add_argument("--output", default="")
     parser.add_argument("--html", default="")
     return parser.parse_args(argv)
@@ -289,6 +323,7 @@ def main(argv=None) -> int:
             calibration_report_path=args.calibration_report,
             real_guard_path=args.real_guard,
             matchday_status_path=args.matchday_status,
+            lifecycle_path=args.lifecycle,
         )
         if args.output:
             write_json(report, args.output)

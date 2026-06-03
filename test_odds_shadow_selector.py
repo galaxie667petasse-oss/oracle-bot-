@@ -1,8 +1,10 @@
 import tempfile
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import odds_shadow_selector
 import odds_snapshot_store
+from shadow_ledger import add_shadow_entry
 
 
 def row(event, side, odds, near="false", book="Book"):
@@ -59,6 +61,17 @@ def main():
             "--one-side-per-event",
             "--prefer-side", "home",
         ]) == 0
+
+        future_date = (datetime.now().date() + timedelta(days=2)).isoformat()
+        snapshots2 = root / "reports" / "odds_future.csv"
+        ledger = root / "reports" / "shadow.csv"
+        future_row = row("evt_future", "home", "2.30")
+        future_row["match_date"] = future_date
+        odds_snapshot_store.append_snapshot_rows(str(snapshots2), [future_row])
+        add_shadow_entry(str(ledger), match_date=future_date, league="J League", home="Urawa Reds", away="Kobe", market="h2h", side="home", taken_odds="2.30")
+        excluded = odds_shadow_selector.select_shadow_rows(str(snapshots2), exclude_events_from_ledger=str(ledger), min_days_ahead=0, max_days_ahead=7)
+        assert excluded["summary"]["selected_rows"] == 0
+        assert excluded["summary"]["excluded_existing_events_rows"] == 1
 
     print("test_odds_shadow_selector ok")
 

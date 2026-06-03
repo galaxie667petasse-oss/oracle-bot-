@@ -72,6 +72,17 @@ Le scanner The Odds API, la selection shadow et le workflow near-close alimenten
 - `--scope ledger` dans le guard verifie les observations retenues ;
 - sample < 1000 et CLV non robuste bloquent toute promotion.
 
+## V8.9 lifecycle
+
+`evidence_gate.py --lifecycle reports/event_lifecycle.json` ajoute :
+
+- blocker si `near_close_overdue` ;
+- blocker si `result_overdue` ;
+- warning si near-close due soon ;
+- warning si trop de pending closing par rapport aux observations completes.
+
+Un pending closing futur en pre-match reste une insuffisance normale, pas une preuve ni une erreur dure.
+
 ## Lien V8.5
 
 `llm_analyst_contract.py` doit respecter ce gate. Si `evidence_gate.py` ne renvoie pas `ready_for_deep_review`, la restitution maximale reste `non valide` ou `observation shadow`. Le schema `restitution_schema.py` force les actions interdites a rester visibles.

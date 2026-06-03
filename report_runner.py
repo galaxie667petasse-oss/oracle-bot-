@@ -892,6 +892,120 @@ def api_odds_commands(
     return commands
 
 
+def shadow_ops_commands(
+    ledger: str = "reports/shadow_ledger.csv",
+    snapshots: str = "reports/odds_snapshots.csv",
+    skip_dashboard: bool = False,
+) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "Event lifecycle",
+            "event_lifecycle.txt",
+            [
+                "event_lifecycle_manager.py",
+                "--ledger",
+                ledger,
+                "--output",
+                "{report_dir}/event_lifecycle.json",
+                "--html",
+                "{report_dir}/event_lifecycle.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Near-close scheduler",
+            "near_close_schedule.txt",
+            [
+                "near_close_scheduler.py",
+                "--ledger",
+                ledger,
+                "--output",
+                "{report_dir}/near_close_schedule.json",
+                "--html",
+                "{report_dir}/near_close_schedule.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Real guard ledger scope",
+            "real_observation_guard.txt",
+            [
+                "real_observation_guard.py",
+                "--ledger",
+                ledger,
+                "--snapshots",
+                snapshots,
+                "--phase",
+                "pre_match",
+                "--scope",
+                "ledger",
+                "--output",
+                "{report_dir}/real_observation_guard.json",
+                "--html",
+                "{report_dir}/real_observation_guard.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Evidence gate lifecycle",
+            "evidence_gate.txt",
+            [
+                "evidence_gate.py",
+                "--lifecycle",
+                "{report_dir}/event_lifecycle.json",
+                "--real-guard",
+                "{report_dir}/real_observation_guard.json",
+                "--shadow-report",
+                "reports/shadow_clv_report.json",
+                "--output",
+                "{report_dir}/evidence_gate.json",
+                "--html",
+                "{report_dir}/evidence_gate.html",
+            ],
+            timeout=600,
+        ),
+        ReportCommand(
+            "Shadow progress dashboard",
+            "shadow_progress_dashboard.txt",
+            [
+                "shadow_progress_dashboard.py",
+                "--ledger",
+                ledger,
+                "--lifecycle",
+                "{report_dir}/event_lifecycle.json",
+                "--evidence",
+                "{report_dir}/evidence_gate.json",
+                "--output",
+                "{report_dir}/shadow_progress_dashboard.html",
+                "--json",
+                "{report_dir}/shadow_progress_dashboard.json",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Odds autopilot dry-run",
+            "odds_autopilot_dryrun.txt",
+            [
+                "odds_autopilot_dryrun.py",
+                "--ledger",
+                ledger,
+                "--snapshots",
+                snapshots,
+                "--reports-dir",
+                "{report_dir}",
+                "--output",
+                "{report_dir}/odds_autopilot_dryrun.json",
+                "--html",
+                "{report_dir}/odds_autopilot_dryrun.html",
+            ],
+            timeout=300,
+        ),
+    ]
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard shadow ops", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
 def project_blueprint_commands(skip_evidence: bool = False, skip_dashboard: bool = False) -> List[ReportCommand]:
     commands = [
         ReportCommand(
@@ -1176,6 +1290,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return odds_intake_commands()
     if mode == "api-odds":
         return api_odds_commands()
+    if mode == "shadow-ops":
+        return shadow_ops_commands()
     if mode == "project-blueprint":
         return project_blueprint_commands()
     if mode == "matchday":
@@ -1300,6 +1416,7 @@ def parse_args(argv=None):
     mode.add_argument("--odds-lab", action="store_true", help="Lance le laboratoire local des sources de cotes")
     mode.add_argument("--odds-intake", action="store_true", help="Lance l'audit local du workflow odds intake")
     mode.add_argument("--api-odds", action="store_true", help="Lance les rapports API odds soccer sans reseau")
+    mode.add_argument("--shadow-ops", action="store_true", help="Lance le lifecycle shadow, near-close scheduler et dashboard evidence local")
     mode.add_argument("--project-blueprint", action="store_true", help="Lance la carte architecture, contrats, scorecard et restitution")
     mode.add_argument("--matchday", action="store_true", help="Lance le rapport local de collecte matchday")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
@@ -1339,6 +1456,7 @@ def main(argv=None) -> None:
         else "odds-lab" if args.odds_lab
         else "odds-intake" if args.odds_intake
         else "api-odds" if args.api_odds
+        else "shadow-ops" if args.shadow_ops
         else "project-blueprint" if args.project_blueprint
         else "matchday" if args.matchday
         else "big5-xg" if args.big5_xg
@@ -1424,6 +1542,12 @@ def main(argv=None) -> None:
             near_close_plan=args.near_close_plan,
             skip_evidence=args.skip_evidence,
             skip_quality=args.skip_quality,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "shadow-ops":
+        commands = shadow_ops_commands(
+            ledger=args.ledger,
+            snapshots=args.snapshots,
             skip_dashboard=args.skip_dashboard,
         )
     elif mode == "project-blueprint":

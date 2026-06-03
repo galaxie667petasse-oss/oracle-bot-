@@ -848,3 +848,26 @@ python report_runner.py --api-odds --skip-dashboard
 ```
 
 Un appel reel The Odds API reste manuel et explicite avec `--allow-network`. Cette phase ne choisit pas automatiquement toutes les issues d'un match, ne cree aucune mise, n'envoie rien sur Telegram et ne promet rien. Elle collecte seulement des elements pour le shadow ledger et l'evidence gate.
+
+## V8.9 Autonomous Odds Operations & Event Lifecycle
+
+V8.9 ajoute une couche operations locale pour ne pas oublier les observations shadow deja creees :
+
+- `event_lifecycle_manager.py` classe les observations : pre-match, near-close due, overdue, waiting result, complete ;
+- `near_close_scheduler.py` genere les commandes near-close par ligue et sport key ;
+- `result_capture_helper.py` prepare et valide le CSV de resultats manuels ;
+- `shadow_progress_dashboard.py` affiche pending closing, pending results, CLV coverage et progression sample ;
+- `odds_autopilot_dryrun.py` propose les prochaines commandes sans reseau ni ecriture risquee ;
+- `api_odds_collection_runner.py` et `odds_shadow_selector.py` savent eviter les events deja presents et limiter la collecte.
+
+Commandes principales :
+
+```bash
+python event_lifecycle_manager.py --ledger reports/shadow_ledger.csv --output reports/event_lifecycle.json --html reports/event_lifecycle.html
+python near_close_scheduler.py --ledger reports/shadow_ledger.csv --commands
+python result_capture_helper.py --ledger reports/shadow_ledger.csv --template reports/manual_results_due.csv
+python odds_autopilot_dryrun.py --full
+python report_runner.py --shadow-ops --skip-dashboard
+```
+
+Le statut reste laboratoire local. Si trop d'observations sont sans closing, l'action prioritaire est de collecter les near-close reelles, pas d'ajouter plus de lignes.

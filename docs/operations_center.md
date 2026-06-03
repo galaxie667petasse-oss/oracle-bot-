@@ -130,3 +130,17 @@ python oracle_ops.py --real-guard-ledger
 ```
 
 `--api-pre-match-jleague` affiche une commande dry-run a relancer manuellement dans `api_odds_collection_runner.py`. Aucun reseau n'est lance par `oracle_ops.py`.
+
+## V8.9 shadow ops
+
+Commandes ajoutees :
+
+```bash
+python oracle_ops.py --lifecycle
+python oracle_ops.py --near-close-schedule
+python oracle_ops.py --results-template
+python oracle_ops.py --shadow-progress
+python oracle_ops.py --odds-autopilot
+```
+
+Ces commandes restent locales. Elles servent a finir les observations ouvertes : near-close, resultats, evidence gate.

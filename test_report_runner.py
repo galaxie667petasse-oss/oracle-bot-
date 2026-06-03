@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, api_odds_commands, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, run_report, shadow_commands, xg_understat_commands
+from report_runner import ReportCommand, api_odds_commands, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, run_report, shadow_commands, shadow_ops_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -261,6 +261,27 @@ Understat xG Full Pipeline Quality Gate
             "next_match_date": "2026-06-01",
             "commands": ["python the_odds_api_adapter.py --allow-network --sport soccer_japan_j_league --near-close"],
         }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "event_lifecycle.json").write_text(json.dumps({
+            "total_observations": 3,
+            "pending_closing": 2,
+            "pending_results": 1,
+            "completed": 0,
+            "status_counts": {"pre_match_waiting_close": 2, "waiting_result": 1},
+        }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "near_close_schedule.json").write_text(json.dumps({
+            "pending_total": 2,
+            "schedule": [{"league": "J League", "pending_count": 2, "sport_key": "soccer_japan_j_league"}],
+        }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "shadow_progress_dashboard.json").write_text(json.dumps({
+            "observations": 3,
+            "clv_coverage": 0.0,
+            "roi_coverage": 0.0,
+        }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "odds_autopilot_dryrun.json").write_text(json.dumps({
+            "recommended_human_action": "collecter near-close",
+            "safe_next_commands": ["python near_close_scheduler.py --ledger reports/shadow_ledger.csv --commands"],
+            "blocked_actions": ["appel reseau automatique"],
+        }, ensure_ascii=False), encoding="utf-8")
         (report_dir / "architecture_map.json").write_text(json.dumps({"blocks": [{"name": "Sources de donnees"}]}, ensure_ascii=False), encoding="utf-8")
         (report_dir / "pipeline_contracts.json").write_text(json.dumps({"contracts": {"odds_snapshot": {}, "shadow_ledger": {}}}, ensure_ascii=False), encoding="utf-8")
         (report_dir / "project_scorecard.json").write_text(json.dumps({
@@ -317,6 +338,7 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Odds source config" for command in command_set("odds-lab"))
         assert any(command.name == "Odds intake audit" for command in command_set("odds-intake"))
         assert any(command.name == "Soccer odds sport scanner" for command in command_set("api-odds"))
+        assert any(command.name == "Event lifecycle" for command in command_set("shadow-ops"))
         assert any(command.name == "Architecture canonique" for command in command_set("project-blueprint"))
         assert any(command.name == "Matchday status" for command in command_set("matchday"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
@@ -359,6 +381,11 @@ Understat xG Full Pipeline Quality Gate
         assert any("near_close_workflow.py" in command.args for command in api_cmds)
         assert any("real_observation_guard.py" in command.args and "--scope" in command.args for command in api_cmds)
         assert not any("dashboard_builder.py" in command.args for command in api_cmds)
+        shadow_ops_cmds = shadow_ops_commands(str(root / "reports" / "shadow_ledger.csv"), str(root / "reports" / "odds_snapshots.csv"), skip_dashboard=True)
+        assert any("event_lifecycle_manager.py" in command.args for command in shadow_ops_cmds)
+        assert any("near_close_scheduler.py" in command.args for command in shadow_ops_cmds)
+        assert any("evidence_gate.py" in command.args and "--lifecycle" in command.args for command in shadow_ops_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in shadow_ops_cmds)
         blueprint_cmds = project_blueprint_commands(skip_evidence=True, skip_dashboard=True)
         assert any("oracle_architecture_map.py" in command.args for command in blueprint_cmds)
         assert any("pipeline_contracts.py" in command.args for command in blueprint_cmds)
@@ -402,6 +429,11 @@ Understat xG Full Pipeline Quality Gate
         assert "API Shadow Selection" in html
         assert "Near-Close Pending Plan" in html
         assert "Real Guard Ledger Scope" in html
+        assert "Event Lifecycle" in html
+        assert "Near-Close Schedule" in html
+        assert "Shadow Progress" in html
+        assert "Result Capture Status" in html
+        assert "Autopilot Recommendations" in html
         assert "Architecture canonique" in html
         assert "Pipeline contracts" in html
         assert "LLM analyst contract" in html

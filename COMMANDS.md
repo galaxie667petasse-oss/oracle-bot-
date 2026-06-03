@@ -983,6 +983,47 @@ python report_runner.py --api-odds --skip-dashboard
 
 Regles : aucun appel API sans `--allow-network`, aucune conversion automatique des near-close en taken odds, aucune ecriture dans `data/`, aucune activation Telegram/Railway.
 
+## 31. V8.9 Autonomous Odds Operations
+
+Lifecycle :
+
+```bash
+python event_lifecycle_manager.py --ledger reports/shadow_ledger.csv --output reports/event_lifecycle.json --html reports/event_lifecycle.html
+python event_lifecycle_manager.py --ledger reports/shadow_ledger.csv --status
+python event_lifecycle_manager.py --ledger reports/shadow_ledger.csv --due-now --minutes-before 120
+python event_lifecycle_manager.py --ledger reports/shadow_ledger.csv --due-results
+```
+
+Near-close scheduler :
+
+```bash
+python near_close_scheduler.py --ledger reports/shadow_ledger.csv --output reports/near_close_schedule.json --html reports/near_close_schedule.html
+python near_close_scheduler.py --ledger reports/shadow_ledger.csv --commands
+```
+
+Resultats manuels :
+
+```bash
+python result_capture_helper.py --ledger reports/shadow_ledger.csv --template reports/manual_results_due.csv
+python result_capture_helper.py --ledger reports/shadow_ledger.csv --results reports/manual_results_due.csv --dry-run
+python result_capture_helper.py --ledger reports/shadow_ledger.csv --results reports/manual_results_due.csv --apply
+```
+
+Autopilot et shadow ops :
+
+```bash
+python odds_autopilot_dryrun.py --full
+python report_runner.py --shadow-ops --skip-dashboard
+```
+
+Protection collecte API :
+
+```bash
+python api_odds_collection_runner.py --full-pre-match --avoid-existing-events --ledger reports/shadow_ledger.csv --no-apply-if-pending-closing-over 3
+```
+
+Lecture prudente : si beaucoup d'observations sont sans closing, il faut collecter les near-close avant d'ajouter plus de lignes.
+
 ```bash
 git status --short
 git diff

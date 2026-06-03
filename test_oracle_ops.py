@@ -80,7 +80,22 @@ def main():
         assert near_next["commands"]
         guard_ledger = oracle_ops.real_guard_ledger_report(str(root / "reports"), str(ledger), str(odds_store))
         assert guard_ledger["scope"] == "ledger"
+        lifecycle = oracle_ops.lifecycle_report(str(root / "reports"), str(ledger))
+        assert lifecycle["total_observations"] == 1
+        schedule = oracle_ops.near_close_schedule_report(str(root / "reports"), str(ledger))
+        assert schedule["pending_total"] == 1
+        results_template = oracle_ops.results_template_report(str(root / "reports"), str(ledger))
+        assert Path(results_template["template"]).exists()
+        progress_shadow = oracle_ops.shadow_progress_report(str(root / "reports"), str(ledger))
+        assert progress_shadow["observations"] == 1
+        autopilot = oracle_ops.odds_autopilot_report(str(root / "reports"), str(ledger), str(odds_store))
+        assert autopilot["safe_next_commands"]
         assert oracle_ops.main(["--api-pre-match-jleague", "--ledger", str(ledger), "--snapshots", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--lifecycle", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--near-close-schedule", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--results-template", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--shadow-progress", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--odds-autopilot", "--ledger", str(ledger), "--snapshots", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
         matchday = oracle_ops.matchday_create_report("2026-06-01", str(root / "reports"))
         assert Path(matchday["output_dir"]).exists()
         matchday_status = oracle_ops.build_matchday_status(matchday["output_dir"])

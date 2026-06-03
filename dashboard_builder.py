@@ -163,6 +163,10 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     soccer_scan = read_json_candidates(report_dir, ["soccer_odds_sport_scan.json"])
     shadow_selection = read_json_candidates(report_dir, ["shadow_selection_summary.json", "api_shadow_selection_summary.json"])
     near_close_plan = read_json_candidates(report_dir, ["near_close_plan.json"])
+    event_lifecycle = read_json_candidates(report_dir, ["event_lifecycle.json"])
+    near_close_schedule = read_json_candidates(report_dir, ["near_close_schedule.json"])
+    shadow_progress = read_json_candidates(report_dir, ["shadow_progress_dashboard.json"])
+    odds_autopilot = read_json_candidates(report_dir, ["odds_autopilot_dryrun.json"])
     architecture_map = read_json_candidates(report_dir, ["architecture_map.json"])
     pipeline_contracts = read_json_candidates(report_dir, ["pipeline_contracts.json"])
     project_scorecard = read_json_candidates(report_dir, ["project_scorecard.json"])
@@ -333,6 +337,18 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "near_close_pending": near_close_plan.get("pending_closing_count") or ((near_close_plan.get("status") or {}).get("pending_closing_count")),
         "near_close_next_match": near_close_plan.get("next_match_date") or ((near_close_plan.get("status") or {}).get("next_match_date")),
         "near_close_commands": near_close_plan.get("commands") or [],
+        "event_lifecycle_total": event_lifecycle.get("total_observations"),
+        "event_lifecycle_counts": event_lifecycle.get("status_counts") or {},
+        "event_lifecycle_pending_closing": event_lifecycle.get("pending_closing"),
+        "event_lifecycle_pending_results": event_lifecycle.get("pending_results"),
+        "near_close_schedule_pending": near_close_schedule.get("pending_total"),
+        "near_close_schedule_leagues": [(item.get("league"), item.get("pending_count")) for item in (near_close_schedule.get("schedule") or [])],
+        "shadow_progress_observations": shadow_progress.get("observations"),
+        "shadow_progress_clv_coverage": shadow_progress.get("clv_coverage"),
+        "shadow_progress_roi_coverage": shadow_progress.get("roi_coverage"),
+        "autopilot_recommended_action": odds_autopilot.get("recommended_human_action"),
+        "autopilot_safe_commands": odds_autopilot.get("safe_next_commands") or [],
+        "autopilot_blocked_actions": odds_autopilot.get("blocked_actions") or [],
         "architecture_blocks": len(architecture_map.get("blocks") or []),
         "pipeline_contracts_count": len((pipeline_contracts.get("contracts") or {})),
         "project_scorecard_global": project_scorecard.get("global_score"),
@@ -743,6 +759,45 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
         "le store snapshots complet ne doit pas bloquer les observations shadow non selectionnees.",
     ]
     parts.append(_card("Real Guard Ledger Scope", "\n".join(guard_ledger_lines)))
+
+    lifecycle_lines = [
+        f"observations: {summary.get('event_lifecycle_total')}",
+        f"pending closing: {summary.get('event_lifecycle_pending_closing')}",
+        f"pending results: {summary.get('event_lifecycle_pending_results')}",
+        f"statuts: {summary.get('event_lifecycle_counts')}",
+        "statut: cycle de vie shadow, aucune action automatique.",
+    ]
+    parts.append(_card("Event Lifecycle", "\n".join(lifecycle_lines)))
+
+    schedule_lines = [
+        f"pending total: {summary.get('near_close_schedule_pending')}",
+        f"ligues: {summary.get('near_close_schedule_leagues')}",
+        "collecte near-close: commande reseau manuelle seulement avec --allow-network.",
+    ]
+    parts.append(_card("Near-Close Schedule", "\n".join(schedule_lines)))
+
+    progress_lines_shadow = [
+        f"observations: {summary.get('shadow_progress_observations')}",
+        f"CLV coverage: {summary.get('shadow_progress_clv_coverage')}%",
+        f"ROI coverage: {summary.get('shadow_progress_roi_coverage')}%",
+        "statut: observation seulement, preuve insuffisante.",
+    ]
+    parts.append(_card("Shadow Progress", "\n".join(progress_lines_shadow)))
+
+    result_capture_lines = [
+        f"resultats pending: {summary.get('event_lifecycle_pending_results')}",
+        "commande: python result_capture_helper.py --ledger reports/shadow_ledger.csv --template reports/manual_results_due.csv",
+        "apply manuel uniquement apres verification du CSV.",
+    ]
+    parts.append(_card("Result Capture Status", "\n".join(result_capture_lines)))
+
+    autopilot_lines = [
+        f"action recommandee: {summary.get('autopilot_recommended_action')}",
+        f"commandes sures: {', '.join((summary.get('autopilot_safe_commands') or [])[:3]) or 'n/a'}",
+        f"actions bloquees: {', '.join(summary.get('autopilot_blocked_actions') or []) or 'aucune'}",
+        "dry-run local: aucun reseau.",
+    ]
+    parts.append(_card("Autopilot Recommendations", "\n".join(autopilot_lines)))
 
     matchday_lines = [
         f"date pack: {summary.get('matchday_date')}",

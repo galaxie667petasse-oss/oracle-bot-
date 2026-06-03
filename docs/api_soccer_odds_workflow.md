@@ -34,3 +34,13 @@ Cette commande doit rester manuelle. Elle ne cree aucune observation shadow tant
 - ne pas melanger taken odds et near-close ;
 - ne pas ecrire dans `data/` ;
 - ne pas conclure sans CLV reelle et sample significatif.
+
+## V8.9 protections pending closing
+
+Avant d'ajouter plus de pre-match :
+
+```bash
+python api_odds_collection_runner.py --full-pre-match --avoid-existing-events --ledger reports/shadow_ledger.csv --no-apply-if-pending-closing-over 3
+```
+
+Si le ledger contient trop d'observations sans closing, le runner refuse l'apply et demande de capturer les near-close en priorite.

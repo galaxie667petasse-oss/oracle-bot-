@@ -189,3 +189,21 @@ python real_observation_guard.py --ledger reports/shadow_ledger.csv --snapshots 
 ```
 
 Cette routine collecte des preuves. Elle ne cree aucune mise, aucun message Telegram et aucune conclusion rapide.
+
+## V8.9 operations autonomes locales
+
+Avant d'ajouter de nouvelles observations, verifier le cycle de vie :
+
+```bash
+python event_lifecycle_manager.py --ledger reports/shadow_ledger.csv --status
+python near_close_scheduler.py --ledger reports/shadow_ledger.csv --commands
+python odds_autopilot_dryrun.py --full
+```
+
+Si `pending closing` est eleve, la prochaine action humaine est la capture near-close. Si `pending results` est eleve :
+
+```bash
+python result_capture_helper.py --ledger reports/shadow_ledger.csv --template reports/manual_results_due.csv
+```
+
+Le but est de fermer les observations ouvertes, pas d'augmenter artificiellement le volume.

@@ -38,3 +38,13 @@ python near_close_workflow.py --ledger reports/shadow_ledger.csv --snapshots rep
 - `near_close` : une observation shadow attend une near-close correspondante ;
 - ambiguite bookmaker/marche/side : pas de mise a jour automatique ;
 - CLV calculee seulement avec cote decimale plausible.
+
+## V8.9 scheduler
+
+`near_close_scheduler.py` regroupe les observations pending par ligue :
+
+```bash
+python near_close_scheduler.py --ledger reports/shadow_ledger.csv --commands
+```
+
+Il ne lance pas le reseau. Il imprime seulement les commandes near-close a lancer manuellement.

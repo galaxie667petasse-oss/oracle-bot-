@@ -30,7 +30,12 @@ from matchday_status_report import build_status_report as build_matchday_status_
 from real_observation_guard import build_guard_report as build_real_guard, write_html as write_guard_html, write_json as write_guard_json
 from test_archive_manager import archive_and_reset as archive_tests_and_reset
 from api_odds_collection_runner import collect as api_collect, full_pre_match as api_full_pre_match
+from event_lifecycle_manager import build_lifecycle_report, write_html as write_lifecycle_html, write_json as write_lifecycle_json
 from near_close_workflow import build_status as near_close_status_report, suggest_commands as near_close_suggest_commands
+from near_close_scheduler import build_schedule as build_near_close_schedule, write_html as write_schedule_html, write_json as write_schedule_json
+from odds_autopilot_dryrun import build_autopilot_report, write_html as write_autopilot_html, write_json as write_autopilot_json
+from result_capture_helper import write_template as write_results_due_template
+from shadow_progress_dashboard import build_progress_dashboard, write_html as write_progress_html, write_json as write_progress_json
 from soccer_odds_sport_scanner import scan_sports as scan_soccer_sports
 
 
@@ -75,6 +80,11 @@ KEY_MODULES = [
     "odds_shadow_selector.py",
     "near_close_workflow.py",
     "api_odds_collection_runner.py",
+    "event_lifecycle_manager.py",
+    "near_close_scheduler.py",
+    "result_capture_helper.py",
+    "shadow_progress_dashboard.py",
+    "odds_autopilot_dryrun.py",
 ]
 
 
@@ -336,6 +346,42 @@ def api_odds_status_report(reports_dir: str, ledger: str, snapshots: str) -> Dic
     }
 
 
+def lifecycle_report(reports_dir: str, ledger: str) -> Dict[str, Any]:
+    report = build_lifecycle_report(ledger)
+    write_lifecycle_json(report, _reports_path(reports_dir, "event_lifecycle.json"))
+    write_lifecycle_html(report, _reports_path(reports_dir, "event_lifecycle.html"))
+    return report
+
+
+def near_close_schedule_report(reports_dir: str, ledger: str) -> Dict[str, Any]:
+    report = build_near_close_schedule(ledger)
+    write_schedule_json(report, _reports_path(reports_dir, "near_close_schedule.json"))
+    write_schedule_html(report, _reports_path(reports_dir, "near_close_schedule.html"))
+    return report
+
+
+def results_template_report(reports_dir: str, ledger: str) -> Dict[str, Any]:
+    return write_results_due_template(ledger, _reports_path(reports_dir, "manual_results_due.csv"))
+
+
+def shadow_progress_report(reports_dir: str, ledger: str) -> Dict[str, Any]:
+    report = build_progress_dashboard(
+        ledger,
+        lifecycle_path=_reports_path(reports_dir, "event_lifecycle.json"),
+        evidence_path=_reports_path(reports_dir, "evidence_gate.json"),
+    )
+    write_progress_json(report, _reports_path(reports_dir, "shadow_progress_dashboard.json"))
+    write_progress_html(report, _reports_path(reports_dir, "shadow_progress_dashboard.html"))
+    return report
+
+
+def odds_autopilot_report(reports_dir: str, ledger: str, snapshots: str) -> Dict[str, Any]:
+    report = build_autopilot_report(ledger, snapshots, reports_dir)
+    write_autopilot_json(report, _reports_path(reports_dir, "odds_autopilot_dryrun.json"))
+    write_autopilot_html(report, _reports_path(reports_dir, "odds_autopilot_dryrun.html"))
+    return report
+
+
 def matchday_create_report(match_date: str, reports_dir: str) -> Dict[str, Any]:
     if not match_date:
         raise ValueError("--date requis avec --matchday")
@@ -466,6 +512,11 @@ def parse_args(argv=None):
     actions.add_argument("--near-close-status", action="store_true")
     actions.add_argument("--near-close-next", action="store_true")
     actions.add_argument("--real-guard-ledger", action="store_true")
+    actions.add_argument("--lifecycle", action="store_true")
+    actions.add_argument("--near-close-schedule", action="store_true")
+    actions.add_argument("--results-template", action="store_true")
+    actions.add_argument("--shadow-progress", action="store_true")
+    actions.add_argument("--odds-autopilot", action="store_true")
     actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
@@ -595,6 +646,16 @@ def main(argv=None) -> int:
             print_odds_report("near-close next", near_close_suggest_commands(args.ledger))
         elif args.real_guard_ledger:
             print_odds_report("real guard ledger", real_guard_ledger_report(args.reports_dir, args.ledger, args.snapshots))
+        elif args.lifecycle:
+            print_odds_report("event lifecycle", lifecycle_report(args.reports_dir, args.ledger))
+        elif args.near_close_schedule:
+            print_odds_report("near-close schedule", near_close_schedule_report(args.reports_dir, args.ledger))
+        elif args.results_template:
+            print_odds_report("results template", results_template_report(args.reports_dir, args.ledger))
+        elif args.shadow_progress:
+            print_odds_report("shadow progress", shadow_progress_report(args.reports_dir, args.ledger))
+        elif args.odds_autopilot:
+            print_odds_report("odds autopilot dry-run", odds_autopilot_report(args.reports_dir, args.ledger, args.snapshots))
         elif args.archive_tests:
             if not args.apply:
                 print_odds_report("archive tests dry-run", {"dry_run": True, "message": "Relancer avec --apply pour archiver et reset."})

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import api_odds_collection_runner as runner
 import odds_snapshot_store
-from shadow_ledger import read_ledger
+from shadow_ledger import add_shadow_entry, read_ledger
 
 
 def snapshot():
@@ -48,6 +48,13 @@ def main():
         applied = runner.to_shadow(str(selection), str(ledger), apply=True)
         assert applied["rows_added"] == 1
         assert len(read_ledger(str(ledger))) == 1
+        blocked_ledger = root / "reports" / "blocked_shadow.csv"
+        for idx in range(3):
+            add_shadow_entry(str(blocked_ledger), match_date="2026-06-06", league="J League", home=f"A{idx}", away=f"B{idx}", market="h2h", side="home", taken_odds="2.10")
+        blocked_args = runner.parse_args(["--full-pre-match", "--apply", "--ledger", str(blocked_ledger), "--no-apply-if-pending-closing-over", "1"])
+        blocked = runner.full_pre_match(blocked_args)
+        assert blocked["blocked"] is True
+        assert "near-close" in blocked["message"].lower()
         args = runner.parse_args(["--full-pre-match"])
         full = runner.full_pre_match(args)
         assert full["collect"]["dry_run"] is True

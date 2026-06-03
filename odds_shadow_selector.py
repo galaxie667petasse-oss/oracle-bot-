@@ -1,11 +1,13 @@
 import argparse
 import csv
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
 from odds_normalizer import ODDS_COLUMNS, write_normalized_csv
 from odds_snapshot_store import load_snapshots
+from shadow_ledger import read_ledger
 from the_odds_api_adapter import filter_normalized_rows
 
 
@@ -21,6 +23,47 @@ def _event_count(rows: List[Dict[str, Any]]) -> int:
     return len({row.get("source_event_id") or (row.get("match_date"), row.get("league"), row.get("home_team"), row.get("away_team")) for row in rows})
 
 
+def _event_key(row: Dict[str, Any]) -> tuple:
+    return (
+        str(row.get("match_date") or "").strip().lower(),
+        str(row.get("league") or "").strip().lower(),
+        str(row.get("home_team") or "").strip().lower(),
+        str(row.get("away_team") or "").strip().lower(),
+    )
+
+
+def _date_in_window(row: Dict[str, Any], min_days_ahead: int = -1, max_days_ahead: int = -1) -> bool:
+    if min_days_ahead < 0 and max_days_ahead < 0:
+        return True
+    text = str(row.get("match_date") or "").strip()
+    if not text:
+        return False
+    try:
+        date_value = datetime.fromisoformat(text[:10]).date()
+    except Exception:
+        return False
+    today = datetime.now().date()
+    if min_days_ahead >= 0 and date_value < today + timedelta(days=min_days_ahead):
+        return False
+    if max_days_ahead >= 0 and date_value > today + timedelta(days=max_days_ahead):
+        return False
+    return True
+
+
+def _limit_by_field(rows: List[Dict[str, Any]], field: str, limit: int) -> List[Dict[str, Any]]:
+    if not limit:
+        return rows
+    counts: Dict[str, int] = {}
+    out = []
+    for row in rows:
+        key = str(row.get(field) or "")
+        if counts.get(key, 0) >= limit:
+            continue
+        counts[key] = counts.get(key, 0) + 1
+        out.append(row)
+    return out
+
+
 def select_shadow_rows(
     snapshots_path: str,
     market: str = "",
@@ -33,9 +76,17 @@ def select_shadow_rows(
     prefer_side: str = "",
     prefer_bookmaker: str = "",
     include_draw: bool = False,
+    exclude_events_from_ledger: str = "",
+    min_days_ahead: int = -1,
+    max_days_ahead: int = -1,
+    max_per_league: int = 0,
+    max_per_bookmaker: int = 0,
+    prefer_earliest: bool = False,
 ) -> Dict[str, Any]:
     rows = load_snapshots(snapshots_path)
+    excluded_events = {_event_key(row) for row in read_ledger(exclude_events_from_ledger)} if exclude_events_from_ledger else set()
     valid = []
+    excluded_existing = 0
     for row in rows:
         if row.get("validation_status") != "valid":
             continue
@@ -47,7 +98,14 @@ def select_shadow_rows(
             continue
         if league and row.get("league") != league:
             continue
+        if excluded_events and _event_key(row) in excluded_events:
+            excluded_existing += 1
+            continue
+        if not _date_in_window(row, min_days_ahead=min_days_ahead, max_days_ahead=max_days_ahead):
+            continue
         valid.append(row)
+    if prefer_earliest:
+        valid = sorted(valid, key=lambda row: (row.get("match_date") or "", row.get("kickoff_time") or "", row.get("source_event_id") or "", row.get("bookmaker") or ""))
     selected = filter_normalized_rows(
         valid,
         bookmaker=bookmaker,
@@ -60,6 +118,10 @@ def select_shadow_rows(
         prefer_market=market or "h2h",
         include_draw=include_draw,
     )
+    if prefer_earliest:
+        selected = sorted(selected, key=lambda row: (row.get("match_date") or "", row.get("kickoff_time") or "", row.get("source_event_id") or "", row.get("bookmaker") or ""))
+    selected = _limit_by_field(selected, "league", max_per_league)
+    selected = _limit_by_field(selected, "bookmaker", max_per_bookmaker)
     warnings = []
     if not selected:
         warnings.append("aucune ligne selectionnee")
@@ -71,6 +133,7 @@ def select_shadow_rows(
             "valid_rows": len(valid),
             "selected_rows": len(selected),
             "distinct_events": _event_count(selected),
+            "excluded_existing_events_rows": excluded_existing,
             "bookmakers": sorted({row.get("bookmaker") for row in selected if row.get("bookmaker")}),
             "leagues": sorted({row.get("league") for row in selected if row.get("league")}),
             "markets": sorted({row.get("market_type") for row in selected if row.get("market_type")}),
@@ -111,6 +174,12 @@ def parse_args(argv=None):
     parser.add_argument("--prefer-side", default="")
     parser.add_argument("--prefer-bookmaker", default="")
     parser.add_argument("--include-draw", action="store_true")
+    parser.add_argument("--exclude-events-from-ledger", default="")
+    parser.add_argument("--min-days-ahead", type=int, default=-1)
+    parser.add_argument("--max-days-ahead", type=int, default=-1)
+    parser.add_argument("--max-per-league", type=int, default=0)
+    parser.add_argument("--max-per-bookmaker", type=int, default=0)
+    parser.add_argument("--prefer-earliest", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -129,6 +198,12 @@ def main(argv=None) -> int:
             prefer_side=args.prefer_side,
             prefer_bookmaker=args.prefer_bookmaker,
             include_draw=args.include_draw,
+            exclude_events_from_ledger=args.exclude_events_from_ledger,
+            min_days_ahead=args.min_days_ahead,
+            max_days_ahead=args.max_days_ahead,
+            max_per_league=args.max_per_league,
+            max_per_bookmaker=args.max_per_bookmaker,
+            prefer_earliest=args.prefer_earliest,
         )
         if args.output:
             write_normalized_csv(result["rows"], args.output)

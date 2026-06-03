@@ -61,6 +61,18 @@ def main():
         assert not any("matchday sans near-close" in blocker for blocker in pre_match["blockers"])
         assert any("Collecter la near-close" in step for step in pre_match["required_next_steps"])
 
+        lifecycle = root / "reports" / "event_lifecycle.json"
+        write_json(lifecycle, {
+            "pending_closing": 4,
+            "pending_results": 1,
+            "completed": 0,
+            "status_counts": {"near_close_overdue": 1, "near_close_due_soon": 1, "result_overdue": 1},
+        })
+        with_lifecycle = evidence_gate.build_evidence_gate(str(shadow), str(quality), lifecycle_path=str(lifecycle))
+        assert any("near-close overdue" in blocker for blocker in with_lifecycle["blockers"])
+        assert any("resultats overdue" in blocker for blocker in with_lifecycle["blockers"])
+        assert any("near-close due soon" in warning for warning in with_lifecycle["warnings"])
+
         out_json = root / "reports" / "evidence_gate.json"
         out_html = root / "reports" / "evidence_gate.html"
         evidence_gate.write_json(big5_blocked, str(out_json))

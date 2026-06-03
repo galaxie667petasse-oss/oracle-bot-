@@ -8,6 +8,7 @@ from soccer_odds_sport_scanner import scan_sports
 from the_odds_api_adapter import fetch_the_odds_api, filter_normalized_rows, normalize_the_odds_api_payload
 from odds_normalizer import write_normalized_csv
 from odds_source_config import load_odds_source_config
+from shadow_ledger import pending_closing
 
 
 def collect(
@@ -35,8 +36,30 @@ def collect(
     return {"dry_run": False, "rows": len(rows), "output": output, "lab_only": True}
 
 
-def select(snapshots: str, output: str, summary_json: str = "", bookmaker: str = "", max_events: int = 0, one_side_per_event: bool = False) -> Dict[str, Any]:
-    result = select_shadow_rows(snapshots, bookmaker=bookmaker, max_events=max_events, one_side_per_event=one_side_per_event)
+def select(
+    snapshots: str,
+    output: str,
+    summary_json: str = "",
+    bookmaker: str = "",
+    max_events: int = 0,
+    one_side_per_event: bool = False,
+    ledger: str = "",
+    avoid_existing_events: bool = False,
+    min_days_ahead: int = -1,
+    max_days_ahead: int = -1,
+    league: str = "",
+) -> Dict[str, Any]:
+    result = select_shadow_rows(
+        snapshots,
+        bookmaker=bookmaker,
+        max_events=max_events,
+        one_side_per_event=one_side_per_event,
+        exclude_events_from_ledger=ledger if avoid_existing_events else "",
+        min_days_ahead=min_days_ahead,
+        max_days_ahead=max_days_ahead,
+        league=league,
+        prefer_earliest=True,
+    )
     write_normalized_csv(result["rows"], output)
     if summary_json:
         write_summary(result["summary"], summary_json)
@@ -48,13 +71,34 @@ def to_shadow(selection: str, ledger: str, apply: bool = False, strategy_name: s
 
 
 def full_pre_match(args) -> Dict[str, Any]:
+    pending = len(pending_closing(args.ledger))
+    if args.apply and args.no_apply_if_pending_closing_over >= 0 and pending > args.no_apply_if_pending_closing_over and not args.force_lab:
+        return {
+            "applied": False,
+            "blocked": True,
+            "pending_closing": pending,
+            "message": "Trop d'observations sans closing : capture near-close prioritaire.",
+            "lab_only": True,
+        }
     collect_path = args.output or "reports/api_odds_collect.csv"
     selection_path = "reports/api_shadow_selection.csv"
     summary_path = "reports/api_shadow_selection_summary.json"
     collected = collect(args.sport, args.regions, args.markets, collect_path, allow_network=args.allow_network, bookmaker=args.bookmaker, max_events=args.max_events)
     if collected.get("dry_run"):
         return {"collect": collected, "applied": False, "lab_only": True}
-    selected = select(collect_path, selection_path, summary_path, bookmaker=args.bookmaker, max_events=args.max_events, one_side_per_event=True)
+    selected = select(
+        collect_path,
+        selection_path,
+        summary_path,
+        bookmaker=args.bookmaker,
+        max_events=args.max_events,
+        one_side_per_event=True,
+        ledger=args.ledger,
+        avoid_existing_events=args.avoid_existing_events,
+        min_days_ahead=args.min_days_ahead,
+        max_days_ahead=args.max_days_ahead,
+        league=args.league,
+    )
     shadow = to_shadow(selection_path, args.ledger, apply=args.apply, strategy_name=args.strategy_name)
     return {"collect": collected, "selection": selected, "to_shadow": shadow, "applied": args.apply, "lab_only": True}
 
@@ -86,6 +130,12 @@ def parse_args(argv=None):
     parser.add_argument("--max-events", type=int, default=0)
     parser.add_argument("--one-side-per-event", action="store_true")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--avoid-existing-events", action="store_true")
+    parser.add_argument("--min-days-ahead", type=int, default=-1)
+    parser.add_argument("--max-days-ahead", type=int, default=-1)
+    parser.add_argument("--league", default="")
+    parser.add_argument("--no-apply-if-pending-closing-over", type=int, default=10)
+    parser.add_argument("--force-lab", action="store_true")
     parser.add_argument("--strategy-name", default="api_odds_shadow_v1")
     return parser.parse_args(argv)
 
@@ -98,7 +148,18 @@ def main(argv=None) -> int:
         elif args.collect:
             payload = collect(args.sport, args.regions, args.markets, args.output or "reports/api_odds_collect.csv", allow_network=args.allow_network, bookmaker=args.bookmaker, max_events=args.max_events)
         elif args.select:
-            payload = select(args.snapshots, args.output or "reports/api_shadow_selection.csv", bookmaker=args.bookmaker, max_events=args.max_events, one_side_per_event=args.one_side_per_event)
+            payload = select(
+                args.snapshots,
+                args.output or "reports/api_shadow_selection.csv",
+                bookmaker=args.bookmaker,
+                max_events=args.max_events,
+                one_side_per_event=args.one_side_per_event,
+                ledger=args.ledger,
+                avoid_existing_events=args.avoid_existing_events,
+                min_days_ahead=args.min_days_ahead,
+                max_days_ahead=args.max_days_ahead,
+                league=args.league,
+            )
         elif args.to_shadow:
             payload = to_shadow(args.selection, args.ledger, apply=args.apply, strategy_name=args.strategy_name)
         else:
