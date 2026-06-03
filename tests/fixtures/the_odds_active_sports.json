@@ -1,0 +1,34 @@
+[
+  {
+    "key": "soccer_japan_j_league",
+    "group": "Soccer",
+    "title": "J League",
+    "description": "Japan J League",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "soccer_brazil_serie_b",
+    "group": "Soccer",
+    "title": "Brazil Serie B",
+    "description": "Brazil Serie B",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "soccer_fifa_world_cup_winner",
+    "group": "Soccer",
+    "title": "World Cup Winner",
+    "description": "Outright market",
+    "active": true,
+    "has_outrights": true
+  },
+  {
+    "key": "basketball_nba",
+    "group": "Basketball",
+    "title": "NBA",
+    "description": "Basketball",
+    "active": true,
+    "has_outrights": false
+  }
+]

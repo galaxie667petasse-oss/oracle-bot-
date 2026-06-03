@@ -5,7 +5,12 @@
   "Super League - China": "soccer_china_superleague",
   "Allsvenskan - Sweden": "soccer_sweden_allsvenskan",
   "Eliteserien - Norway": "soccer_norway_eliteserien",
-  "MLB": "baseball_mlb",
   "Veikkausliiga - Finland": "soccer_finland_veikkausliiga",
-  "Brazil Série B": "soccer_brazil_serie_b"
+  "Brazil Série B": "soccer_brazil_serie_b",
+  "Brazil Serie B": "soccer_brazil_serie_b",
+  "Serie B - Brazil": "soccer_brazil_serie_b",
+  "Spain Segunda": "soccer_spain_segunda_division",
+  "Segunda Division - Spain": "soccer_spain_segunda_division",
+  "Superettan - Sweden": "soccer_sweden_superettan",
+  "MLB": "baseball_mlb"
 }

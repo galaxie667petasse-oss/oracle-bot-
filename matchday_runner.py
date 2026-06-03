@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 
 from evidence_gate import build_evidence_gate, write_html as write_evidence_html, write_json as write_evidence_json
 from manual_odds_import import normalize_manual_csv
+from manual_betclic_intake_helper import to_matchday_pack
 from matchday_pack import pack_status
 from odds_closing_matcher import match_closing_snapshots
 from odds_intake_audit import build_intake_audit, write_html as write_intake_html, write_json as write_intake_json
@@ -358,15 +359,19 @@ def print_json(title: str, payload: Dict[str, Any]) -> None:
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Execute un workflow matchday local.")
-    parser.add_argument("--pack", required=True)
+    parser.add_argument("--pack", default="")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--validate", action="store_true")
+    group.add_argument("--status", action="store_true")
     group.add_argument("--phase-status", action="store_true")
     group.add_argument("--import-taken", action="store_true")
+    group.add_argument("--apply-taken", action="store_true")
     group.add_argument("--to-shadow", action="store_true")
     group.add_argument("--import-near-close", action="store_true")
+    group.add_argument("--apply-near-close", action="store_true")
     group.add_argument("--match-closing", action="store_true")
     group.add_argument("--import-results", action="store_true")
+    group.add_argument("--apply-results", action="store_true")
     group.add_argument("--report", action="store_true")
     group.add_argument("--full-dry-run", action="store_true")
     group.add_argument("--full-apply", action="store_true")
@@ -375,6 +380,7 @@ def parse_args(argv=None):
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--phase", default="full_day", choices=sorted(VALID_PHASES))
     parser.add_argument("--include-existing-state", action="store_true")
+    parser.add_argument("--from-intake", default="")
     parser.add_argument("--apply", action="store_true")
     return parser.parse_args(argv)
 
@@ -382,27 +388,43 @@ def parse_args(argv=None):
 def main(argv=None) -> int:
     args = parse_args(argv)
     try:
-        if args.validate:
-            payload = validate_pack(args.pack, write_status=True)
+        pack = args.pack
+        if args.from_intake:
+            pack = pack or str(Path(args.reports_dir) / "matchday_from_intake")
+            pack_report = to_matchday_pack(args.from_intake, pack)
+            if not pack_report.get("created"):
+                payload = pack_report
+                print_json("Matchday runner Oracle", payload)
+                return 1
+        if not pack:
+            raise ValueError("--pack requis sauf avec --from-intake")
+        if args.validate or args.status:
+            payload = validate_pack(pack, write_status=True)
         elif args.phase_status:
-            payload = phase_report(args.pack, args.phase)
+            payload = phase_report(pack, args.phase)
         elif args.import_taken:
-            payload = import_taken(args.pack, args.store, args.apply)
+            payload = import_taken(pack, args.store, args.apply)
+        elif args.apply_taken:
+            payload = import_taken(pack, args.store, True)
         elif args.to_shadow:
             payload = to_shadow(args.store, args.ledger, args.apply)
         elif args.import_near_close:
-            payload = import_near_close(args.pack, args.store, args.apply)
+            payload = import_near_close(pack, args.store, args.apply)
+        elif args.apply_near_close:
+            payload = import_near_close(pack, args.store, True)
         elif args.match_closing:
             payload = match_closing(args.store, args.ledger, args.apply)
         elif args.import_results:
-            payload = import_results(args.pack, args.ledger, args.apply)
+            payload = import_results(pack, args.ledger, args.apply)
+        elif args.apply_results:
+            payload = import_results(pack, args.ledger, True)
         elif args.report:
-            payload = write_matchday_report(args.pack, args.ledger, args.store, args.reports_dir, phase=args.phase)
+            payload = write_matchday_report(pack, args.ledger, args.store, args.reports_dir, phase=args.phase)
         elif args.full_apply:
-            payload = full_apply(args.pack, args.ledger, args.store, args.reports_dir, phase=args.phase)
+            payload = full_apply(pack, args.ledger, args.store, args.reports_dir, phase=args.phase)
         else:
             payload = full_dry_run(
-                args.pack,
+                pack,
                 args.ledger,
                 args.store,
                 args.reports_dir,

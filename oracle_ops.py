@@ -37,6 +37,11 @@ from odds_autopilot_dryrun import build_autopilot_report, write_html as write_au
 from result_capture_helper import write_template as write_results_due_template
 from shadow_progress_dashboard import build_progress_dashboard, write_html as write_progress_html, write_json as write_progress_json
 from soccer_odds_sport_scanner import scan_sports as scan_soccer_sports
+from the_odds_active_sports import build_report as build_active_sports_report, write_html as write_active_sports_html, write_json as write_active_sports_json
+from source_coverage_report import build_source_coverage_report, write_html as write_source_coverage_html, write_json as write_source_coverage_json
+from api_football_fixtures_adapter import normalize_fixtures_payload, write_csv as write_api_fixtures_csv
+from api_football_matchday_probe import build_probe_report, write_html as write_matchday_probe_html, write_json as write_matchday_probe_json
+from manual_betclic_intake_helper import write_betclic_template
 
 
 KEY_MODULES = [
@@ -85,6 +90,11 @@ KEY_MODULES = [
     "result_capture_helper.py",
     "shadow_progress_dashboard.py",
     "odds_autopilot_dryrun.py",
+    "the_odds_active_sports.py",
+    "source_coverage_report.py",
+    "api_football_fixtures_adapter.py",
+    "api_football_matchday_probe.py",
+    "manual_betclic_intake_helper.py",
 ]
 
 
@@ -382,6 +392,51 @@ def odds_autopilot_report(reports_dir: str, ledger: str, snapshots: str) -> Dict
     return report
 
 
+def active_soccer_sports_report(reports_dir: str) -> Dict[str, Any]:
+    report = build_active_sports_report([], group="Soccer")
+    write_active_sports_json(report, _reports_path(reports_dir, "the_odds_api_active_soccer_sports.json"))
+    write_active_sports_html(report, _reports_path(reports_dir, "the_odds_api_active_soccer_sports.html"))
+    report["dry_run"] = True
+    return report
+
+
+def source_coverage_ops_report(reports_dir: str) -> Dict[str, Any]:
+    report = build_source_coverage_report(
+        active_sports_path=_reports_path(reports_dir, "the_odds_api_active_soccer_sports.json"),
+        the_odds_scan_path=_reports_path(reports_dir, "soccer_odds_sport_scan.json"),
+        fixtures_path=_reports_path(reports_dir, "api_football_matchday_probe.json"),
+        manual_pack=str(Path(reports_dir) / "matchday_from_intake"),
+    )
+    write_source_coverage_json(report, _reports_path(reports_dir, "source_coverage_report.json"))
+    write_source_coverage_html(report, _reports_path(reports_dir, "source_coverage_report.html"))
+    return report
+
+
+def api_football_fixtures_ops_report(reports_dir: str, date: str) -> Dict[str, Any]:
+    date = date or datetime.now().strftime("%Y-%m-%d")
+    report = {
+        "dry_run": True,
+        "date": date,
+        "command": f"python api_football_fixtures_adapter.py --allow-network --date {date} --output reports/api_football_fixtures_{date.replace('-', '_')}.csv --raw-output reports/api_football_fixtures_{date.replace('-', '_')}.json",
+        "message": "Aucun reseau lance par oracle_ops sans commande explicite.",
+    }
+    return report
+
+
+def api_football_matchday_ops_report(reports_dir: str, date: str) -> Dict[str, Any]:
+    date = date or datetime.now().strftime("%Y-%m-%d")
+    report = build_probe_report({"response": []}, {"response": []}, date=date)
+    write_matchday_probe_json(report, _reports_path(reports_dir, "api_football_matchday_probe.json"))
+    write_matchday_probe_html(report, _reports_path(reports_dir, "api_football_matchday_probe.html"))
+    return report
+
+
+def manual_betclic_template_report(reports_dir: str, date: str) -> Dict[str, Any]:
+    date = date or datetime.now().strftime("%Y-%m-%d")
+    path = write_betclic_template(_reports_path(reports_dir, "betclic_manual_intake.csv"), date=date)
+    return {"template": str(path), "date": date, "lab_only": True, "can_influence_picks": False}
+
+
 def matchday_create_report(match_date: str, reports_dir: str) -> Dict[str, Any]:
     if not match_date:
         raise ValueError("--date requis avec --matchday")
@@ -517,6 +572,11 @@ def parse_args(argv=None):
     actions.add_argument("--results-template", action="store_true")
     actions.add_argument("--shadow-progress", action="store_true")
     actions.add_argument("--odds-autopilot", action="store_true")
+    actions.add_argument("--active-soccer-sports", action="store_true")
+    actions.add_argument("--source-coverage", action="store_true")
+    actions.add_argument("--api-football-fixtures", action="store_true")
+    actions.add_argument("--api-football-matchday", action="store_true")
+    actions.add_argument("--manual-betclic-template", action="store_true")
     actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
@@ -656,6 +716,16 @@ def main(argv=None) -> int:
             print_odds_report("shadow progress", shadow_progress_report(args.reports_dir, args.ledger))
         elif args.odds_autopilot:
             print_odds_report("odds autopilot dry-run", odds_autopilot_report(args.reports_dir, args.ledger, args.snapshots))
+        elif args.active_soccer_sports:
+            print_odds_report("active soccer sports dry-run", active_soccer_sports_report(args.reports_dir))
+        elif args.source_coverage:
+            print_odds_report("source coverage", source_coverage_ops_report(args.reports_dir))
+        elif args.api_football_fixtures:
+            print_odds_report("api football fixtures dry-run", api_football_fixtures_ops_report(args.reports_dir, args.date))
+        elif args.api_football_matchday:
+            print_odds_report("api football matchday dry-run", api_football_matchday_ops_report(args.reports_dir, args.date))
+        elif args.manual_betclic_template:
+            print_odds_report("manual Betclic template", manual_betclic_template_report(args.reports_dir, args.date))
         elif args.archive_tests:
             if not args.apply:
                 print_odds_report("archive tests dry-run", {"dry_run": True, "message": "Relancer avec --apply pour archiver et reset."})

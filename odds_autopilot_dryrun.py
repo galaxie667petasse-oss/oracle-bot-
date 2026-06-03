@@ -31,6 +31,15 @@ def _commands_from_schedule(schedule: Dict[str, Any]) -> List[str]:
     return commands
 
 
+def _read_json(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
 def build_autopilot_report(
     ledger: str = "reports/shadow_ledger.csv",
     snapshots: str = "reports/odds_snapshots.csv",
@@ -41,6 +50,8 @@ def build_autopilot_report(
     guard = build_guard_report(ledger, snapshots, phase="pre_match", scope="ledger")
     status = odds_status(snapshots, ledger, reports_dir)
     lifecycle_report_path = Path(reports_dir) / "event_lifecycle.json"
+    active_sports = _read_json(Path(reports_dir) / "the_odds_api_active_soccer_sports.json")
+    source_coverage = _read_json(Path(reports_dir) / "source_coverage_report.json")
     evidence = build_evidence_gate(
         shadow_report_path=str(Path(reports_dir) / "shadow_clv_report.json"),
         quality_audit_path=str(Path(reports_dir) / "shadow_quality_audit.json"),
@@ -67,7 +78,15 @@ def build_autopilot_report(
     ] + _commands_from_schedule(schedule)[:6]
     if pending_results:
         safe_commands.append(f"python result_capture_helper.py --ledger {ledger} --template reports/manual_results_due.csv")
-    recommended = "collecter les near-close reelles avant d'ajouter plus d'observations" if pending_closing else "preparer de nouvelles observations shadow limitees"
+    if pending_closing:
+        recommended = "collecter les near-close reelles avant d'ajouter plus d'observations"
+    elif pending_results:
+        recommended = "renseigner les resultats manuels avant nouvelle collecte"
+    elif source_coverage.get("identified_gaps"):
+        recommended = "utiliser intake manuel Betclic pour les matchs absents des APIs"
+        safe_commands.append("python manual_betclic_intake_helper.py --template reports/betclic_manual_intake.csv --date YYYY-MM-DD")
+    else:
+        recommended = "preparer de nouvelles observations shadow limitees"
     return {
         "current_state": {
             "odds_status": status,
@@ -76,6 +95,8 @@ def build_autopilot_report(
             "pending_results": pending_results,
             "guard_verdict": guard.get("verdict"),
             "evidence_status": evidence.get("global_status"),
+            "active_soccer_sports": active_sports.get("active_count"),
+            "source_coverage_gaps": source_coverage.get("identified_gaps") or [],
         },
         "safe_next_commands": safe_commands,
         "blocked_actions": blocked,
@@ -86,6 +107,15 @@ def build_autopilot_report(
         "evidence_summary": {
             "global_status": evidence.get("global_status"),
             "blockers": evidence.get("blockers") or [],
+        },
+        "active_sports_summary": {
+            "available": bool(active_sports),
+            "active_count": active_sports.get("active_count"),
+        },
+        "source_coverage_summary": {
+            "available": bool(source_coverage),
+            "gaps": source_coverage.get("identified_gaps") or [],
+            "recommendations": source_coverage.get("source_recommendations") or [],
         },
         "lab_only": True,
         "can_influence_picks": False,

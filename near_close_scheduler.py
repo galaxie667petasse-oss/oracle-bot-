@@ -15,6 +15,14 @@ DEFAULT_SPORT_MAP = {
     "Allsvenskan - Sweden": "soccer_sweden_allsvenskan",
     "Eliteserien - Norway": "soccer_norway_eliteserien",
     "MLB": "baseball_mlb",
+    "Veikkausliiga - Finland": "soccer_finland_veikkausliiga",
+    "Brazil Serie B": "soccer_brazil_serie_b",
+    "Brazil Série B": "soccer_brazil_serie_b",
+    "Brazil SÃ©rie B": "soccer_brazil_serie_b",
+    "Serie B - Brazil": "soccer_brazil_serie_b",
+    "Spain Segunda": "soccer_spain_segunda_division",
+    "Segunda Division - Spain": "soccer_spain_segunda_division",
+    "Superettan - Sweden": "soccer_sweden_superettan",
 }
 
 
@@ -27,11 +35,21 @@ def _safe_output(path: str) -> Path:
 
 
 def load_sport_map(path: str = "") -> Dict[str, str]:
+    merged = dict(DEFAULT_SPORT_MAP)
+    for default_path in ("config/sport_key_map.example.json", "config/sport_key_map.local.json"):
+        target = Path(default_path)
+        if target.exists():
+            try:
+                data = json.loads(target.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    merged.update({str(k): str(v) for k, v in data.items()})
+            except Exception:
+                pass
     if path and Path(path).exists():
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         if isinstance(data, dict):
-            return {str(k): str(v) for k, v in data.items()}
-    return dict(DEFAULT_SPORT_MAP)
+            merged.update({str(k): str(v) for k, v in data.items()})
+    return merged
 
 
 def _pending_rows(ledger: str) -> List[Dict[str, Any]]:
@@ -49,11 +67,11 @@ def build_schedule(ledger: str, sport_map_path: str = "", regions: str = "us,uk,
         sport_key = sport_map.get(league, "")
         warnings = []
         if not sport_key:
-            warnings.append("sport_key absent: mapping a completer")
+            warnings.append("sport_key absent: ajouter cette ligue dans config/sport_key_map.local.json")
         if league == "MLB":
             warnings.append("MLB hors football evidence")
         next_date = min([row.get("match_date") for row in league_rows if row.get("match_date")] or [""])
-        suffix = sport_key or league.lower().replace(" ", "_").replace("/", "_")
+        suffix = sport_key or "mapping_manquant"
         near_file = f"reports/the_odds_api_{suffix}_near_close.csv"
         collect = (
             f"python the_odds_api_adapter.py --allow-network --sport {sport_key} --regions {regions} "
@@ -66,8 +84,9 @@ def build_schedule(ledger: str, sport_map_path: str = "", regions: str = "us,uk,
             "pending_count": len(league_rows),
             "next_match_date": next_date or None,
             "command_collect_near_close": collect,
-            "command_dry_run": f"python near_close_workflow.py --ledger {ledger} --snapshots reports/odds_snapshots.csv --near-close-file {near_file} --dry-run",
-            "command_apply": f"python near_close_workflow.py --ledger {ledger} --snapshots reports/odds_snapshots.csv --near-close-file {near_file} --apply",
+            "command_dry_run": f"python near_close_workflow.py --ledger {ledger} --snapshots reports/odds_snapshots.csv --near-close-file {near_file} --dry-run" if sport_key else "mapping sport_key requis avant dry-run",
+            "command_apply": f"python near_close_workflow.py --ledger {ledger} --snapshots reports/odds_snapshots.csv --near-close-file {near_file} --apply" if sport_key else "mapping sport_key requis avant apply",
+            "mapping_recommendation": f'Ajouter "{league}": "SPORT_KEY" dans config/sport_key_map.local.json' if not sport_key else "",
             "warnings": warnings,
         })
     return {

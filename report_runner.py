@@ -1250,6 +1250,80 @@ def matchday_commands(
     return commands
 
 
+def source_coverage_commands(skip_dashboard: bool = False) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "The Odds API active sports dry-run",
+            "the_odds_active_sports.txt",
+            ["the_odds_active_sports.py", "--dry-run"],
+            timeout=120,
+        ),
+        ReportCommand(
+            "Source coverage report",
+            "source_coverage_report.txt",
+            [
+                "source_coverage_report.py",
+                "--active-sports",
+                "reports/the_odds_api_active_soccer_sports.json",
+                "--the-odds-scan",
+                "reports/soccer_odds_sport_scan.json",
+                "--fixtures",
+                "reports/api_football_matchday_probe.json",
+                "--manual-pack",
+                "reports/matchday_from_intake",
+                "--output",
+                "{report_dir}/source_coverage_report.json",
+                "--html",
+                "{report_dir}/source_coverage_report.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "API-Football matchday dry-run",
+            "api_football_matchday_probe.txt",
+            ["api_football_matchday_probe.py", "--dry-run", "--date", "2026-06-03"],
+            timeout=120,
+        ),
+        ReportCommand(
+            "Near-close scheduler",
+            "near_close_schedule.txt",
+            [
+                "near_close_scheduler.py",
+                "--ledger",
+                "reports/shadow_ledger.csv",
+                "--output",
+                "{report_dir}/near_close_schedule.json",
+                "--html",
+                "{report_dir}/near_close_schedule.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Evidence gate source coverage",
+            "evidence_gate.txt",
+            [
+                "evidence_gate.py",
+                "--shadow-report",
+                "reports/shadow_clv_report.json",
+                "--quality-audit",
+                "reports/shadow_quality_audit.json",
+                "--big5-summary",
+                "reports/big5_xg_summary.json",
+                "--clv-readiness",
+                "reports/clv_readiness.json",
+                "--output",
+                "{report_dir}/evidence_gate.json",
+                "--html",
+                "{report_dir}/evidence_gate.html",
+            ],
+            timeout=300,
+        ),
+    ]
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard source coverage", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
 def timestamp() -> str:
     return datetime.now().strftime("%Y_%m_%d_%H%M%S")
 
@@ -1296,6 +1370,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return project_blueprint_commands()
     if mode == "matchday":
         return matchday_commands()
+    if mode == "source-coverage":
+        return source_coverage_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -1417,6 +1493,7 @@ def parse_args(argv=None):
     mode.add_argument("--odds-intake", action="store_true", help="Lance l'audit local du workflow odds intake")
     mode.add_argument("--api-odds", action="store_true", help="Lance les rapports API odds soccer sans reseau")
     mode.add_argument("--shadow-ops", action="store_true", help="Lance le lifecycle shadow, near-close scheduler et dashboard evidence local")
+    mode.add_argument("--source-coverage", action="store_true", help="Lance le rapport de couverture sources sans reseau")
     mode.add_argument("--project-blueprint", action="store_true", help="Lance la carte architecture, contrats, scorecard et restitution")
     mode.add_argument("--matchday", action="store_true", help="Lance le rapport local de collecte matchday")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
@@ -1457,6 +1534,7 @@ def main(argv=None) -> None:
         else "odds-intake" if args.odds_intake
         else "api-odds" if args.api_odds
         else "shadow-ops" if args.shadow_ops
+        else "source-coverage" if args.source_coverage
         else "project-blueprint" if args.project_blueprint
         else "matchday" if args.matchday
         else "big5-xg" if args.big5_xg
@@ -1550,6 +1628,8 @@ def main(argv=None) -> None:
             snapshots=args.snapshots,
             skip_dashboard=args.skip_dashboard,
         )
+    elif mode == "source-coverage":
+        commands = source_coverage_commands(skip_dashboard=args.skip_dashboard)
     elif mode == "project-blueprint":
         commands = project_blueprint_commands(
             skip_evidence=args.skip_evidence,

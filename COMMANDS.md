@@ -1050,3 +1050,45 @@ git ls-files -- oracle_db.json "oracle_db_backup_*.json" "oracle_db_archive_*.js
 - Ne pas promouvoir une strategie sans test 2024+ positif et gouvernance OK.
 - Ne pas utiliser `home_xg` ou `away_xg` directs du match courant comme features predictives.
 - Ne pas lancer une recuperation Understat large sans dry-run et sans limite de saisons.
+
+## 32. V9.0 Source Coverage Expansion
+
+Active sports The Odds API :
+
+```bash
+python the_odds_active_sports.py --dry-run
+python the_odds_active_sports.py --allow-network --group Soccer --output reports/the_odds_api_active_soccer_sports.json --html reports/the_odds_api_active_soccer_sports.html
+```
+
+Scanner elargi :
+
+```bash
+python soccer_odds_sport_scanner.py --active-sports-json reports/the_odds_api_active_soccer_sports.json --allow-network --regions us,uk,eu --markets h2h --output reports/soccer_odds_sport_scan.json --html reports/soccer_odds_sport_scan.html
+```
+
+API-Football fixtures et matchday :
+
+```bash
+python api_football_fixtures_adapter.py --dry-run --date 2026-06-03
+python api_football_fixtures_adapter.py --allow-network --date YYYY-MM-DD --output reports/api_football_fixtures_YYYY_MM_DD.csv --raw-output reports/api_football_fixtures_YYYY_MM_DD.json
+python api_football_matchday_probe.py --dry-run --date 2026-06-03
+python api_football_matchday_probe.py --allow-network --date YYYY-MM-DD --output reports/api_football_matchday_probe_YYYY_MM_DD.json --html reports/api_football_matchday_probe_YYYY_MM_DD.html
+```
+
+Betclic manuel :
+
+```bash
+python manual_betclic_intake_helper.py --template reports/betclic_manual_intake.csv --date YYYY-MM-DD
+python manual_betclic_intake_helper.py --validate reports/betclic_manual_intake.csv
+python manual_betclic_intake_helper.py --to-matchday-pack reports/betclic_manual_intake.csv --pack reports/matchday_YYYY_MM_DD
+python manual_betclic_intake_helper.py --to-shadow reports/betclic_manual_intake.csv --ledger reports/shadow_ledger.csv --dry-run
+```
+
+Source coverage :
+
+```bash
+python source_coverage_report.py --the-odds-scan reports/soccer_odds_sport_scan.json --output reports/source_coverage_report.json --html reports/source_coverage_report.html
+python report_runner.py --source-coverage --skip-dashboard
+```
+
+Regle : aucune requete reseau sans `--allow-network`, aucune cle affichee, aucune ecriture dans `data/`.

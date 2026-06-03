@@ -871,3 +871,33 @@ python report_runner.py --shadow-ops --skip-dashboard
 ```
 
 Le statut reste laboratoire local. Si trop d'observations sont sans closing, l'action prioritaire est de collecter les near-close reelles, pas d'ajouter plus de lignes.
+
+## V9.0 Source Coverage, API-Football Robustness & Live Match Intake
+
+V9.0 elargit la couverture source sans changer la philosophie prudente :
+
+- `the_odds_active_sports.py` decouvre les sports soccer actifs The Odds API ;
+- `soccer_odds_sport_scanner.py` peut scanner un JSON active sports et exclut les winner/outrights par defaut ;
+- `api_football_fixtures_adapter.py` normalise les fixtures du jour ;
+- `api_football_odds_adapter.py` gere les erreurs HTTP/reponses vides sans crash ;
+- `api_football_matchday_probe.py` compare fixtures et odds disponibles pour une date ;
+- `source_coverage_report.py` montre les manques The Odds API / API-Football / manuel ;
+- `manual_betclic_intake_helper.py` aide a saisir quelques matchs visibles manuellement (`manual Betclic`) ;
+- `matchday_runner.py --from-intake` accepte un intake Betclic en dry-run ;
+- `near_close_scheduler.py` charge le mapping sport key par defaut et supporte Brazil Serie B / Finlande / Segunda / Superettan.
+
+Le LLM n'est pas source de verite. Evidence gate reste decisionnel. Les appels reseau exigent toujours `--allow-network`; les tests n'utilisent que des fixtures.
+
+Commandes principales :
+
+```bash
+python the_odds_active_sports.py --dry-run
+python the_odds_active_sports.py --allow-network --group Soccer --output reports/the_odds_api_active_soccer_sports.json --html reports/the_odds_api_active_soccer_sports.html
+python soccer_odds_sport_scanner.py --active-sports-json reports/the_odds_api_active_soccer_sports.json --allow-network --regions us,uk,eu --markets h2h --output reports/soccer_odds_sport_scan.json --html reports/soccer_odds_sport_scan.html
+python api_football_fixtures_adapter.py --dry-run --date YYYY-MM-DD
+python api_football_matchday_probe.py --dry-run --date YYYY-MM-DD
+python manual_betclic_intake_helper.py --template reports/betclic_manual_intake.csv --date YYYY-MM-DD
+python report_runner.py --source-coverage --skip-dashboard
+```
+
+Statut : laboratoire local uniquement, aucune mise, aucun Telegram, aucun Railway, aucun pick automatique.

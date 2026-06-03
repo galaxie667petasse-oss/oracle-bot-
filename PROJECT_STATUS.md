@@ -236,3 +236,20 @@ V8.9 aide a terminer le cycle de vie des observations deja creees :
 - `report_runner.py --shadow-ops` produit la vue locale complete.
 
 Protection ajoutee : `api_odds_collection_runner.py --apply` peut refuser si trop d'observations sont sans closing. La priorite reste la capture near-close et les resultats manuels, pas l'ajout massif de nouvelles lignes.
+
+## V9.0 Source Coverage Expansion
+
+V9.0 ajoute la couche coverage source :
+
+- decouverte active The Odds API avec `the_odds_active_sports.py` ;
+- scanner soccer elargi a partir du JSON active sports ;
+- exclusion par defaut des markets winner/outrights ;
+- adaptateur fixtures API-Football ;
+- odds API-Football plus robuste face aux reponses vides/erreurs HTTP ;
+- probe matchday API-Football ;
+- rapport comparatif `source_coverage_report.py` ;
+- intake manuel Betclic pour les matchs visibles mais absents des APIs ;
+- runner matchday capable de partir d'un intake CSV ;
+- scheduler near-close corrige pour Brazil Serie B, Finlande, Segunda et Superettan.
+
+Etat prudent inchange : aucun signal robuste active, aucune mise, aucun Telegram/Railway, aucune modification de `data/`. Les tests V9.0 restent sans reseau.
