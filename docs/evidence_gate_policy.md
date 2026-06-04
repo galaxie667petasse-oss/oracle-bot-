@@ -86,3 +86,10 @@ Un pending closing futur en pre-match reste une insuffisance normale, pas une pr
 ## Lien V8.5
 
 `llm_analyst_contract.py` doit respecter ce gate. Si `evidence_gate.py` ne renvoie pas `ready_for_deep_review`, la restitution maximale reste `non valide` ou `observation shadow`. Le schema `restitution_schema.py` force les actions interdites a rester visibles.
+## V9.1 Historical Evidence
+
+`evidence_gate.py` accepte maintenant `--historical-clv` et `--proof-dashboard`.
+
+Nouveau statut possible: `historical_evidence_only`. Il signifie qu'une preuve historique existe, mais que la preuve live shadow reste insuffisante. Ce statut ne permet aucune activation automatique.
+
+Regles maintenues: sample shadow < 1000, CLV absente, CLV moyenne <= 0, ROI <= 0 ou ledger de mauvaise qualite bloquent la promotion.

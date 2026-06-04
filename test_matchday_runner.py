@@ -4,6 +4,7 @@ from pathlib import Path
 
 import matchday_pack
 import matchday_runner
+from manual_betclic_intake_helper import write_betclic_template
 
 
 def fill_manual(path: Path, near_close: bool = False) -> None:
@@ -74,6 +75,17 @@ def main():
         report = matchday_runner.write_matchday_report(str(pack), str(ledger), str(store), str(reports))
         assert "evidence" in report
         assert (reports / "matchday_runner_summary.json").exists()
+        intake = root / "reports" / "betclic.csv"
+        write_betclic_template(str(intake), "2026-06-01")
+        fill_manual(intake, near_close=False)
+        intake_rows = list(csv.DictReader(intake.open(newline="", encoding="utf-8")))
+        intake_rows[0].update({"league": "EPL", "home_team": "Arsenal", "away_team": "Chelsea", "kickoff_time": "2026-06-01T19:00:00"})
+        with intake.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=intake_rows[0].keys())
+            writer.writeheader()
+            writer.writerows(intake_rows)
+        intake_pack = root / "reports" / "matchday_from_intake"
+        assert matchday_runner.main(["--from-intake", str(intake), "--pack", str(intake_pack), "--full-dry-run", "--ledger", str(root / "reports" / "ledger_intake.csv"), "--store", str(root / "reports" / "store_intake.csv")]) == 0
     print("test_matchday_runner ok")
 
 

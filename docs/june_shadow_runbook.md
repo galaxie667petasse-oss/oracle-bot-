@@ -207,3 +207,24 @@ python result_capture_helper.py --ledger reports/shadow_ledger.csv --template re
 ```
 
 Le but est de fermer les observations ouvertes, pas d'augmenter artificiellement le volume.
+
+## V9.0 Routine source coverage
+
+1. Decouvrir les sports actifs si une requete explicite est acceptable.
+2. Scanner seulement les sport keys soccer actifs et proches.
+3. Utiliser API-Football fixtures pour savoir quels matchs existent aujourd'hui.
+4. Si les odds API manquent mais que le match est visible chez Betclic, utiliser `manual_betclic_intake_helper.py`.
+5. Capturer la near-close plus tard avant toute lecture CLV.
+
+Rappel : aucune mise, aucune conclusion avant sample significatif et evidence gate propre.
+## V9.1 June Proof Loop
+
+Routine ajoutee:
+
+1. Lire `python oracle_ops.py --evidence-acceleration`.
+2. Si un CSV historique closing fiable existe, lancer le schema detector puis l'import CLV.
+3. Capturer les near-close manuelles ou preparer le batch near-close.
+4. Importer les resultats finis via CSV ou adaptateur API-Football en dry-run.
+5. Relancer `python report_runner.py --proof --skip-dashboard`.
+
+La preuve historique aide a prioriser, mais ne remplace pas les observations shadow de juin.

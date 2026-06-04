@@ -48,3 +48,9 @@ python near_close_scheduler.py --ledger reports/shadow_ledger.csv --commands
 ```
 
 Il ne lance pas le reseau. Il imprime seulement les commandes near-close a lancer manuellement.
+
+## V9.0 Mapping sport keys
+
+`near_close_scheduler.py` lit `config/sport_key_map.example.json` puis `config/sport_key_map.local.json` si present. Le fichier local permet d'ajouter une ligue sans committer de configuration personnelle.
+
+Brazil Serie B, Finlande Veikkausliiga, Spain Segunda et Sweden Superettan sont prepares dans le mapping exemple.

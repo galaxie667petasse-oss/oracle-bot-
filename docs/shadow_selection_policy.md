@@ -23,3 +23,11 @@ python odds_to_shadow.py --selection-csv reports/api_shadow_selection.csv --ledg
 ## Decision
 
 Une selection shadow reste une observation locale. Elle ne valide aucune strategie, ne cree aucune mise et ne contourne pas l'evidence gate.
+
+## V9.0 Coverage avant selection
+
+Avant d'ajouter des observations, lire `source_coverage_report.py` :
+
+- si une competition active n'est pas scannee, completer le scan ;
+- si API-Football a les fixtures mais pas les odds, preferer un intake manuel limite ;
+- si pending closing est eleve, ne pas ajouter de nouvelles observations avant near-close.

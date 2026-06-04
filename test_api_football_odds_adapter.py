@@ -14,6 +14,9 @@ def main():
     assert all(row["validation_status"] == "valid" for row in rows)
     assert api_football_odds_adapter.main(["--dry-run", "--league", "EPL", "--date", "2026-06-01"]) == 0
     assert api_football_odds_adapter.main(["--check-config"]) == 0
+    empty = {"response": [], "_http_status": 200}
+    assert api_football_odds_adapter.response_warnings(empty)
+    assert api_football_odds_adapter.main(["--from-fixture", str(fixture)]) == 0
 
     print("test_api_football_odds_adapter ok")
 

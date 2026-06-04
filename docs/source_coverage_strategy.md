@@ -24,3 +24,8 @@ python source_coverage_report.py --the-odds-scan reports/soccer_odds_sport_scan.
 ```
 
 Evidence gate reste decisionnel.
+## V9.1 Evidence Acceleration
+
+Le catalogue `external_evidence_catalog.py` complete cette strategie: il separe sources manuelles, APIs optionnelles et datasets historiques. Une source historique n'est exploitable que si `historical_odds_schema_detector.py` confirme des cotes opening/closing decimales plausibles.
+
+The Odds API et API-Football restent optionnels et sans reseau par defaut. Toute collecte reelle doit passer par `--allow-network` et ecrire dans `reports/`.

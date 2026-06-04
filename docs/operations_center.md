@@ -144,3 +144,31 @@ python oracle_ops.py --odds-autopilot
 ```
 
 Ces commandes restent locales. Elles servent a finir les observations ouvertes : near-close, resultats, evidence gate.
+
+## V9.0 Source Coverage
+
+Commandes utiles :
+
+```powershell
+python oracle_ops.py --active-soccer-sports
+python oracle_ops.py --source-coverage
+python oracle_ops.py --api-football-fixtures --date YYYY-MM-DD
+python oracle_ops.py --api-football-matchday --date YYYY-MM-DD
+python oracle_ops.py --manual-betclic-template --date YYYY-MM-DD
+```
+
+Ces commandes sont dry-run ou templates par defaut. Elles ne lancent pas de reseau et ne modifient pas `data/`.
+## V9.1 Operations
+
+`oracle_ops.py` expose les actions V9.1:
+
+```powershell
+python oracle_ops.py --external-evidence-catalog
+python oracle_ops.py --historical-clv --historical-clv-file reports/historical_clv_import.csv
+python oracle_ops.py --near-close-batch
+python oracle_ops.py --proof-dashboard
+python oracle_ops.py --evidence-acceleration
+python oracle_ops.py --api-football-results --date 2026-06-03
+```
+
+Ces commandes ne lancent pas de reseau. `--api-football-results` dans `oracle_ops` affiche seulement la commande dry-run utile.

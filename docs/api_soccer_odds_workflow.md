@@ -44,3 +44,20 @@ python api_odds_collection_runner.py --full-pre-match --avoid-existing-events --
 ```
 
 Si le ledger contient trop d'observations sans closing, le runner refuse l'apply et demande de capturer les near-close en priorite.
+
+## V9.0 Active sports et API-Football
+
+The Odds API ne doit plus dependre uniquement d'une liste statique :
+
+```powershell
+python the_odds_active_sports.py --allow-network --group Soccer --output reports/the_odds_api_active_soccer_sports.json --html reports/the_odds_api_active_soccer_sports.html
+python soccer_odds_sport_scanner.py --active-sports-json reports/the_odds_api_active_soccer_sports.json --allow-network --regions us,uk,eu --markets h2h --output reports/soccer_odds_sport_scan.json --html reports/soccer_odds_sport_scan.html
+```
+
+API-Football sert surtout au diagnostic fixtures du jour :
+
+```powershell
+python api_football_matchday_probe.py --dry-run --date YYYY-MM-DD
+```
+
+Une reponse vide n'est pas une erreur critique : elle signale souvent qu'un intake manuel est necessaire.

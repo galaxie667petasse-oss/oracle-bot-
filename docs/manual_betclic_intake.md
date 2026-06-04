@@ -20,3 +20,8 @@ Regles:
 - ledger modifie seulement avec `--apply`.
 
 Observation seulement, aucune mise.
+## V9.1 Proof Loop
+
+La saisie Betclic manuelle reste utile pour le shadow live: taken odds au moment de l'observation, near-close plus tard, puis resultat. V9.1 ajoute `near_close_batch_runner.py` et `proof_dashboard.py` pour montrer ce qui manque avant toute conclusion.
+
+Ne pas melanger taken odds et near-close. Ne pas remplir une closing si elle n'a pas ete observee.
