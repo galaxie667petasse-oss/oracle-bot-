@@ -42,6 +42,8 @@ def build_evidence_gate(
     real_guard_path: str = "",
     matchday_status_path: str = "",
     lifecycle_path: str = "",
+    historical_clv_path: str = "",
+    proof_dashboard_path: str = "",
 ) -> Dict[str, Any]:
     shadow = read_json(shadow_report_path)
     quality = read_json(quality_audit_path)
@@ -53,11 +55,13 @@ def build_evidence_gate(
     real_guard = read_json(real_guard_path)
     matchday_status = read_json(matchday_status_path)
     lifecycle = read_json(lifecycle_path)
+    historical_clv = read_json(historical_clv_path)
+    proof_dashboard = read_json(proof_dashboard_path)
     blockers: List[str] = []
     warnings: List[str] = []
     strengths: List[str] = []
     next_steps: List[str] = []
-    if not any([shadow, quality, big5, clv, benchmark, stats, calibration, real_guard, matchday_status, lifecycle]):
+    if not any([shadow, quality, big5, clv, benchmark, stats, calibration, real_guard, matchday_status, lifecycle, historical_clv, proof_dashboard]):
         blockers.append("Aucun rapport de preuve disponible")
         next_steps.append("Generer shadow_clv_report.py et shadow_quality_audit.py")
         status = "not_started"
@@ -199,6 +203,32 @@ def build_evidence_gate(
             warnings.append("observations completes < 30")
         if completed < 1000:
             warnings.append("observations completes < 1000")
+    historical_summary = historical_clv.get("summary") or {}
+    historical_sample = int(_num(historical_summary.get("sample"), 0))
+    historical_clv_mean = historical_summary.get("clv_mean")
+    historical_roi = historical_summary.get("roi_unit")
+    if historical_clv:
+        strengths.append("Preuve historique CLV disponible")
+        if historical_sample < 1000:
+            blockers.append("sample historique CLV < 1000")
+        if historical_clv_mean is None:
+            blockers.append("CLV historique absente")
+        elif _num(historical_clv_mean) <= 0:
+            blockers.append("CLV historique moyenne <= 0")
+        else:
+            strengths.append("CLV historique moyenne positive")
+        if historical_roi is None:
+            blockers.append("ROI historique indisponible")
+        elif _num(historical_roi) <= 0:
+            blockers.append("ROI historique <= 0")
+        for blocker in historical_clv.get("blockers") or []:
+            blockers.append(f"historique: {blocker}")
+        warnings.append("preuve historique seule: live shadow toujours requis")
+    if proof_dashboard:
+        if proof_dashboard.get("global_status"):
+            strengths.append(f"proof dashboard: {proof_dashboard.get('global_status')}")
+        for blocker in proof_dashboard.get("blockers") or []:
+            blockers.append(f"proof dashboard: {blocker}")
     if real_guard and real_guard.get("verdict") in {"mixed_test_and_real", "invalid"}:
         status = "blocked"
     elif quality.get("verdict") == "invalid" or any("CLV moyenne <= 0" == item for item in blockers):
@@ -207,6 +237,8 @@ def build_evidence_gate(
         status = "ready_for_deep_review"
     elif sample > 0 and (clv_mean is not None and _num(clv_mean) > 0):
         status = "promising_but_unvalidated"
+    elif historical_clv and not shadow and historical_sample:
+        status = "historical_evidence_only"
     elif sample > 0 or shadow or quality:
         status = "insufficient_evidence"
     if status == "ready_for_deep_review":
@@ -244,6 +276,8 @@ def build_evidence_gate(
             "real_guard": real_guard_path or None,
             "matchday_status": matchday_status_path or None,
             "lifecycle": lifecycle_path or None,
+            "historical_clv": historical_clv_path or None,
+            "proof_dashboard": proof_dashboard_path or None,
         },
         "lab_only": True,
         "can_influence_picks": False,
@@ -305,6 +339,8 @@ def parse_args(argv=None):
     parser.add_argument("--real-guard", default="")
     parser.add_argument("--matchday-status", default="")
     parser.add_argument("--lifecycle", default="")
+    parser.add_argument("--historical-clv", default="")
+    parser.add_argument("--proof-dashboard", default="")
     parser.add_argument("--output", default="")
     parser.add_argument("--html", default="")
     return parser.parse_args(argv)
@@ -324,6 +360,8 @@ def main(argv=None) -> int:
             real_guard_path=args.real_guard,
             matchday_status_path=args.matchday_status,
             lifecycle_path=args.lifecycle,
+            historical_clv_path=args.historical_clv,
+            proof_dashboard_path=args.proof_dashboard,
         )
         if args.output:
             write_json(report, args.output)

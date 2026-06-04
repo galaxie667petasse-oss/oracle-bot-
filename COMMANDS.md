@@ -1092,3 +1092,46 @@ python report_runner.py --source-coverage --skip-dashboard
 ```
 
 Regle : aucune requete reseau sans `--allow-network`, aucune cle affichee, aucune ecriture dans `data/`.
+## V9.1 Evidence Acceleration
+
+Catalogue sources:
+
+```powershell
+python external_evidence_catalog.py --output reports/external_evidence_catalog.json --html reports/external_evidence_catalog.html
+```
+
+Schema historical odds:
+
+```powershell
+python historical_odds_schema_detector.py --csv reports/historical_odds_candidate.csv --output reports/historical_odds_schema.json --html reports/historical_odds_schema.html
+```
+
+Import CLV historique:
+
+```powershell
+python historical_clv_importer.py --csv reports/historical_odds_candidate.csv --schema reports/historical_odds_schema.json --output reports/historical_clv_import.csv --summary-json reports/historical_clv_import_summary.json
+python historical_clv_backtester.py --input reports/historical_clv_import.csv --output reports/historical_clv_backtest.json --html reports/historical_clv_backtest.html
+```
+
+Resultats API-Football sans reseau:
+
+```powershell
+python api_football_results_adapter.py --check-config
+python api_football_results_adapter.py --dry-run --date 2026-06-03
+python api_football_results_adapter.py --from-fixture tests/fixtures/api_football_results_sample.json --output reports/api_football_results.csv
+python shadow_result_matcher.py --ledger reports/shadow_ledger.csv --results reports/api_football_results.csv --dry-run
+```
+
+Near-close batch:
+
+```powershell
+python near_close_batch_runner.py --ledger reports/shadow_ledger.csv --sport-map config/sport_key_map.example.json --dry-run --output reports/near_close_batch_runner.json --html reports/near_close_batch_runner.html
+```
+
+Proof dashboard:
+
+```powershell
+python proof_dashboard.py --shadow reports/shadow_clv_report.json --evidence reports/evidence_gate.json --big5 reports/big5_xg_summary.json --historical-clv reports/historical_clv_backtest.json --output reports/proof_dashboard.json --html reports/proof_dashboard.html
+python report_runner.py --proof --skip-dashboard
+python oracle_ops.py --evidence-acceleration
+```

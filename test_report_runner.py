@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, api_odds_commands, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, run_report, shadow_commands, shadow_ops_commands, xg_understat_commands
+from report_runner import ReportCommand, api_odds_commands, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, proof_commands, run_report, shadow_commands, shadow_ops_commands, source_coverage_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -339,8 +339,10 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Odds intake audit" for command in command_set("odds-intake"))
         assert any(command.name == "Soccer odds sport scanner" for command in command_set("api-odds"))
         assert any(command.name == "Event lifecycle" for command in command_set("shadow-ops"))
+        assert any(command.name == "Source coverage report" for command in command_set("source-coverage"))
         assert any(command.name == "Architecture canonique" for command in command_set("project-blueprint"))
         assert any(command.name == "Matchday status" for command in command_set("matchday"))
+        assert any(command.name == "Proof dashboard" for command in command_set("proof"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
@@ -386,6 +388,10 @@ Understat xG Full Pipeline Quality Gate
         assert any("near_close_scheduler.py" in command.args for command in shadow_ops_cmds)
         assert any("evidence_gate.py" in command.args and "--lifecycle" in command.args for command in shadow_ops_cmds)
         assert not any("dashboard_builder.py" in command.args for command in shadow_ops_cmds)
+        source_cmds = source_coverage_commands(skip_dashboard=True)
+        assert any(command.name == "The Odds API active sports dry-run" for command in source_cmds)
+        assert any("source_coverage_report.py" in command.args for command in source_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in source_cmds)
         blueprint_cmds = project_blueprint_commands(skip_evidence=True, skip_dashboard=True)
         assert any("oracle_architecture_map.py" in command.args for command in blueprint_cmds)
         assert any("pipeline_contracts.py" in command.args for command in blueprint_cmds)
@@ -396,6 +402,12 @@ Understat xG Full Pipeline Quality Gate
         assert any("real_observation_guard.py" in command.args for command in matchday_cmds)
         assert any("evidence_gate.py" in command.args for command in matchday_cmds)
         assert not any("dashboard_builder.py" in command.args for command in matchday_cmds)
+        proof_cmds = proof_commands(str(root / "reports" / "shadow_ledger.csv"), str(root / "reports" / "odds_snapshots.csv"), historical_clv=str(root / "reports" / "historical_clv.csv"), skip_dashboard=True)
+        assert any("external_evidence_catalog.py" in command.args for command in proof_cmds)
+        assert any("near_close_batch_runner.py" in command.args for command in proof_cmds)
+        assert any("historical_clv_backtester.py" in command.args for command in proof_cmds)
+        assert any("proof_dashboard.py" in command.args for command in proof_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in proof_cmds)
         try:
             closing_preview_commands("features.csv", "matches.csv", str(root / "data" / "preview.csv"))
             raise AssertionError("preview data non bloquee")
@@ -415,6 +427,7 @@ Understat xG Full Pipeline Quality Gate
         assert "Operations Health" in html
         assert "Shadow Quality Audit" in html
         assert "Evidence Gate" in html
+        assert "Evidence Acceleration / Proof Loop" in html
         assert "Sample Size Plan" in html
         assert "Shadow Message Preview" in html
         assert "Manual Workflow Checklist" in html

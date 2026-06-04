@@ -42,6 +42,10 @@ from source_coverage_report import build_source_coverage_report, write_html as w
 from api_football_fixtures_adapter import normalize_fixtures_payload, write_csv as write_api_fixtures_csv
 from api_football_matchday_probe import build_probe_report, write_html as write_matchday_probe_html, write_json as write_matchday_probe_json
 from manual_betclic_intake_helper import write_betclic_template
+from external_evidence_catalog import build_catalog as build_external_catalog, write_html as write_catalog_html, write_json as write_catalog_json
+from historical_clv_backtester import build_backtest as build_historical_clv_backtest, write_html as write_historical_html, write_json as write_historical_json
+from near_close_batch_runner import run_batch as run_near_close_batch, write_html as write_near_batch_html, write_json as write_near_batch_json
+from proof_dashboard import build_dashboard as build_proof_dashboard, write_html as write_proof_html, write_json as write_proof_json
 
 
 KEY_MODULES = [
@@ -95,6 +99,14 @@ KEY_MODULES = [
     "api_football_fixtures_adapter.py",
     "api_football_matchday_probe.py",
     "manual_betclic_intake_helper.py",
+    "external_evidence_catalog.py",
+    "historical_odds_schema_detector.py",
+    "historical_clv_importer.py",
+    "historical_clv_backtester.py",
+    "api_football_results_adapter.py",
+    "shadow_result_matcher.py",
+    "near_close_batch_runner.py",
+    "proof_dashboard.py",
 ]
 
 
@@ -201,10 +213,75 @@ def evidence_report(reports_dir: str) -> Dict[str, Any]:
         big5_summary_path=_reports_path(reports_dir, "big5_xg_summary.json"),
         clv_readiness_path=_reports_path(reports_dir, "clv_readiness.json"),
         benchmark_summary_path=_reports_path(reports_dir, "benchmark_summary.json"),
+        historical_clv_path=_reports_path(reports_dir, "historical_clv_backtest.json"),
+        proof_dashboard_path=_reports_path(reports_dir, "proof_dashboard.json"),
     )
     write_evidence_json(report, _reports_path(reports_dir, "evidence_gate.json"))
     write_evidence_html(report, _reports_path(reports_dir, "evidence_gate.html"))
     return report
+
+
+def external_catalog_report(reports_dir: str) -> Dict[str, Any]:
+    report = build_external_catalog()
+    write_catalog_json(report, _reports_path(reports_dir, "external_evidence_catalog.json"))
+    write_catalog_html(report, _reports_path(reports_dir, "external_evidence_catalog.html"))
+    return report
+
+
+def historical_clv_ops_report(reports_dir: str, historical_clv: str = "") -> Dict[str, Any]:
+    if not historical_clv:
+        return {
+            "available": False,
+            "message": "Aucun fichier CLV historique fourni. Utiliser historical_clv_importer.py d'abord.",
+            "lab_only": True,
+        }
+    report = build_historical_clv_backtest(historical_clv)
+    write_historical_json(report, _reports_path(reports_dir, "historical_clv_backtest.json"))
+    write_historical_html(report, _reports_path(reports_dir, "historical_clv_backtest.html"))
+    return report
+
+
+def near_close_batch_ops_report(reports_dir: str, ledger: str, snapshots: str, sport_map: str = "", dry_run: bool = True) -> Dict[str, Any]:
+    report = run_near_close_batch(ledger, sport_map=sport_map, snapshots=snapshots, output_dir=reports_dir, dry_run=dry_run, allow_network=False)
+    write_near_batch_json(report, _reports_path(reports_dir, "near_close_batch_runner.json"))
+    write_near_batch_html(report, _reports_path(reports_dir, "near_close_batch_runner.html"))
+    return report
+
+
+def proof_dashboard_report(reports_dir: str) -> Dict[str, Any]:
+    report = build_proof_dashboard(
+        shadow_path=_reports_path(reports_dir, "shadow_clv_report.json"),
+        evidence_path=_reports_path(reports_dir, "evidence_gate.json"),
+        big5_path=_reports_path(reports_dir, "big5_xg_summary.json"),
+        historical_clv_path=_reports_path(reports_dir, "historical_clv_backtest.json"),
+        quality_path=_reports_path(reports_dir, "shadow_quality_audit.json"),
+        intake_path=_reports_path(reports_dir, "odds_intake_audit.json"),
+    )
+    write_proof_json(report, _reports_path(reports_dir, "proof_dashboard.json"))
+    write_proof_html(report, _reports_path(reports_dir, "proof_dashboard.html"))
+    return report
+
+
+def evidence_acceleration_report(reports_dir: str, ledger: str, snapshots: str, historical_clv: str = "", sport_map: str = "") -> Dict[str, Any]:
+    Path(reports_dir).mkdir(parents=True, exist_ok=True)
+    catalog = external_catalog_report(reports_dir)
+    shadow = shadow_report(ledger, reports_dir)
+    quality = quality_report(ledger, reports_dir)
+    historical = historical_clv_ops_report(reports_dir, historical_clv)
+    batch = near_close_batch_ops_report(reports_dir, ledger, snapshots, sport_map=sport_map, dry_run=True)
+    evidence = evidence_report(reports_dir)
+    proof = proof_dashboard_report(reports_dir)
+    return {
+        "catalog_sources": (catalog.get("summary") or {}).get("sources_count"),
+        "shadow_sample": shadow.get("sample_size") or shadow.get("signals_total"),
+        "quality_verdict": quality.get("verdict"),
+        "historical_available": bool(historical.get("summary")),
+        "near_close_commands": len(batch.get("commands") or []),
+        "evidence_status": evidence.get("global_status"),
+        "proof_status": proof.get("global_status"),
+        "lab_only": True,
+        "can_influence_picks": False,
+    }
 
 
 def sample_plan(reports_dir: str) -> Dict[str, Any]:
@@ -577,11 +654,19 @@ def parse_args(argv=None):
     actions.add_argument("--api-football-fixtures", action="store_true")
     actions.add_argument("--api-football-matchday", action="store_true")
     actions.add_argument("--manual-betclic-template", action="store_true")
+    actions.add_argument("--external-evidence-catalog", action="store_true")
+    actions.add_argument("--historical-clv", action="store_true")
+    actions.add_argument("--near-close-batch", action="store_true")
+    actions.add_argument("--proof-dashboard", action="store_true")
+    actions.add_argument("--evidence-acceleration", action="store_true")
+    actions.add_argument("--api-football-results", action="store_true")
     actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--odds-store", default=DEFAULT_ODDS_STORE)
     parser.add_argument("--snapshots", default=DEFAULT_ODDS_STORE)
+    parser.add_argument("--historical-clv-file", default="")
+    parser.add_argument("--sport-map", default="config/sport_key_map.example.json")
     parser.add_argument("--apply", action="store_true", help="Applique les changements ledger pour odds-to-shadow/closing-match")
     parser.add_argument("--skip-benchmark", action="store_true")
     parser.add_argument("--skip-dashboard", action="store_true")
@@ -726,6 +811,24 @@ def main(argv=None) -> int:
             print_odds_report("api football matchday dry-run", api_football_matchday_ops_report(args.reports_dir, args.date))
         elif args.manual_betclic_template:
             print_odds_report("manual Betclic template", manual_betclic_template_report(args.reports_dir, args.date))
+        elif args.external_evidence_catalog:
+            print_odds_report("external evidence catalog", external_catalog_report(args.reports_dir))
+        elif args.historical_clv:
+            print_odds_report("historical CLV", historical_clv_ops_report(args.reports_dir, args.historical_clv_file))
+        elif args.near_close_batch:
+            print_odds_report("near-close batch", near_close_batch_ops_report(args.reports_dir, args.ledger, args.snapshots, sport_map=args.sport_map, dry_run=True))
+        elif args.proof_dashboard:
+            print_odds_report("proof dashboard", proof_dashboard_report(args.reports_dir))
+        elif args.evidence_acceleration:
+            print_odds_report("evidence acceleration", evidence_acceleration_report(args.reports_dir, args.ledger, args.snapshots, historical_clv=args.historical_clv_file, sport_map=args.sport_map))
+        elif args.api_football_results:
+            payload = {
+                "dry_run": True,
+                "command": f"python api_football_results_adapter.py --dry-run --date {args.date or 'YYYY-MM-DD'}",
+                "message": "Aucun reseau lance par oracle_ops; utiliser api_football_results_adapter.py --allow-network explicitement.",
+                "lab_only": True,
+            }
+            print_odds_report("api football results dry-run", payload)
         elif args.archive_tests:
             if not args.apply:
                 print_odds_report("archive tests dry-run", {"dry_run": True, "message": "Relancer avec --apply pour archiver et reset."})

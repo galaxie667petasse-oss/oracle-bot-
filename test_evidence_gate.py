@@ -73,6 +73,12 @@ def main():
         assert any("resultats overdue" in blocker for blocker in with_lifecycle["blockers"])
         assert any("near-close due soon" in warning for warning in with_lifecycle["warnings"])
 
+        historical = root / "reports" / "historical_clv_backtest.json"
+        write_json(historical, {"summary": {"sample": 1200, "clv_mean": 0.01, "roi_unit": 0.02}, "verdict": "historical_watchlist", "blockers": []})
+        hist_only = evidence_gate.build_evidence_gate(historical_clv_path=str(historical))
+        assert hist_only["global_status"] == "historical_evidence_only"
+        assert any("Preuve historique CLV" in strength for strength in hist_only["strengths"])
+
         out_json = root / "reports" / "evidence_gate.json"
         out_html = root / "reports" / "evidence_gate.html"
         evidence_gate.write_json(big5_blocked, str(out_json))

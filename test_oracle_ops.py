@@ -90,12 +90,45 @@ def main():
         assert progress_shadow["observations"] == 1
         autopilot = oracle_ops.odds_autopilot_report(str(root / "reports"), str(ledger), str(odds_store))
         assert autopilot["safe_next_commands"]
+        active = oracle_ops.active_soccer_sports_report(str(root / "reports"))
+        assert active["dry_run"] is True
+        coverage = oracle_ops.source_coverage_ops_report(str(root / "reports"))
+        assert "source_recommendations" in coverage
+        fixtures_report = oracle_ops.api_football_fixtures_ops_report(str(root / "reports"), "2026-06-03")
+        assert fixtures_report["dry_run"] is True
+        matchday_probe = oracle_ops.api_football_matchday_ops_report(str(root / "reports"), "2026-06-03")
+        assert matchday_probe["total_fixtures"] == 0
+        betclic_template = oracle_ops.manual_betclic_template_report(str(root / "reports"), "2026-06-03")
+        assert Path(betclic_template["template"]).exists()
+        catalog = oracle_ops.external_catalog_report(str(root / "reports"))
+        assert catalog["summary"]["sources_count"] >= 5
+        historical_file = root / "reports" / "historical_clv.csv"
+        historical_file.write_text("match_date,league,home_team,away_team,bookmaker,market_type,side,opening_odds,closing_odds,clv_percent,result,profit_unit,source_row,is_valid,validation_reason\n2024-01-01,EPL,A,B,Book,h2h,home,2.0,1.9,0.052631,home,1.0,2,True,\n", encoding="utf-8")
+        historical = oracle_ops.historical_clv_ops_report(str(root / "reports"), str(historical_file))
+        assert historical["summary"]["sample"] == 1
+        near_batch = oracle_ops.near_close_batch_ops_report(str(root / "reports"), str(ledger), str(odds_store), dry_run=True)
+        assert near_batch["network_allowed"] is False
+        proof = oracle_ops.proof_dashboard_report(str(root / "reports"))
+        assert "global_status" in proof
+        acceleration = oracle_ops.evidence_acceleration_report(str(root / "reports"), str(ledger), str(odds_store), historical_clv=str(historical_file))
+        assert acceleration["lab_only"] is True
         assert oracle_ops.main(["--api-pre-match-jleague", "--ledger", str(ledger), "--snapshots", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--lifecycle", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--near-close-schedule", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--results-template", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--shadow-progress", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--odds-autopilot", "--ledger", str(ledger), "--snapshots", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--active-soccer-sports", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--source-coverage", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--api-football-fixtures", "--date", "2026-06-03", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--api-football-matchday", "--date", "2026-06-03", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--manual-betclic-template", "--date", "2026-06-03", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--external-evidence-catalog", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--historical-clv", "--historical-clv-file", str(historical_file), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--near-close-batch", "--ledger", str(ledger), "--snapshots", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--proof-dashboard", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--evidence-acceleration", "--ledger", str(ledger), "--snapshots", str(odds_store), "--historical-clv-file", str(historical_file), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--api-football-results", "--date", "2026-06-03", "--reports-dir", str(root / "reports")]) == 0
         matchday = oracle_ops.matchday_create_report("2026-06-01", str(root / "reports"))
         assert Path(matchday["output_dir"]).exists()
         matchday_status = oracle_ops.build_matchday_status(matchday["output_dir"])

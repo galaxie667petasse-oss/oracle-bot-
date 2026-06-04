@@ -789,6 +789,142 @@ def odds_intake_commands(
     return commands
 
 
+def proof_commands(
+    ledger: str = "reports/shadow_ledger.csv",
+    snapshots: str = "reports/odds_snapshots.csv",
+    historical_clv: str = "",
+    sport_map: str = "config/sport_key_map.example.json",
+    skip_dashboard: bool = False,
+) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "External evidence catalog",
+            "external_evidence_catalog.txt",
+            [
+                "external_evidence_catalog.py",
+                "--output",
+                "{report_dir}/external_evidence_catalog.json",
+                "--html",
+                "{report_dir}/external_evidence_catalog.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Shadow CLV report proof",
+            "shadow_clv_report.txt",
+            [
+                "shadow_clv_report.py",
+                "--ledger",
+                ledger,
+                "--output",
+                "{report_dir}/shadow_clv_report.json",
+                "--html",
+                "{report_dir}/shadow_clv_report.html",
+            ],
+            timeout=600,
+        ),
+        ReportCommand(
+            "Shadow quality audit proof",
+            "shadow_quality_audit.txt",
+            [
+                "shadow_quality_audit.py",
+                "--ledger",
+                ledger,
+                "--output",
+                "{report_dir}/shadow_quality_audit.json",
+                "--html",
+                "{report_dir}/shadow_quality_audit.html",
+            ],
+            timeout=600,
+        ),
+        ReportCommand(
+            "Near-close batch dry-run",
+            "near_close_batch_runner.txt",
+            [
+                "near_close_batch_runner.py",
+                "--ledger",
+                ledger,
+                "--snapshots",
+                snapshots,
+                "--sport-map",
+                sport_map,
+                "--dry-run",
+                "--output",
+                "{report_dir}/near_close_batch_runner.json",
+                "--html",
+                "{report_dir}/near_close_batch_runner.html",
+            ],
+            timeout=300,
+        ),
+    ]
+    if historical_clv:
+        commands.append(
+            ReportCommand(
+                "Historical CLV backtest",
+                "historical_clv_backtest.txt",
+                [
+                    "historical_clv_backtester.py",
+                    "--input",
+                    historical_clv,
+                    "--output",
+                    "{report_dir}/historical_clv_backtest.json",
+                    "--html",
+                    "{report_dir}/historical_clv_backtest.html",
+                ],
+                timeout=600,
+            )
+        )
+    commands.extend([
+        ReportCommand(
+            "Evidence gate proof",
+            "evidence_gate.txt",
+            [
+                "evidence_gate.py",
+                "--shadow-report",
+                "{report_dir}/shadow_clv_report.json",
+                "--quality-audit",
+                "{report_dir}/shadow_quality_audit.json",
+                "--big5-summary",
+                "reports/big5_xg_summary.json",
+                "--clv-readiness",
+                "reports/clv_readiness.json",
+                "--historical-clv",
+                "{report_dir}/historical_clv_backtest.json",
+                "--output",
+                "{report_dir}/evidence_gate.json",
+                "--html",
+                "{report_dir}/evidence_gate.html",
+            ],
+            timeout=600,
+        ),
+        ReportCommand(
+            "Proof dashboard",
+            "proof_dashboard.txt",
+            [
+                "proof_dashboard.py",
+                "--shadow",
+                "{report_dir}/shadow_clv_report.json",
+                "--evidence",
+                "{report_dir}/evidence_gate.json",
+                "--big5",
+                "reports/big5_xg_summary.json",
+                "--historical-clv",
+                "{report_dir}/historical_clv_backtest.json",
+                "--quality",
+                "{report_dir}/shadow_quality_audit.json",
+                "--output",
+                "{report_dir}/proof_dashboard.json",
+                "--html",
+                "{report_dir}/proof_dashboard.html",
+            ],
+            timeout=300,
+        ),
+    ])
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard proof", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
 def api_odds_commands(
     ledger: str = "reports/shadow_ledger.csv",
     snapshots: str = "reports/odds_snapshots.csv",
@@ -1372,6 +1508,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return matchday_commands()
     if mode == "source-coverage":
         return source_coverage_commands()
+    if mode == "proof":
+        return proof_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -1496,6 +1634,7 @@ def parse_args(argv=None):
     mode.add_argument("--source-coverage", action="store_true", help="Lance le rapport de couverture sources sans reseau")
     mode.add_argument("--project-blueprint", action="store_true", help="Lance la carte architecture, contrats, scorecard et restitution")
     mode.add_argument("--matchday", action="store_true", help="Lance le rapport local de collecte matchday")
+    mode.add_argument("--proof", action="store_true", help="Lance les rapports evidence acceleration V9.1 sans reseau")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
@@ -1509,6 +1648,8 @@ def parse_args(argv=None):
     parser.add_argument("--scan-report", default="{report_dir}/soccer_odds_sport_scan.json", help="Rapport scan sports soccer a ecrire")
     parser.add_argument("--selection-summary", default="reports/shadow_selection_summary.json", help="Resume selection shadow existant")
     parser.add_argument("--near-close-plan", default="{report_dir}/near_close_plan.json", help="Plan near-close a ecrire")
+    parser.add_argument("--historical-clv", default="", help="CSV CLV historique normalise optionnel pour --proof")
+    parser.add_argument("--sport-map", default="config/sport_key_map.example.json", help="Mapping ligue -> sport key pour near-close")
     parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
     parser.add_argument("--skip-benchmark", action="store_true", help="Pour --xg-understat/--big5-xg: ignore benchmark_governance")
     parser.add_argument("--skip-dashboard", action="store_true", help="Pour --daily-shadow: ignore dashboard_builder")
@@ -1537,6 +1678,7 @@ def main(argv=None) -> None:
         else "source-coverage" if args.source_coverage
         else "project-blueprint" if args.project_blueprint
         else "matchday" if args.matchday
+        else "proof" if args.proof
         else "big5-xg" if args.big5_xg
         else "xg-understat" if args.xg_understat
         else "full" if args.full
@@ -1641,6 +1783,14 @@ def main(argv=None) -> None:
             ledger=args.ledger,
             snapshots=args.snapshots,
             phase=args.phase,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "proof":
+        commands = proof_commands(
+            ledger=args.ledger,
+            snapshots=args.snapshots,
+            historical_clv=args.historical_clv,
+            sport_map=args.sport_map,
             skip_dashboard=args.skip_dashboard,
         )
     else:

@@ -172,6 +172,10 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
     project_scorecard = read_json_candidates(report_dir, ["project_scorecard.json"])
     real_guard = read_json_candidates(report_dir, ["real_observation_guard.json"])
     matchday_status = read_json_candidates(report_dir, ["matchday_status.json", "matchday_runner_summary.json"])
+    external_catalog = read_json_candidates(report_dir, ["external_evidence_catalog.json"])
+    historical_clv = read_json_candidates(report_dir, ["historical_clv_backtest.json"])
+    near_close_batch = read_json_candidates(report_dir, ["near_close_batch_runner.json"])
+    proof_dashboard = read_json_candidates(report_dir, ["proof_dashboard.json"])
     pipeline_final = understat_pipeline.get("final_status") or {}
     pipeline_model = pipeline_final.get("xg_model") or {}
 
@@ -368,6 +372,17 @@ def build_summary(report_dir: Path) -> Dict[str, Any]:
         "matchday_phase_warnings": (matchday_status.get("phase") or {}).get("phase_warnings") or matchday_status.get("warnings") or [],
         "matchday_phase_blockers": (matchday_status.get("phase") or {}).get("phase_blockers") or matchday_status.get("blockers") or [],
         "matchday_next_actions": (matchday_status.get("phase") or {}).get("next_actions") or matchday_status.get("next_actions") or [],
+        "external_evidence_sources": ((external_catalog.get("summary") or {}).get("sources_count")),
+        "historical_clv_available": bool(historical_clv),
+        "historical_clv_sample": ((historical_clv.get("summary") or {}).get("sample")),
+        "historical_clv_mean": ((historical_clv.get("summary") or {}).get("clv_mean")),
+        "historical_clv_roi": ((historical_clv.get("summary") or {}).get("roi_unit")),
+        "historical_clv_verdict": historical_clv.get("verdict"),
+        "near_close_batch_pending": near_close_batch.get("pending_total"),
+        "near_close_batch_commands": near_close_batch.get("commands") or [],
+        "proof_dashboard_available": bool(proof_dashboard),
+        "proof_dashboard_status": proof_dashboard.get("global_status"),
+        "proof_dashboard_blockers": proof_dashboard.get("blockers") or [],
         "clv_missing_columns": clv_readiness.get("missing_columns") or [],
         "clv_markets": clv_readiness.get("markets") or {},
         "final_status": "aucun pick automatique",
@@ -617,6 +632,22 @@ def build_dashboard(report_dir: Path) -> Dict[str, Any]:
     if texts["evidence_gate"]:
         evidence_lines.extend(_lines_matching(texts["evidence_gate"], ["Statut global", "Bloquant", "Action requise"], 24))
     parts.append(_card("Evidence Gate", "\n".join(evidence_lines)))
+
+    proof_lines = [
+        f"catalogue sources: {summary.get('external_evidence_sources')}",
+        f"historical CLV disponible: {summary.get('historical_clv_available')}",
+        f"historical sample: {summary.get('historical_clv_sample')}",
+        f"historical CLV moyenne: {summary.get('historical_clv_mean')}",
+        f"historical ROI unite: {summary.get('historical_clv_roi')}",
+        f"historical verdict: {summary.get('historical_clv_verdict')}",
+        f"near-close pending: {summary.get('near_close_batch_pending')}",
+        f"near-close commandes preparees: {len(summary.get('near_close_batch_commands') or [])}",
+        f"proof dashboard disponible: {summary.get('proof_dashboard_available')}",
+        f"proof status: {summary.get('proof_dashboard_status')}",
+        f"proof blockers: {', '.join(summary.get('proof_dashboard_blockers') or []) or 'aucun'}",
+        "statut: acceleration de preuve locale, aucune activation.",
+    ]
+    parts.append(_card("Evidence Acceleration / Proof Loop", "\n".join(proof_lines)))
 
     sample_lines = [
         f"rapport disponible: {summary.get('sample_plan_available')}",

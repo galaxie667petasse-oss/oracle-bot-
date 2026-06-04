@@ -253,3 +253,27 @@ V9.0 ajoute la couche coverage source :
 - scheduler near-close corrige pour Brazil Serie B, Finlande, Segunda et Superettan.
 
 Etat prudent inchange : aucun signal robuste active, aucune mise, aucun Telegram/Railway, aucune modification de `data/`. Les tests V9.0 restent sans reseau.
+## V9.1 Evidence Acceleration, Historical Closing Import & Live Proof Loop
+
+Statut: en place en laboratoire local.
+
+Modules ajoutes:
+
+- `external_evidence_catalog.py`
+- `historical_odds_schema_detector.py`
+- `historical_clv_importer.py`
+- `historical_clv_backtester.py`
+- `api_football_results_adapter.py`
+- `shadow_result_matcher.py`
+- `near_close_batch_runner.py`
+- `proof_dashboard.py`
+
+Objectif: accelerer la preuve avec des donnees historiques externes auditees, importer des resultats finis et organiser la collecte near-close, tout en conservant evidence gate comme decision finale.
+
+Limites maintenues:
+
+- Big 5 xG reste observation sans CLV;
+- CSV historique refuse si les colonnes closing ne sont pas des cotes decimales plausibles;
+- preuve historique seule donne `historical_evidence_only`;
+- shadow live, CLV fiable, sample suffisant et gouvernance restent obligatoires;
+- aucun signal robuste active, aucun Telegram, aucun Railway.

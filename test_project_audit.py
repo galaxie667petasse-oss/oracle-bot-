@@ -95,6 +95,10 @@ def test_release_candidate_docs_exist_and_have_sections():
         "dry-run staging",
         "human intake",
         "june collection",
+        "source coverage",
+        "active sports",
+        "api-football",
+        "manual betclic",
         "statistical proof foundation",
         "clv",
         "reliability curves",
@@ -125,6 +129,8 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v8.7" in status
     assert "v8.8" in status
     assert "v8.9" in status
+    assert "v9.0" in status
+    assert "v9.1" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -156,6 +162,15 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "result_capture_workflow.md").exists()
     assert (root / "docs" / "shadow_progress_dashboard.md").exists()
     assert (root / "docs" / "odds_autopilot_dryrun.md").exists()
+    assert (root / "docs" / "source_coverage_strategy.md").exists()
+    assert (root / "docs" / "api_football_matchday_probe.md").exists()
+    assert (root / "docs" / "manual_betclic_intake.md").exists()
+    assert (root / "docs" / "active_sports_discovery.md").exists()
+    assert (root / "docs" / "historical_clv_import_workflow.md").exists()
+    assert (root / "docs" / "evidence_acceleration_strategy.md").exists()
+    assert (root / "docs" / "api_football_results_workflow.md").exists()
+    assert (root / "docs" / "near_close_batch_runner.md").exists()
+    assert (root / "docs" / "proof_dashboard.md").exists()
 
 
 def main():

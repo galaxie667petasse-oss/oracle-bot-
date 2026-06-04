@@ -901,3 +901,23 @@ python report_runner.py --source-coverage --skip-dashboard
 ```
 
 Statut : laboratoire local uniquement, aucune mise, aucun Telegram, aucun Railway, aucun pick automatique.
+## V9.1 Evidence Acceleration
+
+V9.1 ajoute une boucle locale pour accelerer la preuve sans changer la posture prudente du bot: catalogue de sources, detection de schemas historiques, import CLV historique optionnel, resultats API-Football en adaptateur no-network par defaut, batch near-close dry-run et proof dashboard.
+
+La preuve historique peut aider a orienter l'analyse, mais elle ne remplace pas la preuve live shadow. Sans CLV live fiable, sample suffisant et evidence gate favorable, aucun signal robuste n'est active.
+
+Commandes principales:
+
+```powershell
+python external_evidence_catalog.py --output reports/external_evidence_catalog.json --html reports/external_evidence_catalog.html
+python historical_odds_schema_detector.py --csv reports/historical_odds_candidate.csv --output reports/historical_odds_schema.json --html reports/historical_odds_schema.html
+python historical_clv_importer.py --csv reports/historical_odds_candidate.csv --schema reports/historical_odds_schema.json --output reports/historical_clv_import.csv --summary-json reports/historical_clv_import_summary.json
+python historical_clv_backtester.py --input reports/historical_clv_import.csv --output reports/historical_clv_backtest.json --html reports/historical_clv_backtest.html
+python api_football_results_adapter.py --dry-run --date 2026-06-03
+python near_close_batch_runner.py --ledger reports/shadow_ledger.csv --sport-map config/sport_key_map.example.json --dry-run
+python proof_dashboard.py --shadow reports/shadow_clv_report.json --evidence reports/evidence_gate.json --big5 reports/big5_xg_summary.json --output reports/proof_dashboard.json --html reports/proof_dashboard.html
+python report_runner.py --proof --skip-dashboard
+```
+
+Statut: laboratoire local, aucune mise, aucun Telegram, aucun Railway.
