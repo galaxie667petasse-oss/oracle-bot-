@@ -228,3 +228,16 @@ Routine ajoutee:
 5. Relancer `python report_runner.py --proof --skip-dashboard`.
 
 La preuve historique aide a prioriser, mais ne remplace pas les observations shadow de juin.
+
+## V9.2 Routine same-day API-Football
+
+Routine prudente:
+
+1. lancer `python api_football_same_day_runner.py --date YYYY-MM-DD --dry-run`;
+2. si des fixtures/odds locales existent, les passer via `--fixtures-json` et `--odds-json`;
+3. lire `selection.csv` avant toute ecriture ledger;
+4. convertir avec `odds_to_shadow.py --selection-csv ... --dry-run`;
+5. collecter la near-close plus tard avec `near_close_today_helper.py`;
+6. matcher les resultats par `source_event_id` si disponible.
+
+Si aucune cote valide n'apparait apres enrichment, utiliser le template manuel. Ne pas multiplier les observations si les near-close precedentes ne sont pas encore capturees.

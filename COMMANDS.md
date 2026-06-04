@@ -1135,3 +1135,41 @@ python proof_dashboard.py --shadow reports/shadow_clv_report.json --evidence rep
 python report_runner.py --proof --skip-dashboard
 python oracle_ops.py --evidence-acceleration
 ```
+
+## V9.2 API-Football Odds Enrichment & Same-Day Intake
+
+Enrichir odds API-Football avec fixtures locales:
+
+```powershell
+python api_football_odds_adapter.py --from-fixture reports/api_football_odds_raw.json --fixtures-csv reports/api_football_fixtures.csv --valid-only --market h2h --one-side-per-event --max-events 3 --output reports/api_football_odds_enriched.csv --output-invalid reports/api_football_odds_invalid.csv --summary-json reports/api_football_odds_summary.json --html reports/api_football_odds_summary.html
+```
+
+Selectionner les lignes valides pour observation shadow:
+
+```powershell
+python api_football_valid_odds_selector.py --odds reports/api_football_odds_enriched.csv --output reports/api_football_shadow_selection.csv --summary-json reports/api_football_shadow_selection_summary.json --max-events 3 --prefer-side home
+python odds_to_shadow.py --selection-csv reports/api_football_shadow_selection.csv --ledger reports/shadow_ledger.csv --dry-run
+```
+
+Runner same-day sans reseau:
+
+```powershell
+python api_football_same_day_runner.py --date 2026-06-04 --dry-run
+python report_runner.py --same-day --date 2026-06-04 --skip-dashboard
+python oracle_ops.py --api-football-same-day --date 2026-06-04
+```
+
+Near-close du jour:
+
+```powershell
+python near_close_today_helper.py --ledger reports/shadow_ledger.csv --sport-map config/sport_key_map.example.json --date 2026-06-04 --output reports/near_close_today.json
+python oracle_ops.py --near-close-today --date 2026-06-04
+```
+
+Dashboard preuve avec same-day:
+
+```powershell
+python proof_dashboard.py --shadow reports/shadow_clv_report.json --evidence reports/evidence_gate.json --big5 reports/big5_xg_summary.json --same-day reports/api_football_same_day_2026_06_04/summary.json --near-close-today reports/near_close_today.json --output reports/proof_dashboard.json --html reports/proof_dashboard.html
+```
+
+Regles: aucune requete reseau sans `--allow-network`, aucune cle affichee, aucune ecriture dans `data/`, aucune mise, aucun Telegram/Railway.

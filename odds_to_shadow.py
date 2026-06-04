@@ -90,7 +90,12 @@ def snapshots_to_shadow(
                 "strategy_name": strategy_name,
                 "reason": reason or f"{reason_prefix}, aucune mise",
                 "status": status,
-                "notes": f"source={row.get('source')}; snapshot_id={row.get('snapshot_id')}",
+                "notes": "; ".join([
+                    f"source={row.get('source')}",
+                    f"snapshot_id={row.get('snapshot_id')}",
+                    f"source_event_id={row.get('source_event_id')}",
+                    f"kickoff_time={row.get('kickoff_time')}",
+                ]),
             }
             key = _shadow_key(entry)
             if key in existing_keys:

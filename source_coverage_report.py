@@ -50,12 +50,16 @@ def build_source_coverage_report(
     the_odds_scan_path: str = "",
     fixtures_path: str = "",
     api_odds_path: str = "",
+    api_football_enriched_summary_path: str = "",
+    same_day_summary_path: str = "",
     manual_pack: str = "",
 ) -> Dict[str, Any]:
     active = _read_json(active_sports_path)
     scan = _read_json(the_odds_scan_path)
     fixtures = _read_json(fixtures_path)
     api_odds = _read_json(api_odds_path)
+    enriched = _read_json(api_football_enriched_summary_path)
+    same_day = _read_json(same_day_summary_path)
     manual = _manual_pack_summary(manual_pack)
     active_keys = set(active.get("sport_keys") or [row.get("key") for row in active.get("sports", []) if row.get("key")])
     scanned_items = scan.get("sports") or []
@@ -89,6 +93,22 @@ def build_source_coverage_report(
         recommendations.append("ignorer ou attendre une fenetre plus proche")
     if any(item.get("usable_for_shadow") for item in near_term):
         recommendations.append("attendre near-close avant toute mesure CLV")
+    same_day_valid = same_day.get("odds_valid") if same_day else enriched.get("valid_rows")
+    same_day_candidates = same_day.get("selection_rows") if same_day else 0
+    same_day_available = bool(same_day_valid and same_day_valid > 0)
+    if same_day_available:
+        recommendations.append("utiliser api_football_same_day_runner en dry-run puis revue humaine")
+    manual_required_reason = ""
+    if not same_day_available and fixture_leagues:
+        manual_required_reason = "fixtures presentes mais aucune odds API-Football valide exploitable"
+    if same_day_candidates:
+        next_best_action = "review_same_day_shadow_candidates"
+    elif same_day_available:
+        next_best_action = "run_valid_odds_selector"
+    elif manual_required_reason:
+        next_best_action = "manual_betclic_required"
+    else:
+        next_best_action = "no_action"
     return {
         "active_sports_available": bool(active),
         "the_odds_scan_available": bool(scan),
@@ -101,6 +121,11 @@ def build_source_coverage_report(
         "near_term_sources": near_term,
         "fixtures_by_league": fixture_leagues,
         "api_football_odds_count": api_odds.get("odds_available_count") or api_odds.get("odds_rows") or 0,
+        "same_day_api_football_available": same_day_available,
+        "same_day_valid_odds_count": same_day_valid or 0,
+        "same_day_shadow_candidates": same_day_candidates or 0,
+        "manual_required_reason": manual_required_reason,
+        "next_best_action": next_best_action,
         "identified_gaps": missing,
         "source_recommendations": recommendations,
         "lab_only": True,
@@ -138,6 +163,12 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Sports actifs: {len(report.get('competitions_active') or [])}")
     print(f"- Sports scannes: {len(report.get('competitions_scanned') or [])}")
     print(f"- Sources proches: {len(report.get('near_term_sources') or [])}")
+    print(f"- API-Football same-day disponible: {'oui' if report.get('same_day_api_football_available') else 'non'}")
+    print(f"- Odds valides same-day: {report.get('same_day_valid_odds_count')}")
+    print(f"- Candidates shadow same-day: {report.get('same_day_shadow_candidates')}")
+    print(f"- Prochaine action source: {report.get('next_best_action')}")
+    if report.get("manual_required_reason"):
+        print(f"- Raison fallback manuel: {report.get('manual_required_reason')}")
     for gap in report.get("identified_gaps") or []:
         print(f"- Manque: {gap}")
     for rec in report.get("source_recommendations") or []:
@@ -151,6 +182,8 @@ def parse_args(argv=None):
     parser.add_argument("--the-odds-scan", default="")
     parser.add_argument("--fixtures", default="")
     parser.add_argument("--api-odds", default="")
+    parser.add_argument("--api-football-enriched-summary", default="")
+    parser.add_argument("--same-day-summary", default="")
     parser.add_argument("--manual-pack", default="")
     parser.add_argument("--output", default="")
     parser.add_argument("--html", default="")
@@ -165,6 +198,8 @@ def main(argv=None) -> int:
             the_odds_scan_path=args.the_odds_scan,
             fixtures_path=args.fixtures,
             api_odds_path=args.api_odds,
+            api_football_enriched_summary_path=args.api_football_enriched_summary,
+            same_day_summary_path=args.same_day_summary,
             manual_pack=args.manual_pack,
         )
         if args.output:

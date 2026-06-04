@@ -925,6 +925,106 @@ def proof_commands(
     return commands
 
 
+def same_day_commands(
+    ledger: str = "reports/shadow_ledger.csv",
+    sport_map: str = "config/sport_key_map.example.json",
+    date: str = "",
+    skip_dashboard: bool = False,
+) -> List[ReportCommand]:
+    date = date or datetime.now().strftime("%Y-%m-%d")
+    same_dir = f"{{report_dir}}/api_football_same_day_{date.replace('-', '_')}"
+    commands = [
+        ReportCommand(
+            "API-Football same-day dry-run",
+            "api_football_same_day_runner.txt",
+            [
+                "api_football_same_day_runner.py",
+                "--date",
+                date,
+                "--dry-run",
+                "--ledger",
+                ledger,
+                "--output-dir",
+                same_dir,
+            ],
+            timeout=600,
+        ),
+        ReportCommand(
+            "Near-close today helper",
+            "near_close_today_helper.txt",
+            [
+                "near_close_today_helper.py",
+                "--ledger",
+                ledger,
+                "--sport-map",
+                sport_map,
+                "--date",
+                date,
+                "--output",
+                "{report_dir}/near_close_today.json",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Source coverage same-day",
+            "source_coverage_report.txt",
+            [
+                "source_coverage_report.py",
+                "--same-day-summary",
+                f"{same_dir}/summary.json",
+                "--output",
+                "{report_dir}/source_coverage_report.json",
+                "--html",
+                "{report_dir}/source_coverage_report.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Evidence gate same-day",
+            "evidence_gate.txt",
+            [
+                "evidence_gate.py",
+                "--shadow-report",
+                "reports/shadow_clv_report.json",
+                "--big5-summary",
+                "reports/big5_xg_summary.json",
+                "--clv-readiness",
+                "reports/clv_readiness.json",
+                "--output",
+                "{report_dir}/evidence_gate.json",
+                "--html",
+                "{report_dir}/evidence_gate.html",
+            ],
+            timeout=300,
+        ),
+        ReportCommand(
+            "Proof dashboard same-day",
+            "proof_dashboard.txt",
+            [
+                "proof_dashboard.py",
+                "--shadow",
+                "reports/shadow_clv_report.json",
+                "--evidence",
+                "{report_dir}/evidence_gate.json",
+                "--big5",
+                "reports/big5_xg_summary.json",
+                "--same-day",
+                f"{same_dir}/summary.json",
+                "--near-close-today",
+                "{report_dir}/near_close_today.json",
+                "--output",
+                "{report_dir}/proof_dashboard.json",
+                "--html",
+                "{report_dir}/proof_dashboard.html",
+            ],
+            timeout=300,
+        ),
+    ]
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard same-day", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
 def api_odds_commands(
     ledger: str = "reports/shadow_ledger.csv",
     snapshots: str = "reports/odds_snapshots.csv",
@@ -1510,6 +1610,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return source_coverage_commands()
     if mode == "proof":
         return proof_commands()
+    if mode == "same-day":
+        return same_day_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -1635,6 +1737,7 @@ def parse_args(argv=None):
     mode.add_argument("--project-blueprint", action="store_true", help="Lance la carte architecture, contrats, scorecard et restitution")
     mode.add_argument("--matchday", action="store_true", help="Lance le rapport local de collecte matchday")
     mode.add_argument("--proof", action="store_true", help="Lance les rapports evidence acceleration V9.1 sans reseau")
+    mode.add_argument("--same-day", action="store_true", help="Lance le workflow same-day V9.2 sans reseau")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
@@ -1650,6 +1753,7 @@ def parse_args(argv=None):
     parser.add_argument("--near-close-plan", default="{report_dir}/near_close_plan.json", help="Plan near-close a ecrire")
     parser.add_argument("--historical-clv", default="", help="CSV CLV historique normalise optionnel pour --proof")
     parser.add_argument("--sport-map", default="config/sport_key_map.example.json", help="Mapping ligue -> sport key pour near-close")
+    parser.add_argument("--date", default="", help="Date locale YYYY-MM-DD pour les modes matchday/same-day")
     parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
     parser.add_argument("--skip-benchmark", action="store_true", help="Pour --xg-understat/--big5-xg: ignore benchmark_governance")
     parser.add_argument("--skip-dashboard", action="store_true", help="Pour --daily-shadow: ignore dashboard_builder")
@@ -1679,6 +1783,7 @@ def main(argv=None) -> None:
         else "project-blueprint" if args.project_blueprint
         else "matchday" if args.matchday
         else "proof" if args.proof
+        else "same-day" if args.same_day
         else "big5-xg" if args.big5_xg
         else "xg-understat" if args.xg_understat
         else "full" if args.full
@@ -1791,6 +1896,13 @@ def main(argv=None) -> None:
             snapshots=args.snapshots,
             historical_clv=args.historical_clv,
             sport_map=args.sport_map,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "same-day":
+        commands = same_day_commands(
+            ledger=args.ledger,
+            sport_map=args.sport_map,
+            date=args.date,
             skip_dashboard=args.skip_dashboard,
         )
     else:

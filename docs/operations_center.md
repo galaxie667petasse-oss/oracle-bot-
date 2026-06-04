@@ -172,3 +172,15 @@ python oracle_ops.py --api-football-results --date 2026-06-03
 ```
 
 Ces commandes ne lancent pas de reseau. `--api-football-results` dans `oracle_ops` affiche seulement la commande dry-run utile.
+
+## V9.2 Same-Day Operations
+
+Nouvelles actions locales:
+
+```bash
+python oracle_ops.py --api-football-same-day --date 2026-06-04
+python oracle_ops.py --api-football-valid-odds --odds-csv reports/api_football_odds_enriched.csv
+python oracle_ops.py --near-close-today --date 2026-06-04
+```
+
+Ces actions ne lancent aucun reseau par elles-memes. Elles servent a verifier l'etat de la journee, preparer une selection shadow limitee et lister les near-close a collecter humainement.

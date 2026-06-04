@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, api_odds_commands, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, proof_commands, run_report, shadow_commands, shadow_ops_commands, source_coverage_commands, xg_understat_commands
+from report_runner import ReportCommand, api_odds_commands, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, proof_commands, run_report, same_day_commands, shadow_commands, shadow_ops_commands, source_coverage_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -313,6 +313,18 @@ Understat xG Full Pipeline Quality Gate
         write_report(report_dir / "agent_orchestrator_dryrun.txt", "Agent orchestrator dry-run Oracle\n- Dry-run uniquement\n")
         write_report(report_dir / "real_observation_guard.txt", "Real Observation Guard Oracle\n- Verdict: needs_review\n")
         write_report(report_dir / "matchday_status.txt", "Status matchday pack Oracle\n- taken: 2\n")
+        (report_dir / "api_football_same_day_2026_06_04").mkdir(parents=True, exist_ok=True)
+        (report_dir / "api_football_same_day_2026_06_04" / "summary.json").write_text(json.dumps({
+            "fixtures": 1,
+            "odds_valid": 2,
+            "selection_rows": 1,
+            "would_add_or_added": 1,
+        }, ensure_ascii=False), encoding="utf-8")
+        (report_dir / "near_close_today.json").write_text(json.dumps({
+            "pending_today": 1,
+            "manual_fallback": True,
+            "commands": ["python api_football_odds_adapter.py --fixture-id 1 --allow-network"],
+        }, ensure_ascii=False), encoding="utf-8")
 
         summary = build_dashboard(report_dir)
         html = (report_dir / "index.html").read_text(encoding="utf-8")
@@ -408,6 +420,18 @@ Understat xG Full Pipeline Quality Gate
         assert any("historical_clv_backtester.py" in command.args for command in proof_cmds)
         assert any("proof_dashboard.py" in command.args for command in proof_cmds)
         assert not any("dashboard_builder.py" in command.args for command in proof_cmds)
+        same_cmds = same_day_commands(str(root / "reports" / "shadow_ledger.csv"), date="2026-06-04", skip_dashboard=True)
+        assert any("api_football_same_day_runner.py" in command.args and "--dry-run" in command.args for command in same_cmds)
+        assert any("near_close_today_helper.py" in command.args for command in same_cmds)
+        assert any("source_coverage_report.py" in command.args and "--same-day-summary" in command.args for command in same_cmds)
+        assert any("proof_dashboard.py" in command.args and "--same-day" in command.args for command in same_cmds)
+        assert not any("dashboard_builder.py" in command.args for command in same_cmds)
+        same_manifest = run_report(
+            same_day_commands(str(root / "reports" / "shadow_ledger.csv"), date="2026-06-04", skip_dashboard=True),
+            root / "reports" / "same_day_manifest",
+            Path.cwd(),
+        )
+        assert same_manifest["failed"] == 0
         try:
             closing_preview_commands("features.csv", "matches.csv", str(root / "data" / "preview.csv"))
             raise AssertionError("preview data non bloquee")

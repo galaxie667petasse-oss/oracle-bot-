@@ -31,6 +31,8 @@ def build_dashboard(
     historical_clv_path: str = "",
     quality_path: str = "",
     intake_path: str = "",
+    same_day_path: str = "",
+    near_close_today_path: str = "",
 ) -> Dict[str, Any]:
     shadow = _read_json(shadow_path)
     evidence = _read_json(evidence_path)
@@ -38,6 +40,8 @@ def build_dashboard(
     historical = _read_json(historical_clv_path)
     quality = _read_json(quality_path)
     intake = _read_json(intake_path)
+    same_day = _read_json(same_day_path)
+    near_close_today = _read_json(near_close_today_path)
     blockers = []
     if evidence.get("blockers"):
         blockers.extend(evidence.get("blockers") or [])
@@ -79,6 +83,16 @@ def build_dashboard(
         },
         "quality": {"available": bool(quality), "verdict": quality.get("verdict")},
         "intake": {"available": bool(intake), "verdict": intake.get("verdict")},
+        "same_day_intake": {
+            "available": bool(same_day or near_close_today),
+            "fixtures_today": same_day.get("fixtures"),
+            "valid_api_football_odds": same_day.get("odds_valid"),
+            "same_day_shadow_candidates": same_day.get("selection_rows"),
+            "would_add_or_added": same_day.get("would_add_or_added"),
+            "near_close_pending_today": near_close_today.get("pending_today"),
+            "manual_fallback": near_close_today.get("manual_fallback"),
+            "commands": (near_close_today.get("commands") or [])[:10],
+        },
     }
     if historical and not shadow:
         global_status = "historical_evidence_only"
@@ -142,6 +156,8 @@ def parse_args(argv=None):
     parser.add_argument("--historical-clv", default="")
     parser.add_argument("--quality", default="")
     parser.add_argument("--intake", default="")
+    parser.add_argument("--same-day", default="")
+    parser.add_argument("--near-close-today", default="")
     parser.add_argument("--output", default="")
     parser.add_argument("--html", default="")
     return parser.parse_args(argv)
@@ -150,7 +166,7 @@ def parse_args(argv=None):
 def main(argv=None) -> int:
     args = parse_args(argv)
     try:
-        report = build_dashboard(args.shadow, args.evidence, args.big5, args.historical_clv, args.quality, args.intake)
+        report = build_dashboard(args.shadow, args.evidence, args.big5, args.historical_clv, args.quality, args.intake, args.same_day, args.near_close_today)
         if args.output:
             write_json(report, args.output)
         if args.html:

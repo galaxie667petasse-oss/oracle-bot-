@@ -30,6 +30,17 @@ def _match_key(row: Dict[str, Any]) -> Tuple[str, str, str, str]:
     )
 
 
+def _source_event_id(row: Dict[str, Any]) -> str:
+    direct = str(row.get("source_event_id") or row.get("fixture_id") or "").strip()
+    if direct:
+        return direct
+    notes = str(row.get("notes") or "")
+    for part in notes.split(";"):
+        if "source_event_id=" in part:
+            return part.split("source_event_id=", 1)[1].strip()
+    return ""
+
+
 def _result_for_side(side: str, home_goals: int, away_goals: int) -> str:
     if home_goals == away_goals:
         outcome = "draw"
@@ -55,8 +66,12 @@ def match_results(ledger_path: str, results_csv: str, overwrite: bool = False, d
     ledger_rows = read_ledger(ledger_path)
     results = [row for row in _load_results(results_csv) if str(row.get("is_finished") or "").lower() == "true"]
     grouped: Dict[Tuple[str, str, str, str], List[Dict[str, str]]] = {}
+    by_fixture: Dict[str, List[Dict[str, str]]] = {}
     for row in results:
         grouped.setdefault(_match_key(row), []).append(row)
+        fixture_id = _source_event_id(row)
+        if fixture_id:
+            by_fixture.setdefault(fixture_id, []).append(row)
     updated = 0
     matched = 0
     unmatched = 0
@@ -66,7 +81,10 @@ def match_results(ledger_path: str, results_csv: str, overwrite: bool = False, d
     for row in ledger_rows:
         if row.get("result") not in {"", "unknown"} and not overwrite:
             continue
-        candidates = grouped.get(_match_key(row), [])
+        fixture_id = _source_event_id(row)
+        candidates = by_fixture.get(fixture_id, []) if fixture_id else []
+        if not candidates:
+            candidates = grouped.get(_match_key(row), [])
         if not candidates:
             unmatched += 1
             continue

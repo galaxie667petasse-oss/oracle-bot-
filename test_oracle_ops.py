@@ -112,6 +112,13 @@ def main():
         assert "global_status" in proof
         acceleration = oracle_ops.evidence_acceleration_report(str(root / "reports"), str(ledger), str(odds_store), historical_clv=str(historical_file))
         assert acceleration["lab_only"] is True
+        same_day = oracle_ops.api_football_same_day_ops_report(str(root / "reports"), "2026-06-04", str(ledger))
+        assert same_day["allow_network"] is False
+        assert same_day["odds_valid"] == 0
+        valid_odds = oracle_ops.api_football_valid_odds_ops_report(str(root / "reports"), str(odds_store))
+        assert valid_odds["rows_read"] == 1
+        near_today = oracle_ops.near_close_today_ops_report(str(root / "reports"), str(ledger), str(root / "missing_sport_map.json"), "2026-06-01")
+        assert near_today["pending_today"] == 1
         assert oracle_ops.main(["--api-pre-match-jleague", "--ledger", str(ledger), "--snapshots", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--lifecycle", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--near-close-schedule", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
@@ -129,6 +136,9 @@ def main():
         assert oracle_ops.main(["--proof-dashboard", "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--evidence-acceleration", "--ledger", str(ledger), "--snapshots", str(odds_store), "--historical-clv-file", str(historical_file), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--api-football-results", "--date", "2026-06-03", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--api-football-same-day", "--date", "2026-06-04", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--api-football-valid-odds", "--odds-csv", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--near-close-today", "--date", "2026-06-01", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         matchday = oracle_ops.matchday_create_report("2026-06-01", str(root / "reports"))
         assert Path(matchday["output_dir"]).exists()
         matchday_status = oracle_ops.build_matchday_status(matchday["output_dir"])

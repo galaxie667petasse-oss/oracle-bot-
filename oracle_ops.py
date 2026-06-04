@@ -46,6 +46,9 @@ from external_evidence_catalog import build_catalog as build_external_catalog, w
 from historical_clv_backtester import build_backtest as build_historical_clv_backtest, write_html as write_historical_html, write_json as write_historical_json
 from near_close_batch_runner import run_batch as run_near_close_batch, write_html as write_near_batch_html, write_json as write_near_batch_json
 from proof_dashboard import build_dashboard as build_proof_dashboard, write_html as write_proof_html, write_json as write_proof_json
+from api_football_same_day_runner import run_same_day as run_api_football_same_day
+from api_football_valid_odds_selector import select_valid_odds as select_api_football_valid_odds, write_selection as write_api_selection, write_summary as write_api_selection_summary
+from near_close_today_helper import build_today_helper as build_near_close_today, write_json as write_near_today_json
 
 
 KEY_MODULES = [
@@ -107,6 +110,9 @@ KEY_MODULES = [
     "shadow_result_matcher.py",
     "near_close_batch_runner.py",
     "proof_dashboard.py",
+    "api_football_valid_odds_selector.py",
+    "api_football_same_day_runner.py",
+    "near_close_today_helper.py",
 ]
 
 
@@ -256,9 +262,34 @@ def proof_dashboard_report(reports_dir: str) -> Dict[str, Any]:
         historical_clv_path=_reports_path(reports_dir, "historical_clv_backtest.json"),
         quality_path=_reports_path(reports_dir, "shadow_quality_audit.json"),
         intake_path=_reports_path(reports_dir, "odds_intake_audit.json"),
+        same_day_path=_reports_path(reports_dir, "api_football_same_day_summary.json"),
+        near_close_today_path=_reports_path(reports_dir, "near_close_today.json"),
     )
     write_proof_json(report, _reports_path(reports_dir, "proof_dashboard.json"))
     write_proof_html(report, _reports_path(reports_dir, "proof_dashboard.html"))
+    return report
+
+
+def api_football_same_day_ops_report(reports_dir: str, date: str, ledger: str, apply: bool = False) -> Dict[str, Any]:
+    date = date or datetime.now().strftime("%Y-%m-%d")
+    report = run_api_football_same_day(date, output_dir=str(Path(reports_dir) / f"api_football_same_day_{date.replace('-', '_')}"), ledger=ledger, allow_network=False, apply=apply)
+    target = Path(_reports_path(reports_dir, "api_football_same_day_summary.json"))
+    target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    return report
+
+
+def api_football_valid_odds_ops_report(reports_dir: str, odds: str = "") -> Dict[str, Any]:
+    if not odds:
+        return {"available": False, "message": "--odds-csv requis pour selectionner des odds API-Football", "lab_only": True}
+    report = select_api_football_valid_odds(odds)
+    write_api_selection(report["selection"], _reports_path(reports_dir, "api_football_shadow_selection.csv"))
+    write_api_selection_summary(report, _reports_path(reports_dir, "api_football_shadow_selection_summary.json"))
+    return report
+
+
+def near_close_today_ops_report(reports_dir: str, ledger: str, sport_map: str, date: str = "") -> Dict[str, Any]:
+    report = build_near_close_today(ledger, sport_map=sport_map, date=date)
+    write_near_today_json(report, _reports_path(reports_dir, "near_close_today.json"))
     return report
 
 
@@ -660,6 +691,9 @@ def parse_args(argv=None):
     actions.add_argument("--proof-dashboard", action="store_true")
     actions.add_argument("--evidence-acceleration", action="store_true")
     actions.add_argument("--api-football-results", action="store_true")
+    actions.add_argument("--api-football-same-day", action="store_true")
+    actions.add_argument("--api-football-valid-odds", action="store_true")
+    actions.add_argument("--near-close-today", action="store_true")
     actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
@@ -667,6 +701,7 @@ def parse_args(argv=None):
     parser.add_argument("--snapshots", default=DEFAULT_ODDS_STORE)
     parser.add_argument("--historical-clv-file", default="")
     parser.add_argument("--sport-map", default="config/sport_key_map.example.json")
+    parser.add_argument("--odds-csv", default="")
     parser.add_argument("--apply", action="store_true", help="Applique les changements ledger pour odds-to-shadow/closing-match")
     parser.add_argument("--skip-benchmark", action="store_true")
     parser.add_argument("--skip-dashboard", action="store_true")
@@ -829,6 +864,12 @@ def main(argv=None) -> int:
                 "lab_only": True,
             }
             print_odds_report("api football results dry-run", payload)
+        elif args.api_football_same_day:
+            print_odds_report("api football same-day", api_football_same_day_ops_report(args.reports_dir, args.date, args.ledger, apply=False))
+        elif args.api_football_valid_odds:
+            print_odds_report("api football valid odds", api_football_valid_odds_ops_report(args.reports_dir, args.odds_csv))
+        elif args.near_close_today:
+            print_odds_report("near-close today", near_close_today_ops_report(args.reports_dir, args.ledger, args.sport_map, args.date))
         elif args.archive_tests:
             if not args.apply:
                 print_odds_report("archive tests dry-run", {"dry_run": True, "message": "Relancer avec --apply pour archiver et reset."})

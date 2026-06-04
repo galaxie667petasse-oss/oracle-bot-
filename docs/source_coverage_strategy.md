@@ -29,3 +29,15 @@ Evidence gate reste decisionnel.
 Le catalogue `external_evidence_catalog.py` complete cette strategie: il separe sources manuelles, APIs optionnelles et datasets historiques. Une source historique n'est exploitable que si `historical_odds_schema_detector.py` confirme des cotes opening/closing decimales plausibles.
 
 The Odds API et API-Football restent optionnels et sans reseau par defaut. Toute collecte reelle doit passer par `--allow-network` et ecrire dans `reports/`.
+
+## V9.2 Same-Day Source Coverage
+
+`source_coverage_report.py` peut lire le summary du runner same-day:
+
+```bash
+python source_coverage_report.py --same-day-summary reports/api_football_same_day_2026_06_04/summary.json --output reports/source_coverage_report.json --html reports/source_coverage_report.html
+```
+
+Champs utiles: `same_day_api_football_available`, `same_day_valid_odds_count`, `same_day_shadow_candidates`, `manual_required_reason`, `next_best_action`.
+
+Si API-Football ne donne aucune cote valide apres enrichment, le fallback reste la saisie manuelle Betclic ou une autre source fiable. Si des odds valides existent, elles servent seulement a creer des observations shadow limitees.

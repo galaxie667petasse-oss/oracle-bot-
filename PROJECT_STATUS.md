@@ -277,3 +277,26 @@ Limites maintenues:
 - preuve historique seule donne `historical_evidence_only`;
 - shadow live, CLV fiable, sample suffisant et gouvernance restent obligatoires;
 - aucun signal robuste active, aucun Telegram, aucun Railway.
+
+## V9.2 API-Football Odds Enrichment & Same-Day Shadow Intake
+
+Statut: en place en laboratoire local.
+
+Modules ajoutes ou renforces:
+
+- `api_football_odds_adapter.py` enrichit les odds via fixtures CSV/JSON, produit invalides, summary JSON/HTML et filtres `--valid-only`, `--market`, `--bookmaker`, `--one-side-per-event`.
+- `api_football_valid_odds_selector.py` selectionne quelques odds H2H valides pour observation shadow.
+- `api_football_same_day_runner.py` orchestre fixtures -> odds enrichies -> selection -> dry-run shadow.
+- `near_close_today_helper.py` liste les observations du jour en attente de near-close.
+- `shadow_result_matcher.py` matche aussi les resultats par `source_event_id`.
+- `source_coverage_report.py` et `proof_dashboard.py` affichent le statut same-day.
+
+Garde-fous:
+
+- aucun reseau sans `--allow-network`;
+- `--dry-run` bloque toute ecriture ledger;
+- les lignes sans equipes restent invalides;
+- near-close et taken odds restent separees;
+- aucune mise, aucun Telegram, aucun Railway, aucun fichier `data/` modifie.
+
+Objectif humain: tester 1 a 3 observations API-Football enrichies sur une journee, capturer la near-close manuellement ou via source fiable, puis relire `evidence_gate.py`.

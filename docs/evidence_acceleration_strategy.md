@@ -29,3 +29,15 @@ python report_runner.py --proof --skip-dashboard
 ```
 
 Cette commande ne lance pas de reseau et ne modifie pas `data/`.
+
+## V9.2 Same-Day Evidence Inputs
+
+Les odds API-Football enrichies peuvent accelerer la creation d'observations shadow, mais elles ne changent pas la politique de preuve:
+
+- une taken odds enrichie n'est pas une CLV;
+- une near-close doit etre capturee separement;
+- le resultat peut etre matche par `source_event_id`;
+- sample, CLV moyenne, ROI, drawdown et audit qualite restent obligatoires;
+- statut maximum avant preuve suffisante: observation ou watchlist.
+
+Le proof dashboard accepte `--same-day` et `--near-close-today` pour afficher ce qui a ete trouve aujourd'hui.

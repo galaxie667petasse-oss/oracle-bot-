@@ -921,3 +921,28 @@ python report_runner.py --proof --skip-dashboard
 ```
 
 Statut: laboratoire local, aucune mise, aucun Telegram, aucun Railway.
+
+## V9.2 API-Football Odds Enrichment & Same-Day Shadow Intake
+
+V9.2 rend API-Football plus utilisable quand l'endpoint odds fournit des fixture ids mais pas assez de contexte equipe. Le workflow enrichit les odds avec les fixtures du jour, isole les lignes invalides, selectionne seulement quelques H2H valides et simule l'ajout au shadow ledger.
+
+Modules:
+
+- `api_football_odds_adapter.py` : enrichment fixtures, invalid output, summary JSON/HTML, `--valid-only`, `--one-side-per-event`.
+- `api_football_valid_odds_selector.py` : selection H2H valide, non-live, non near-close, une issue par event par defaut.
+- `api_football_same_day_runner.py` : runner local fixtures -> odds -> selection -> shadow dry-run.
+- `near_close_today_helper.py` : commandes humaines pour capturer les near-close du jour.
+- `shadow_result_matcher.py` : matching direct par `source_event_id` quand API-Football fournit un fixture id.
+
+Le reseau reste bloque sauf `--allow-network` explicite. `--dry-run` garde le ledger intact. Les near-close ne sont jamais traitees comme taken odds. Le statut final reste observation shadow, preuve insuffisante tant que CLV reelle, resultats et sample significatif manquent.
+
+Commandes rapides:
+
+```bash
+python api_football_same_day_runner.py --date 2026-06-04 --dry-run
+python api_football_odds_adapter.py --from-fixture reports/api_football_odds_raw.json --fixtures-csv reports/api_football_fixtures.csv --valid-only --market h2h --output reports/api_football_odds_enriched.csv --summary-json reports/api_football_odds_summary.json
+python api_football_valid_odds_selector.py --odds reports/api_football_odds_enriched.csv --output reports/api_football_shadow_selection.csv --summary-json reports/api_football_shadow_selection_summary.json
+python odds_to_shadow.py --selection-csv reports/api_football_shadow_selection.csv --ledger reports/shadow_ledger.csv --dry-run
+python near_close_today_helper.py --ledger reports/shadow_ledger.csv --sport-map config/sport_key_map.example.json --date 2026-06-04
+python report_runner.py --same-day --date 2026-06-04 --skip-dashboard
+```
