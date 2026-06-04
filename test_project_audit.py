@@ -132,6 +132,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v9.0" in status
     assert "v9.1" in status
     assert "v9.2" in status
+    assert "v9.3" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -167,6 +168,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "api_football_matchday_probe.md").exists()
     assert (root / "docs" / "api_football_odds_enrichment.md").exists()
     assert (root / "docs" / "api_football_same_day_runner.md").exists()
+    assert (root / "docs" / "api_football_same_day_runner_fix.md").exists()
     assert (root / "docs" / "near_close_today_helper.md").exists()
     assert (root / "docs" / "manual_betclic_intake.md").exists()
     assert (root / "docs" / "active_sports_discovery.md").exists()

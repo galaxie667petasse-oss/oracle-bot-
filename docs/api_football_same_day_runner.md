@@ -32,3 +32,21 @@ Sorties dans `reports/`:
 - `summary.json/html`.
 
 Le mode `--apply` est volontairement separe. Le runner ne fait aucune mise, aucun Telegram, aucun Railway et ne modifie pas `data/`.
+
+## V9.3 Fix
+
+Le runner ne passe plus le filtre local `h2h` a l'endpoint odds. Il recupere d'abord les odds larges, enrichit avec `fixtures.csv`, ecrit `odds_enriched.csv`, puis lance `api_football_valid_odds_selector.py` sur ce CSV.
+
+Le mode debug affiche:
+
+- `odds_total_rows`;
+- `odds_valid_rows`;
+- `valid_h2h_rows`;
+- `valid_h2h_not_finished_rows`;
+- `valid_h2h_future_or_not_started_rows`;
+- les principales raisons si la selection est vide.
+
+```bash
+python api_football_same_day_runner.py --date YYYY-MM-DD --dry-run --debug
+python api_football_same_day_runner.py --date YYYY-MM-DD --allow-network --max-events 3 --debug
+```

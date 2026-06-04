@@ -73,12 +73,65 @@ def write_odds(path: Path):
     write_normalized_csv(rows, str(path))
 
 
+def write_status_odds(path: Path):
+    rows = normalize_odds_rows([
+        {
+            "captured_at": "2026-06-04T09:00:00",
+            "source": "api_football",
+            "source_event_id": "evt_ns",
+            "league": "Serie A",
+            "match_date": "2026-06-04",
+            "kickoff_time": "2026-06-04T18:00:00+00:00",
+            "home_team": "Parma",
+            "away_team": "Napoli",
+            "bookmaker": "Book A",
+            "market_type": "h2h",
+            "side": "home",
+            "odds": "2.10",
+            "raw_payload_ref": "fixture_id=evt_ns;status=NS",
+        },
+        {
+            "captured_at": "2026-06-04T09:00:00",
+            "source": "api_football",
+            "source_event_id": "evt_ft",
+            "league": "Serie A",
+            "match_date": "2026-06-04",
+            "kickoff_time": "2026-06-04T12:00:00+00:00",
+            "home_team": "Milan",
+            "away_team": "Inter",
+            "bookmaker": "Book A",
+            "market_type": "h2h",
+            "side": "away",
+            "odds": "2.50",
+            "raw_payload_ref": "fixture_id=evt_ft;status=FT",
+        },
+        {
+            "captured_at": "2026-06-04T09:00:00",
+            "source": "api_football",
+            "source_event_id": "evt_ns_draw",
+            "league": "Serie A",
+            "match_date": "2026-06-04",
+            "kickoff_time": "2026-06-04T20:00:00+00:00",
+            "home_team": "Roma",
+            "away_team": "Lazio",
+            "bookmaker": "Book A",
+            "market_type": "h2h",
+            "side": "draw",
+            "odds": "3.10",
+            "raw_payload_ref": "fixture_id=evt_ns_draw;status=NS",
+        },
+    ], source="api_football")
+    write_normalized_csv(rows, str(path))
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         odds = root / "reports" / "odds.csv"
         selected = root / "reports" / "selection.csv"
         summary = root / "reports" / "selection.json"
+        debug_summary = root / "reports" / "debug.json"
+        debug_html = root / "reports" / "debug.html"
         write_odds(odds)
 
         report = selector.select_valid_odds(str(odds), date_min="2026-06-04", prefer_side="away", max_events=5)
@@ -88,6 +141,8 @@ def main():
         assert report["selection"][0]["side"] == "away"
         assert report["rejection_reasons"]["draw exclu"] == 1
         assert report["rejection_reasons"]["near-close exclu comme taken odds"] == 1
+        assert report["debug"]["status_counts"]["missing"] == 4
+        assert report["debug"]["valid_h2h_rows"] == 4
 
         report_with_draw = selector.select_valid_odds(str(odds), date_min="2026-06-04", include_draw=True, max_events=5)
         assert report_with_draw["selected_rows"] == 2
@@ -101,7 +156,22 @@ def main():
             rows = list(csv.DictReader(fh))
         assert set(rows[0]).issuperset(set(ODDS_COLUMNS))
 
-        assert selector.main(["--odds", str(odds), "--output", str(selected), "--summary-json", str(summary), "--date-min", "2026-06-04", "--prefer-side", "home"]) == 0
+        assert selector.main(["--odds", str(odds), "--output", str(selected), "--summary-json", str(summary), "--debug-summary-json", str(debug_summary), "--html", str(debug_html), "--date-min", "2026-06-04", "--prefer-side", "home"]) == 0
+        assert debug_summary.exists() and debug_html.exists()
+
+        status_odds = root / "reports" / "status_odds.csv"
+        write_status_odds(status_odds)
+        status_report = selector.select_valid_odds(str(status_odds), date_min="2026-06-04", max_events=5)
+        assert status_report["debug"]["status_counts"]["NS"] == 2
+        assert status_report["debug"]["status_counts"]["FT"] == 1
+        assert status_report["debug"]["rejected_finished"] == 1
+        assert status_report["selected_rows"] == 1
+        assert status_report["selection"][0]["source_event_id"] == "evt_ns"
+        status_draw = selector.select_valid_odds(str(status_odds), date_min="2026-06-04", include_draw=True, max_events=5)
+        assert status_draw["selected_rows"] == 2
+        only_ft = selector.select_valid_odds(str(status_odds), date_min="2026-06-04", include_statuses="FT", allow_finished=False)
+        assert only_ft["selected_rows"] == 0
+        assert only_ft["rejection_reasons"]["match termine exclu"] == 1
 
     print("test_api_football_valid_odds_selector ok")
 

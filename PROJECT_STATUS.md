@@ -300,3 +300,24 @@ Garde-fous:
 - aucune mise, aucun Telegram, aucun Railway, aucun fichier `data/` modifie.
 
 Objectif humain: tester 1 a 3 observations API-Football enrichies sur une journee, capturer la near-close manuellement ou via source fiable, puis relire `evidence_gate.py`.
+
+## V9.3 API-Football Same-Day Runner Fix
+
+Statut: en place en laboratoire local.
+
+Diagnostic:
+
+- l'adapter odds fonctionnait car il recuperait les odds larges puis enrichissait avec les fixtures;
+- le runner same-day passait `h2h` a l'endpoint odds comme filtre API brut;
+- selon API-Football, ce filtre pouvait rendre 0 ligne exploitable;
+- le filtrage H2H doit etre local, apres `odds_enriched.csv`.
+
+Corrections:
+
+- `api_football_same_day_runner.py` recupere les odds larges, enrichit via fixtures, puis lance le selector local;
+- `api_football_valid_odds_selector.py` expose un debug status/rejets et n'ecrase pas les CSV sans statut;
+- `api_football_odds_debug_report.py` analyse un CSV enrichi existant;
+- `report_runner.py --same-day` produit le debug odds;
+- `oracle_ops.py --api-football-same-day-debug` lit un CSV enrichi local si present.
+
+Garde-fous maintenus: aucun reseau sans `--allow-network`, aucun Telegram/Railway, aucune mise, aucun fichier `data/` modifie, `lab_only=true`.

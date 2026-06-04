@@ -946,3 +946,16 @@ python odds_to_shadow.py --selection-csv reports/api_football_shadow_selection.c
 python near_close_today_helper.py --ledger reports/shadow_ledger.csv --sport-map config/sport_key_map.example.json --date 2026-06-04
 python report_runner.py --same-day --date 2026-06-04 --skip-dashboard
 ```
+
+## V9.3 API-Football Same-Day Runner Fix
+
+V9.3 corrige le cas ou le runner same-day affichait `Odds valides: 0` alors que l'adapter enrichi produisait des milliers de lignes valides. La cause: le runner passait le filtre local `h2h` a l'API comme `bet=h2h`; le bon chemin est de collecter/enrichir large, puis de filtrer localement dans le selector.
+
+Nouveautes:
+
+- `api_football_valid_odds_selector.py` a un debug summary status/rejets;
+- `api_football_odds_debug_report.py` lit tout CSV enrichi;
+- `api_football_same_day_runner.py --debug` affiche odds total, odds valides, H2H valides, H2H non termines et raisons si selection vide;
+- `oracle_ops.py --api-football-same-day-debug` et `report_runner.py --same-day` exposent le diagnostic.
+
+Le statut reste observation shadow uniquement. Les matchs FT/live/near-close sont exclus par defaut, et `--dry-run` garde le ledger intact.

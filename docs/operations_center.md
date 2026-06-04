@@ -184,3 +184,14 @@ python oracle_ops.py --near-close-today --date 2026-06-04
 ```
 
 Ces actions ne lancent aucun reseau par elles-memes. Elles servent a verifier l'etat de la journee, preparer une selection shadow limitee et lister les near-close a collecter humainement.
+
+## V9.3 Same-Day Debug
+
+Action locale ajoutee:
+
+```bash
+python oracle_ops.py --api-football-same-day-debug --date 2026-06-04
+python oracle_ops.py --api-football-same-day-debug --odds-csv reports/api_football_odds_enriched_2026-06-04.csv
+```
+
+Elle lit seulement un CSV enrichi existant. Si le fichier manque, elle affiche la commande `api_football_same_day_runner.py --dry-run --debug` a relancer.

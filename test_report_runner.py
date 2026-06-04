@@ -422,6 +422,7 @@ Understat xG Full Pipeline Quality Gate
         assert not any("dashboard_builder.py" in command.args for command in proof_cmds)
         same_cmds = same_day_commands(str(root / "reports" / "shadow_ledger.csv"), date="2026-06-04", skip_dashboard=True)
         assert any("api_football_same_day_runner.py" in command.args and "--dry-run" in command.args for command in same_cmds)
+        assert any("api_football_odds_debug_report.py" in command.args for command in same_cmds)
         assert any("near_close_today_helper.py" in command.args for command in same_cmds)
         assert any("source_coverage_report.py" in command.args and "--same-day-summary" in command.args for command in same_cmds)
         assert any("proof_dashboard.py" in command.args and "--same-day" in command.args for command in same_cmds)

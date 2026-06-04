@@ -19,3 +19,13 @@ Regles:
 - les selections restent `observation shadow` ou `watchlist`, jamais une activation.
 
 L'enrichissement aide a rendre les odds matchables au shadow ledger. Il ne prouve pas la CLV, ne remplace pas une closing odds reelle et ne valide aucune strategie.
+
+## V9.3 Debug
+
+Quand un CSV enrichi existe deja, le diagnostic rapide est:
+
+```bash
+python api_football_odds_debug_report.py --odds reports/api_football_odds_enriched_YYYY-MM-DD.csv --output reports/api_football_odds_debug_YYYY-MM-DD.json --html reports/api_football_odds_debug_YYYY-MM-DD.html
+```
+
+Le rapport montre les markets, sides, bookmakers, status, H2H valides et exemples de candidates. Il sert a comprendre pourquoi le selector retient 0, 1, 2 ou 3 observations.

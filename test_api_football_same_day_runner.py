@@ -22,6 +22,12 @@ def fixtures_payload():
     }
 
 
+def finished_fixtures_payload():
+    payload = fixtures_payload()
+    payload["response"][0]["fixture"]["status"]["short"] = "FT"
+    return payload
+
+
 def odds_payload():
     return {
         "response": [
@@ -67,16 +73,40 @@ def main():
             apply=False,
             max_events=1,
             prefer_side="home",
+            debug=True,
         )
         assert report["allow_network"] is False
         assert report["applied"] is False
         assert report["fixtures"] == 1
+        assert report["odds_total_rows"] == 2
         assert report["odds_valid"] == 2
+        assert report["valid_h2h_rows"] == 2
+        assert report["valid_h2h_not_finished_rows"] == 2
+        assert report["valid_h2h_future_or_not_started_rows"] == 2
         assert report["selection_rows"] == 1
         assert report["would_add_or_added"] == 1
         assert not ledger.exists()
         assert (out_dir / "summary.json").exists()
         assert (out_dir / "selection.csv").exists()
+        assert (out_dir / "odds_debug.json").exists()
+        assert (out_dir / "selection_debug.json").exists()
+
+        finished_fixtures = root / "finished_fixtures.json"
+        write_json(finished_fixtures, finished_fixtures_payload())
+        finished_report = runner.run_same_day(
+            "2026-06-04",
+            output_dir=str(root / "reports" / "finished"),
+            ledger=str(ledger),
+            fixtures_json=str(finished_fixtures),
+            odds_json=str(odds),
+            allow_network=False,
+            apply=False,
+            max_events=1,
+            debug=True,
+        )
+        assert finished_report["valid_h2h_rows"] == 2
+        assert finished_report["selection_rows"] == 0
+        assert finished_report["selection_zero_reasons"][0][0] == "match termine exclu"
 
         report_empty = runner.run_same_day("2026-06-04", output_dir=str(root / "reports" / "empty"), ledger=str(ledger), allow_network=False)
         assert report_empty["fixtures"] == 0

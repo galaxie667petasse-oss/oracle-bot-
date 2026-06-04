@@ -1173,3 +1173,28 @@ python proof_dashboard.py --shadow reports/shadow_clv_report.json --evidence rep
 ```
 
 Regles: aucune requete reseau sans `--allow-network`, aucune cle affichee, aucune ecriture dans `data/`, aucune mise, aucun Telegram/Railway.
+
+## V9.3 API-Football Same-Day Runner Fix
+
+Debug odds enrichies:
+
+```powershell
+python api_football_odds_debug_report.py --odds reports/api_football_odds_enriched_YYYY-MM-DD.csv --output reports/api_football_odds_debug_YYYY-MM-DD.json --html reports/api_football_odds_debug_YYYY-MM-DD.html
+```
+
+Selection avec debug:
+
+```powershell
+python api_football_valid_odds_selector.py --odds reports/api_football_odds_enriched_YYYY-MM-DD.csv --market h2h --max-events 3 --one-side-per-event --output reports/api_football_shadow_selection.csv --summary-json reports/api_football_shadow_selection_summary.json --debug-summary-json reports/api_football_valid_odds_debug.json
+```
+
+Runner same-day:
+
+```powershell
+python api_football_same_day_runner.py --date YYYY-MM-DD --dry-run --debug
+python api_football_same_day_runner.py --date YYYY-MM-DD --allow-network --max-events 3 --debug
+python oracle_ops.py --api-football-same-day-debug --date YYYY-MM-DD
+python report_runner.py --same-day --date YYYY-MM-DD --skip-dashboard
+```
+
+Regles: collecter large, enrichir avec fixtures, filtrer H2H localement, puis seulement simuler l'ajout shadow. Aucun reseau sans `--allow-network`.

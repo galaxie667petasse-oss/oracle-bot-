@@ -41,6 +41,7 @@ from the_odds_active_sports import build_report as build_active_sports_report, w
 from source_coverage_report import build_source_coverage_report, write_html as write_source_coverage_html, write_json as write_source_coverage_json
 from api_football_fixtures_adapter import normalize_fixtures_payload, write_csv as write_api_fixtures_csv
 from api_football_matchday_probe import build_probe_report, write_html as write_matchday_probe_html, write_json as write_matchday_probe_json
+from api_football_odds_debug_report import build_debug_report as build_api_odds_debug_report, write_html as write_api_odds_debug_html, write_json as write_api_odds_debug_json
 from manual_betclic_intake_helper import write_betclic_template
 from external_evidence_catalog import build_catalog as build_external_catalog, write_html as write_catalog_html, write_json as write_catalog_json
 from historical_clv_backtester import build_backtest as build_historical_clv_backtest, write_html as write_historical_html, write_json as write_historical_json
@@ -101,6 +102,7 @@ KEY_MODULES = [
     "source_coverage_report.py",
     "api_football_fixtures_adapter.py",
     "api_football_matchday_probe.py",
+    "api_football_odds_debug_report.py",
     "manual_betclic_intake_helper.py",
     "external_evidence_catalog.py",
     "historical_odds_schema_detector.py",
@@ -272,7 +274,7 @@ def proof_dashboard_report(reports_dir: str) -> Dict[str, Any]:
 
 def api_football_same_day_ops_report(reports_dir: str, date: str, ledger: str, apply: bool = False) -> Dict[str, Any]:
     date = date or datetime.now().strftime("%Y-%m-%d")
-    report = run_api_football_same_day(date, output_dir=str(Path(reports_dir) / f"api_football_same_day_{date.replace('-', '_')}"), ledger=ledger, allow_network=False, apply=apply)
+    report = run_api_football_same_day(date, output_dir=str(Path(reports_dir) / f"api_football_same_day_{date.replace('-', '_')}"), ledger=ledger, allow_network=False, apply=apply, debug=True)
     target = Path(_reports_path(reports_dir, "api_football_same_day_summary.json"))
     target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return report
@@ -284,6 +286,25 @@ def api_football_valid_odds_ops_report(reports_dir: str, odds: str = "") -> Dict
     report = select_api_football_valid_odds(odds)
     write_api_selection(report["selection"], _reports_path(reports_dir, "api_football_shadow_selection.csv"))
     write_api_selection_summary(report, _reports_path(reports_dir, "api_football_shadow_selection_summary.json"))
+    return report
+
+
+def api_football_same_day_debug_ops_report(reports_dir: str, odds: str = "", date: str = "") -> Dict[str, Any]:
+    date = date or datetime.now().strftime("%Y-%m-%d")
+    odds_path = odds or _reports_path(reports_dir, f"api_football_odds_enriched_{date}.csv")
+    if not Path(odds_path).exists():
+        return {
+            "available": False,
+            "odds": odds_path,
+            "message": "CSV odds enrichi absent: relancer api_football_odds_adapter.py ou api_football_same_day_runner.py --debug.",
+            "recommended_command": f"python api_football_same_day_runner.py --date {date} --dry-run --debug",
+            "lab_only": True,
+            "can_influence_picks": False,
+        }
+    report = build_api_odds_debug_report(odds_path)
+    write_api_odds_debug_json(report, _reports_path(reports_dir, "api_football_odds_debug.json"))
+    write_api_odds_debug_html(report, _reports_path(reports_dir, "api_football_odds_debug.html"))
+    report["available"] = True
     return report
 
 
@@ -692,6 +713,7 @@ def parse_args(argv=None):
     actions.add_argument("--evidence-acceleration", action="store_true")
     actions.add_argument("--api-football-results", action="store_true")
     actions.add_argument("--api-football-same-day", action="store_true")
+    actions.add_argument("--api-football-same-day-debug", action="store_true")
     actions.add_argument("--api-football-valid-odds", action="store_true")
     actions.add_argument("--near-close-today", action="store_true")
     actions.add_argument("--archive-tests", action="store_true")
@@ -866,6 +888,8 @@ def main(argv=None) -> int:
             print_odds_report("api football results dry-run", payload)
         elif args.api_football_same_day:
             print_odds_report("api football same-day", api_football_same_day_ops_report(args.reports_dir, args.date, args.ledger, apply=False))
+        elif args.api_football_same_day_debug:
+            print_odds_report("api football same-day debug", api_football_same_day_debug_ops_report(args.reports_dir, args.odds_csv, args.date))
         elif args.api_football_valid_odds:
             print_odds_report("api football valid odds", api_football_valid_odds_ops_report(args.reports_dir, args.odds_csv))
         elif args.near_close_today:
