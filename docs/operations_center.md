@@ -200,3 +200,16 @@ Elle lit seulement un CSV enrichi existant. Si le fichier manque, elle affiche l
 Les commandes `oracle_ops.py --next-days`, `--near-close-window`, `--post-match-results`, `--football-data-import`, `--subscription-evaluator` et `--daily-ops` ajoutent un centre de controle pour juin.
 
 Par defaut, ces actions restent en dry-run ou en lecture seule. Le reseau exige toujours une commande explicite avec `--allow-network` dans le runner concerne. L'apply ledger reste separe.
+## V9.5 Telegram read-only
+
+`oracle_ops.py` expose maintenant:
+
+```bash
+python oracle_ops.py --telegram-check
+python oracle_ops.py --telegram-preview
+python oracle_ops.py --telegram-daily
+python oracle_ops.py --telegram-results
+python oracle_ops.py --telegram-ops
+```
+
+Ces commandes restent en preview/dry-run par defaut. L'emission reelle demande `--allow-send` et une configuration locale valide. Telegram ne change pas la decision: evidence gate reste l'autorite, et les messages restent des observations shadow non validees.

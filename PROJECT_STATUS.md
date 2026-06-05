@@ -333,3 +333,14 @@ Statut: en place localement.
 - Daily operations runner: disponible en `--full-dry-run`.
 
 Evidence gate reste strict: CLV fiable, sample suffisant, resultats et gouvernance restent obligatoires. Aucun signal robuste n'est active.
+## V9.5 Telegram Read-Only Shadow Publisher
+
+Statut: en place localement.
+
+- `telegram_config.py` verifie la configuration sans afficher le token.
+- `telegram_message_formatter.py` produit des previews Markdown read-only.
+- `telegram_notifier.py` reste en dry-run par defaut et exige `--allow-send` pour toute emission.
+- `telegram_shadow_publisher.py`, `telegram_daily_reporter.py`, `telegram_result_reporter.py` et `telegram_ops_runner.py` couvrent les observations, near-close, resultats et phases quotidiennes.
+- Evidence gate/proof dashboard exposent `telegram_read_only_allowed=true` et `telegram_live_pick_allowed=false`.
+
+Conclusion: Telegram est autorise uniquement comme lecture privee du laboratoire. Aucun Railway, aucune mise, aucun pick automatique, aucun token commite.

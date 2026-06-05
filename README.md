@@ -971,3 +971,9 @@ V9.4 ajoute une couche operations pour ne plus dependre uniquement du scan `toda
 - `daily_operations_runner.py` regroupe matin / avant match / apres match en laboratoire local.
 
 Aucune activation Telegram, Railway, pick automatique ou mise n'est ajoutee.
+
+## V9.5 Telegram Read-Only Publisher
+
+V9.5 ajoute une couche Telegram privee en lecture seule pour publier les observations shadow du jour, les fenetres near-close a capturer et les resultats renseignes. Le mode reste laboratoire: dry-run par defaut, previews Markdown dans `reports/`, emission reelle uniquement avec `--allow-send`, token masque, et `can_influence_picks=false`.
+
+Telegram ne change pas la gouvernance. L'evidence gate reste l'autorite: CLV absente, sample insuffisant, resultats incomplets ou preuve statistique incomplete impliquent `non valide`. Les messages doivent parler d'observation shadow, watchlist, preuve insuffisante et aucune mise.

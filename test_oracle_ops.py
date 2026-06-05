@@ -26,6 +26,8 @@ def main():
         assert health["status"] == "OK"
         daily = oracle_ops.daily_checklist("2026-06-01")
         assert len(daily["checklist"]) >= 6
+        telegram_check = oracle_ops.telegram_check_report()
+        assert telegram_check["telegram_live_pick_allowed"] is False
 
         templates = oracle_ops.shadow_templates(str(ledger), str(root / "reports"))
         assert Path(templates["candidates"]).exists()
@@ -139,6 +141,10 @@ def main():
         assert "recommendation" in subscription
         daily_ops = oracle_ops.daily_ops_report(str(root / "reports"), "2026-06-05", str(ledger))
         assert daily_ops["full_dry_run"] is True
+        telegram_preview = oracle_ops.telegram_preview_report(str(root / "reports"), str(ledger))
+        assert Path(telegram_preview["preview"]).exists()
+        telegram_shadow = oracle_ops.telegram_shadow_report(str(root / "reports"), str(ledger), allow_send=False)
+        assert telegram_shadow["dry_run"] is True
         assert oracle_ops.main(["--api-pre-match-jleague", "--ledger", str(ledger), "--snapshots", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--lifecycle", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--near-close-schedule", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
@@ -166,6 +172,8 @@ def main():
         assert oracle_ops.main(["--football-data-import", "--football-data-csv", str(free_source), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--subscription-evaluator", "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--daily-ops", "--date", "2026-06-05", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--telegram-check", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--telegram-preview", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         matchday = oracle_ops.matchday_create_report("2026-06-01", str(root / "reports"))
         assert Path(matchday["output_dir"]).exists()
         matchday_status = oracle_ops.build_matchday_status(matchday["output_dir"])

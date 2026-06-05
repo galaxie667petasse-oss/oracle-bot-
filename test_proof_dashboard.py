@@ -25,7 +25,10 @@ def main():
         write_json(near_today, {"pending_today": 2, "commands": ["python api_football_odds_adapter.py --fixture-id 1 --allow-network"]})
         report = proof_dashboard.build_dashboard(str(shadow), str(evidence), historical_clv_path=str(historical), same_day_path=str(same_day), near_close_today_path=str(near_today))
         assert report["global_status"] == "insufficient_evidence"
+        assert report["telegram_read_only_allowed"] is True
+        assert report["telegram_live_pick_allowed"] is False
         assert report["sections"]["historical_clv"]["sample"] == 1200
+        assert report["sections"]["telegram_read_only"]["can_influence_picks"] is False
         assert report["sections"]["same_day_intake"]["valid_api_football_odds"] == 3
         assert report["sections"]["same_day_intake"]["near_close_pending_today"] == 2
         out = root / "reports" / "proof.json"

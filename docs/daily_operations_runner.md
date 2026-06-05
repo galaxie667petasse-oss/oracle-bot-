@@ -14,3 +14,13 @@ Commande:
 ```bash
 python daily_operations_runner.py --date YYYY-MM-DD --full-dry-run
 ```
+## Publication Telegram read-only
+
+Le runner quotidien V9.4 alimente V9.5 via `telegram_daily_reporter.py`.
+
+```bash
+python telegram_daily_reporter.py --date YYYY-MM-DD --dry-run
+python telegram_ops_runner.py --date YYYY-MM-DD --full-dry-run
+```
+
+Le mode Telegram ne lance pas de reseau de donnees sportives et n'envoie rien sans `--allow-send`.

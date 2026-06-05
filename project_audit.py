@@ -84,6 +84,17 @@ ESSENTIAL_FILES = [
     "football_data_free_importer.py",
     "data_subscription_evaluator.py",
     "daily_operations_runner.py",
+    "telegram_config.py",
+    "telegram_message_formatter.py",
+    "telegram_notifier.py",
+    "telegram_shadow_publisher.py",
+    "telegram_daily_reporter.py",
+    "telegram_result_reporter.py",
+    "telegram_ops_runner.py",
+    "config/telegram.example.env",
+    "docs/telegram_read_only_publisher.md",
+    "docs/telegram_message_policy.md",
+    "docs/telegram_setup.md",
     "near_close_today_helper.py",
     "manual_betclic_intake_helper.py",
     "external_evidence_catalog.py",
@@ -158,6 +169,12 @@ SENSITIVE_PATTERNS = [
     "reports/",
     "reports/odds_snapshots.csv",
     "reports/manual_odds_snapshot*.csv",
+    "reports/telegram_*.json",
+    "reports/telegram_*.jsonl",
+    "reports/telegram_*.md",
+    "telegram_send_log.jsonl",
+    "config/telegram.env",
+    "config/telegram.local.env",
     "config/odds_sources.json",
     "config/sport_key_map.local.json",
     "*.env",
@@ -224,6 +241,13 @@ MAIN_TESTS = [
     "test_football_data_free_importer.py",
     "test_data_subscription_evaluator.py",
     "test_daily_operations_runner.py",
+    "test_telegram_config.py",
+    "test_telegram_message_formatter.py",
+    "test_telegram_notifier.py",
+    "test_telegram_shadow_publisher.py",
+    "test_telegram_daily_reporter.py",
+    "test_telegram_result_reporter.py",
+    "test_telegram_ops_runner.py",
     "test_near_close_today_helper.py",
     "test_manual_betclic_intake_helper.py",
     "test_external_evidence_catalog.py",
@@ -331,6 +355,13 @@ IMPORT_MODULES = [
     "football_data_free_importer",
     "data_subscription_evaluator",
     "daily_operations_runner",
+    "telegram_config",
+    "telegram_message_formatter",
+    "telegram_notifier",
+    "telegram_shadow_publisher",
+    "telegram_daily_reporter",
+    "telegram_result_reporter",
+    "telegram_ops_runner",
     "near_close_today_helper",
     "manual_betclic_intake_helper",
     "external_evidence_catalog",
@@ -550,6 +581,7 @@ def check_sensitive_tracking(root: Path, result: AuditResult, use_git: bool = Tr
     except Exception as exc:
         result.add_warning(f"Impossible de verifier les fichiers trackes par git: {exc}")
         return
+    tracked = [item for item in tracked if not item.endswith(".example.env")]
     if tracked:
         result.add_error("Fichiers sensibles suivis par git: " + ", ".join(tracked))
     else:
@@ -566,6 +598,7 @@ def check_odds_secret_hygiene(root: Path, result: AuditResult, use_git: bool = T
     except Exception as exc:
         result.add_warning(f"Impossible de verifier les secrets odds par git: {exc}")
         return
+    tracked_config = [item for item in tracked_config if not item.endswith(".example.env")]
     if tracked_config:
         result.add_error("Fichiers odds/secrets suivis par git: " + ", ".join(tracked_config))
     else:
@@ -684,6 +717,74 @@ def check_telegram_guard(root: Path, result: AuditResult) -> None:
         result.add_warning(f"Impossible d'inspecter report_runner: {exc}")
 
 
+def check_telegram_read_only_release(root: Path, result: AuditResult, use_git: bool = True) -> None:
+    modules = [
+        "telegram_config.py",
+        "telegram_message_formatter.py",
+        "telegram_notifier.py",
+        "telegram_shadow_publisher.py",
+        "telegram_daily_reporter.py",
+        "telegram_result_reporter.py",
+        "telegram_ops_runner.py",
+    ]
+    docs = [
+        "docs/telegram_read_only_publisher.md",
+        "docs/telegram_message_policy.md",
+        "docs/telegram_setup.md",
+    ]
+    tests = [
+        "test_telegram_config.py",
+        "test_telegram_message_formatter.py",
+        "test_telegram_notifier.py",
+        "test_telegram_shadow_publisher.py",
+        "test_telegram_daily_reporter.py",
+        "test_telegram_result_reporter.py",
+        "test_telegram_ops_runner.py",
+    ]
+    missing = [name for name in modules + docs + tests if not (root / name).exists()]
+    if missing:
+        result.add_error("Release Telegram read-only incomplete: " + ", ".join(missing))
+    else:
+        result.add_ok("Modules, docs et tests Telegram read-only presents.")
+    notifier = _read_text(root / "telegram_notifier.py")
+    ops_runner = _read_text(root / "telegram_ops_runner.py")
+    if notifier.strip() == "# fichier test" and ops_runner.strip() == "# fichier test":
+        result.add_ok("Telegram read-only stub present pour test minimal.")
+        return
+    if "--allow-send" not in notifier or "--allow-send" not in ops_runner:
+        result.add_error("Telegram read-only: --allow-send absent du verrou d'envoi.")
+    else:
+        result.add_ok("L'envoi Telegram reel exige --allow-send.")
+    if "urllib.request.urlopen" in notifier and "allow_send" in notifier:
+        result.add_ok("Le reseau Telegram est contenu dans telegram_notifier.py et garde par allow_send.")
+    else:
+        result.add_error("Telegram notifier sans garde reseau claire.")
+    if use_git:
+        try:
+            tracked_files = _git_ls_files(root, ["*.py", "*.md", "*.json", "*.txt", "config/*"])
+        except Exception as exc:
+            result.add_warning(f"Impossible de verifier les secrets Telegram par git: {exc}")
+            tracked_files = []
+        risky = []
+        for rel in tracked_files:
+            text = _read_text(root / rel)
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("TELEGRAM_BOT_TOKEN=") and stripped != "TELEGRAM_BOT_TOKEN=":
+                    risky.append(rel)
+                if stripped.startswith("TELEGRAM_CHAT_ID=") and stripped != "TELEGRAM_CHAT_ID=":
+                    risky.append(rel)
+        if risky:
+            result.add_error("Secret Telegram probable dans fichiers suivis: " + ", ".join(sorted(set(risky))))
+        else:
+            result.add_ok("Aucun token/chat_id Telegram reel detecte dans les fichiers suivis.")
+    policy = _read_text(root / "telegram_message_formatter.py").lower()
+    if "conseil de pari" in policy and "forbidden_terms" in policy:
+        result.add_ok("La policy formatter bloque les formulations Telegram interdites.")
+    else:
+        result.add_warning("Policy Telegram: verifier manuellement les termes interdits.")
+
+
 def check_dependencies(root: Path, result: AuditResult) -> None:
     requirements = _read_text(root / "requirements.txt").lower()
     docs = (_read_text(root / "README.md") + "\n" + _read_text(root / "COMMANDS.md")).lower()
@@ -743,6 +844,7 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     if check_import_modules:
         check_imports(result)
     check_telegram_guard(root, result)
+    check_telegram_read_only_release(root, result, use_git=use_git)
     check_dependencies(root, result)
     check_docs(root, result)
     result.add_recommendation("Conserver le bot en mode analyse prudente tant qu'aucun signal robuste n'est valide en test 2024+.")

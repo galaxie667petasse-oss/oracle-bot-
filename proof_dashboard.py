@@ -137,6 +137,19 @@ def build_dashboard(
             "recommendation": subscription.get("recommendation") or subscription.get("subscription_recommendation"),
             "message": subscription.get("message"),
         },
+        "telegram_read_only": {
+            "available": True,
+            "telegram_read_only_allowed": True,
+            "telegram_live_pick_allowed": False,
+            "lab_only": True,
+            "can_influence_picks": False,
+            "message_policy": [
+                "observation shadow",
+                "non valide",
+                "preuve insuffisante",
+                "aucune mise",
+            ],
+        },
     }
     if next_days and not next_days.get("selected_total"):
         blockers.append("next-days sans selection")
@@ -161,6 +174,8 @@ def build_dashboard(
         ],
         "lab_only": True,
         "can_influence_picks": False,
+        "telegram_read_only_allowed": True,
+        "telegram_live_pick_allowed": False,
         "message": "Proof dashboard local: preuve insuffisante tant que CLV/sample live restent faibles.",
     }
 

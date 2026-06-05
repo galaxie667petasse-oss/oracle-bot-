@@ -284,7 +284,8 @@ def build_evidence_gate(
         status = "insufficient_evidence"
     if status == "ready_for_deep_review":
         next_steps.append("Effectuer une revue humaine complete avant toute decision")
-    next_steps.append("Ne pas activer Telegram")
+    next_steps.append("Telegram read-only possible uniquement comme lecture laboratoire")
+    next_steps.append("Ne pas activer Telegram live agressif")
     next_steps.append("Ne pas creer de mise automatique")
     seen_blockers = []
     for item in blockers:
@@ -313,6 +314,15 @@ def build_evidence_gate(
         "warnings": sorted(set(warnings)),
         "strengths": sorted(set(strengths)),
         "required_next_steps": seen_steps,
+        "telegram_read_only_allowed": True,
+        "telegram_live_pick_allowed": False,
+        "telegram_policy": {
+            "requires_observation_shadow_wording": True,
+            "no_staking": True,
+            "no_auto_pick": True,
+            "can_influence_picks": False,
+            "lab_only": True,
+        },
         "source_reports": {
             "shadow_report": shadow_report_path or None,
             "quality_audit": quality_audit_path or None,

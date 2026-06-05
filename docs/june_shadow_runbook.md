@@ -263,3 +263,24 @@ python post_match_results_runner.py --ledger reports/shadow_ledger.csv --dry-run
 ```
 
 Regle: aucune conclusion avant CLV fiable, resultats, sample significatif et revue humaine.
+## V9.5 Routine Telegram read-only
+
+Matin:
+
+```bash
+python telegram_ops_runner.py --date YYYY-MM-DD --full-dry-run
+```
+
+Avant match:
+
+```bash
+python telegram_ops_runner.py --date YYYY-MM-DD --pre-close --dry-run
+```
+
+Apres match:
+
+```bash
+python telegram_ops_runner.py --date YYYY-MM-DD --post-match --dry-run
+```
+
+Apres verification humaine des previews et seulement si la configuration locale est prete, ajouter `--allow-send`. Telegram sert a lire les observations shadow, pas a produire une decision de mise.

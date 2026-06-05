@@ -109,6 +109,7 @@ def test_release_candidate_docs_exist_and_have_sections():
         "promotion policy",
         "decision policy",
         "telegram",
+        "telegram read-only",
         "railway plus tard",
         "securite",
         "commandes principales",
@@ -133,6 +134,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v9.1" in status
     assert "v9.2" in status
     assert "v9.3" in status
+    assert "v9.5" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -183,6 +185,9 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "football_data_free_importer.md").exists()
     assert (root / "docs" / "data_subscription_evaluator.md").exists()
     assert (root / "docs" / "daily_operations_runner.md").exists()
+    assert (root / "docs" / "telegram_read_only_publisher.md").exists()
+    assert (root / "docs" / "telegram_message_policy.md").exists()
+    assert (root / "docs" / "telegram_setup.md").exists()
 
 
 def main():

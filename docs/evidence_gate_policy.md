@@ -93,3 +93,11 @@ Un pending closing futur en pre-match reste une insuffisance normale, pas une pr
 Nouveau statut possible: `historical_evidence_only`. Il signifie qu'une preuve historique existe, mais que la preuve live shadow reste insuffisante. Ce statut ne permet aucune activation automatique.
 
 Regles maintenues: sample shadow < 1000, CLV absente, CLV moyenne <= 0, ROI <= 0 ou ledger de mauvaise qualite bloquent la promotion.
+## Telegram read-only
+
+V9.5 ajoute deux champs de gouvernance:
+
+- `telegram_read_only_allowed=true` pour autoriser une lecture privee du laboratoire ;
+- `telegram_live_pick_allowed=false` pour interdire toute activation de signal via Telegram.
+
+Un message Telegram ne peut pas lever les blockers. Si CLV, sample, resultats, calibration ou multiple testing sont insuffisants, le statut reste `non valide`.

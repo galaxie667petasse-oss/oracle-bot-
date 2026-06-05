@@ -1088,6 +1088,58 @@ def daily_ops_commands(
     return commands
 
 
+def telegram_commands(
+    ledger: str = "reports/shadow_ledger.csv",
+    date: str = "",
+    skip_dashboard: bool = False,
+) -> List[ReportCommand]:
+    active_date = date or datetime.now().strftime("%Y-%m-%d")
+    commands = [
+        ReportCommand("Telegram config check", "telegram_config.txt", ["telegram_config.py", "--check"], timeout=120),
+        ReportCommand(
+            "Telegram shadow preview",
+            "telegram_shadow_preview.txt",
+            ["telegram_message_formatter.py", "--ledger", ledger, "--output", "{report_dir}/telegram_preview.md"],
+            timeout=120,
+        ),
+        ReportCommand(
+            "Telegram daily reporter dry-run",
+            "telegram_daily_reporter.txt",
+            [
+                "telegram_daily_reporter.py",
+                "--date",
+                active_date,
+                "--ledger",
+                ledger,
+                "--reports-dir",
+                "{report_dir}/telegram_daily",
+                "--output",
+                "{report_dir}/telegram_daily_preview.md",
+                "--dry-run",
+            ],
+            timeout=900,
+        ),
+        ReportCommand(
+            "Telegram result reporter dry-run",
+            "telegram_result_reporter.txt",
+            [
+                "telegram_result_reporter.py",
+                "--ledger",
+                ledger,
+                "--evidence",
+                "{report_dir}/evidence_gate.json",
+                "--output",
+                "{report_dir}/telegram_results_preview.md",
+                "--dry-run",
+            ],
+            timeout=300,
+        ),
+    ]
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard Telegram", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
 def subscription_commands(skip_dashboard: bool = False) -> List[ReportCommand]:
     commands = [
         ReportCommand(
@@ -1724,6 +1776,8 @@ def command_set(mode: str) -> List[ReportCommand]:
         return same_day_commands()
     if mode == "daily-ops":
         return daily_ops_commands()
+    if mode == "telegram":
+        return telegram_commands()
     if mode == "subscription":
         return subscription_commands()
     if mode == "free-historical":
@@ -1855,6 +1909,7 @@ def parse_args(argv=None):
     mode.add_argument("--proof", action="store_true", help="Lance les rapports evidence acceleration V9.1 sans reseau")
     mode.add_argument("--same-day", action="store_true", help="Lance le workflow same-day V9.2 sans reseau")
     mode.add_argument("--daily-ops", action="store_true", help="Lance le runbook operations quotidien V9.4 sans reseau")
+    mode.add_argument("--telegram", action="store_true", help="Lance les previews Telegram read-only sans envoi")
     mode.add_argument("--subscription", action="store_true", help="Lance l'evaluateur quotas/abonnements data V9.4")
     mode.add_argument("--free-historical", action="store_true", help="Lance l'import Football-Data gratuit V9.4 en laboratoire")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
@@ -1905,6 +1960,7 @@ def main(argv=None) -> None:
         else "proof" if args.proof
         else "same-day" if args.same_day
         else "daily-ops" if args.daily_ops
+        else "telegram" if args.telegram
         else "subscription" if args.subscription
         else "free-historical" if args.free_historical
         else "big5-xg" if args.big5_xg
@@ -2030,6 +2086,12 @@ def main(argv=None) -> None:
         )
     elif mode == "daily-ops":
         commands = daily_ops_commands(
+            ledger=args.ledger,
+            date=args.date,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "telegram":
+        commands = telegram_commands(
             ledger=args.ledger,
             date=args.date,
             skip_dashboard=args.skip_dashboard,

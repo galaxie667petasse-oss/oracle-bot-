@@ -12,5 +12,12 @@ __pycache__/
 venv/
 .env
 *.env
+!config/telegram.example.env
+config/telegram.env
+config/telegram.local.env
 config/odds_sources.json
 config/sport_key_map.local.json
+reports/telegram_*.json
+reports/telegram_*.jsonl
+reports/telegram_*.md
+telegram_send_log.jsonl

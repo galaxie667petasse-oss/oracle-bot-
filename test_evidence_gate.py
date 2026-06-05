@@ -15,6 +15,8 @@ def main():
         root = Path(tmp)
         empty = evidence_gate.build_evidence_gate()
         assert empty["global_status"] == "not_started"
+        assert empty["telegram_read_only_allowed"] is True
+        assert empty["telegram_live_pick_allowed"] is False
 
         shadow = root / "reports" / "shadow.json"
         quality = root / "reports" / "quality.json"
@@ -39,6 +41,7 @@ def main():
         write_json(shadow, {"signals_total": 1000, "sample_size": 1000, "clv_coverage": 90.0, "clv_mean": 0.01, "roi": 4.0, "verdict": "deep_analysis_candidate"})
         deep = evidence_gate.build_evidence_gate(str(shadow), str(quality))
         assert deep["global_status"] == "ready_for_deep_review"
+        assert deep["telegram_policy"]["can_influence_picks"] is False
 
         write_json(big5, {"global": {"ready_for_big5_conclusion": True, "leagues_sample_ge_1000": 0, "leagues_clv_available": 0, "leagues_xg_improves_brier": 4}})
         write_json(clv, {"clv_calculable": False, "clv_calculable_now": False})

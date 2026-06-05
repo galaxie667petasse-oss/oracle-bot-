@@ -56,6 +56,12 @@ from post_match_results_runner import run_post_match_results
 from football_data_free_importer import build_import as build_football_data_import
 from data_subscription_evaluator import build_evaluation as build_subscription_evaluation, write_html as write_subscription_html, write_json as write_subscription_json
 from daily_operations_runner import run_daily_operations
+from telegram_config import load_telegram_config, validate_config as validate_telegram_config
+from telegram_daily_reporter import run_daily_reporter
+from telegram_message_formatter import format_ledger_preview, write_text as write_telegram_text
+from telegram_result_reporter import publish_results as publish_telegram_results
+from telegram_shadow_publisher import publish_shadow_observations as publish_telegram_shadow
+from telegram_ops_runner import run_telegram_ops
 
 
 KEY_MODULES = [
@@ -127,6 +133,13 @@ KEY_MODULES = [
     "football_data_free_importer.py",
     "data_subscription_evaluator.py",
     "daily_operations_runner.py",
+    "telegram_config.py",
+    "telegram_message_formatter.py",
+    "telegram_notifier.py",
+    "telegram_shadow_publisher.py",
+    "telegram_daily_reporter.py",
+    "telegram_result_reporter.py",
+    "telegram_ops_runner.py",
 ]
 
 
@@ -387,6 +400,72 @@ def daily_ops_report(reports_dir: str, date: str, ledger: str) -> Dict[str, Any]
         reports_dir=_reports_path(reports_dir, "daily_operations"),
         ledger=ledger,
         full_dry_run=True,
+    )
+
+
+def telegram_check_report() -> Dict[str, Any]:
+    report = validate_telegram_config(load_telegram_config())
+    report["mode"] = "read_only"
+    report["telegram_live_pick_allowed"] = False
+    return report
+
+
+def telegram_preview_report(reports_dir: str, ledger: str) -> Dict[str, Any]:
+    text = format_ledger_preview(ledger, limit=10)
+    path = write_telegram_text(text, _reports_path(reports_dir, "telegram_preview.md"))
+    return {
+        "preview": str(path),
+        "mode": "read_only",
+        "lab_only": True,
+        "can_influence_picks": False,
+    }
+
+
+def telegram_daily_report(reports_dir: str, date: str, ledger: str, allow_send: bool = False) -> Dict[str, Any]:
+    return run_daily_reporter(
+        date=date or datetime.now().strftime("%Y-%m-%d"),
+        ledger=ledger,
+        reports_dir=_reports_path(reports_dir, "telegram_daily"),
+        output=_reports_path(reports_dir, "telegram_daily_preview.md"),
+        allow_send=allow_send,
+        dry_run=not allow_send,
+    )
+
+
+def telegram_results_report(reports_dir: str, ledger: str, allow_send: bool = False) -> Dict[str, Any]:
+    return publish_telegram_results(
+        ledger=ledger,
+        evidence=_reports_path(reports_dir, "evidence_gate.json"),
+        output=_reports_path(reports_dir, "telegram_results_preview.md"),
+        tracking=_reports_path(reports_dir, "telegram_published_results.json"),
+        only_updated=True,
+        allow_send=allow_send,
+        dry_run=not allow_send,
+    )
+
+
+def telegram_shadow_report(reports_dir: str, ledger: str, allow_send: bool = False) -> Dict[str, Any]:
+    return publish_telegram_shadow(
+        ledger=ledger,
+        output=_reports_path(reports_dir, "telegram_shadow_preview.md"),
+        tracking=_reports_path(reports_dir, "telegram_published_observations.json"),
+        only_new=True,
+        allow_send=allow_send,
+        dry_run=not allow_send,
+    )
+
+
+def telegram_ops_report(reports_dir: str, date: str, ledger: str, allow_send: bool = False) -> Dict[str, Any]:
+    return run_telegram_ops(
+        date=date or datetime.now().strftime("%Y-%m-%d"),
+        ledger=ledger,
+        reports_dir=_reports_path(reports_dir, "telegram_ops"),
+        full_dry_run=not allow_send,
+        morning=allow_send,
+        pre_close=allow_send,
+        post_match=allow_send,
+        allow_send=allow_send,
+        dry_run=not allow_send,
     )
 
 
@@ -798,6 +877,11 @@ def parse_args(argv=None):
     actions.add_argument("--football-data-import", action="store_true")
     actions.add_argument("--subscription-evaluator", action="store_true")
     actions.add_argument("--daily-ops", action="store_true")
+    actions.add_argument("--telegram-check", action="store_true")
+    actions.add_argument("--telegram-preview", action="store_true")
+    actions.add_argument("--telegram-daily", action="store_true")
+    actions.add_argument("--telegram-results", action="store_true")
+    actions.add_argument("--telegram-ops", action="store_true")
     actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
@@ -808,6 +892,7 @@ def parse_args(argv=None):
     parser.add_argument("--odds-csv", default="")
     parser.add_argument("--football-data-csv", default="")
     parser.add_argument("--apply", action="store_true", help="Applique les changements ledger pour odds-to-shadow/closing-match")
+    parser.add_argument("--allow-send", action="store_true", help="Autorise explicitement l'envoi Telegram read-only")
     parser.add_argument("--skip-benchmark", action="store_true")
     parser.add_argument("--skip-dashboard", action="store_true")
     parser.add_argument("--date", default="")
@@ -989,6 +1074,16 @@ def main(argv=None) -> int:
             print_odds_report("subscription evaluator", subscription_evaluator_ops_report(args.reports_dir))
         elif args.daily_ops:
             print_odds_report("daily ops", daily_ops_report(args.reports_dir, args.date, args.ledger))
+        elif args.telegram_check:
+            print_odds_report("telegram check", telegram_check_report())
+        elif args.telegram_preview:
+            print_odds_report("telegram preview", telegram_preview_report(args.reports_dir, args.ledger))
+        elif args.telegram_daily:
+            print_odds_report("telegram daily", telegram_daily_report(args.reports_dir, args.date, args.ledger, allow_send=args.allow_send))
+        elif args.telegram_results:
+            print_odds_report("telegram results", telegram_results_report(args.reports_dir, args.ledger, allow_send=args.allow_send))
+        elif args.telegram_ops:
+            print_odds_report("telegram ops", telegram_ops_report(args.reports_dir, args.date, args.ledger, allow_send=args.allow_send))
         elif args.archive_tests:
             if not args.apply:
                 print_odds_report("archive tests dry-run", {"dry_run": True, "message": "Relancer avec --apply pour archiver et reset."})

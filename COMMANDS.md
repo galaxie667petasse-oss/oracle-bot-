@@ -1245,3 +1245,37 @@ python oracle_ops.py --post-match-results
 python oracle_ops.py --subscription-evaluator
 python oracle_ops.py --daily-ops --date YYYY-MM-DD
 ```
+## V9.5 Telegram Read-Only Publisher
+
+Configuration:
+
+```bash
+python telegram_config.py --check
+python telegram_config.py --show-safe
+```
+
+Preview:
+
+```bash
+python telegram_daily_reporter.py --date YYYY-MM-DD --dry-run
+python telegram_shadow_publisher.py --ledger reports/shadow_ledger.csv --dry-run
+python telegram_result_reporter.py --ledger reports/shadow_ledger.csv --dry-run
+```
+
+Emission reelle explicite apres verification humaine:
+
+```bash
+python telegram_daily_reporter.py --date YYYY-MM-DD --allow-send
+python telegram_shadow_publisher.py --ledger reports/shadow_ledger.csv --only-new --allow-send
+python telegram_result_reporter.py --ledger reports/shadow_ledger.csv --only-updated --allow-send
+```
+
+Ops:
+
+```bash
+python telegram_ops_runner.py --date YYYY-MM-DD --full-dry-run
+python telegram_ops_runner.py --date YYYY-MM-DD --morning --allow-send
+python telegram_ops_runner.py --date YYYY-MM-DD --pre-close --allow-send
+python telegram_ops_runner.py --date YYYY-MM-DD --post-match --allow-send
+python report_runner.py --telegram --skip-dashboard
+```
