@@ -41,3 +41,12 @@ Les odds API-Football enrichies peuvent accelerer la creation d'observations sha
 - statut maximum avant preuve suffisante: observation ou watchlist.
 
 Le proof dashboard accepte `--same-day` et `--near-close-today` pour afficher ce qui a ete trouve aujourd'hui.
+## V9.4
+
+L'acceleration de preuve passe par trois boucles:
+
+1. collecter des observations futures via next-days;
+2. capturer near-close dans la bonne fenetre;
+3. importer les resultats post-match.
+
+Les donnees Football-Data gratuites peuvent accelerer les tests ROI historiques, mais pas la CLV si aucune closing explicite plausible n'est presente.

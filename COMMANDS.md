@@ -1198,3 +1198,50 @@ python report_runner.py --same-day --date YYYY-MM-DD --skip-dashboard
 ```
 
 Regles: collecter large, enrichir avec fixtures, filtrer H2H localement, puis seulement simuler l'ajout shadow. Aucun reseau sans `--allow-network`.
+## V9.4 Evidence Operations Automation
+
+Scanner les prochains jours API-Football:
+
+```bash
+python api_football_next_days_runner.py --start-date YYYY-MM-DD --days 3 --allow-network --max-events-per-day 3
+```
+
+Planifier les captures near-close:
+
+```bash
+python near_close_window_planner.py --ledger reports/shadow_ledger.csv --hours-before 2
+```
+
+Lire les resultats post-match:
+
+```bash
+python post_match_results_runner.py --ledger reports/shadow_ledger.csv --allow-network --dates-from-ledger --dry-run
+```
+
+Importer un CSV Football-Data gratuit en laboratoire:
+
+```bash
+python football_data_free_importer.py --csv external_data/football_data/E0.csv --output reports/football_data_normalized.csv --summary-json reports/football_data_import_summary.json --html reports/football_data_import_summary.html
+```
+
+Evaluer les quotas et abonnements data:
+
+```bash
+python data_subscription_evaluator.py --usage-reports reports --output reports/data_subscription_evaluator.json --html reports/data_subscription_evaluator.html
+```
+
+Runbook quotidien complet sans reseau:
+
+```bash
+python daily_operations_runner.py --date YYYY-MM-DD --full-dry-run
+```
+
+Operations Center V9.4:
+
+```bash
+python oracle_ops.py --next-days --date YYYY-MM-DD
+python oracle_ops.py --near-close-window
+python oracle_ops.py --post-match-results
+python oracle_ops.py --subscription-evaluator
+python oracle_ops.py --daily-ops --date YYYY-MM-DD
+```

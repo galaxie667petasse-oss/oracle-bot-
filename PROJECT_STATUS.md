@@ -321,3 +321,15 @@ Corrections:
 - `oracle_ops.py --api-football-same-day-debug` lit un CSV enrichi local si present.
 
 Garde-fous maintenus: aucun reseau sans `--allow-network`, aucun Telegram/Railway, aucune mise, aucun fichier `data/` modifie, `lab_only=true`.
+## V9.4 Evidence Operations Automation
+
+Statut: en place localement.
+
+- Scanner next-days API-Football: disponible, reseau bloque par defaut.
+- Planner near-close: disponible, lit le ledger shadow.
+- Runner resultats post-match: disponible, applique seulement avec `--apply`.
+- Import Football-Data gratuit: disponible, ne modifie pas `data/`, ne calcule pas de CLV sans closing explicite plausible.
+- Evaluateur abonnement/quota: disponible, recommande la couverture seulement, jamais une preuve d'edge.
+- Daily operations runner: disponible en `--full-dry-run`.
+
+Evidence gate reste strict: CLV fiable, sample suffisant, resultats et gouvernance restent obligatoires. Aucun signal robuste n'est active.

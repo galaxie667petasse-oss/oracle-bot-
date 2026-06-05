@@ -195,3 +195,8 @@ python oracle_ops.py --api-football-same-day-debug --odds-csv reports/api_footba
 ```
 
 Elle lit seulement un CSV enrichi existant. Si le fichier manque, elle affiche la commande `api_football_same_day_runner.py --dry-run --debug` a relancer.
+## V9.4 Operations Automation
+
+Les commandes `oracle_ops.py --next-days`, `--near-close-window`, `--post-match-results`, `--football-data-import`, `--subscription-evaluator` et `--daily-ops` ajoutent un centre de controle pour juin.
+
+Par defaut, ces actions restent en dry-run ou en lecture seule. Le reseau exige toujours une commande explicite avec `--allow-network` dans le runner concerne. L'apply ledger reste separe.

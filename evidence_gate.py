@@ -44,6 +44,11 @@ def build_evidence_gate(
     lifecycle_path: str = "",
     historical_clv_path: str = "",
     proof_dashboard_path: str = "",
+    next_days_path: str = "",
+    near_close_window_path: str = "",
+    post_match_results_path: str = "",
+    football_data_import_path: str = "",
+    subscription_evaluator_path: str = "",
 ) -> Dict[str, Any]:
     shadow = read_json(shadow_report_path)
     quality = read_json(quality_audit_path)
@@ -57,11 +62,16 @@ def build_evidence_gate(
     lifecycle = read_json(lifecycle_path)
     historical_clv = read_json(historical_clv_path)
     proof_dashboard = read_json(proof_dashboard_path)
+    next_days = read_json(next_days_path)
+    near_close_window = read_json(near_close_window_path)
+    post_match_results = read_json(post_match_results_path)
+    football_data_import = read_json(football_data_import_path)
+    subscription = read_json(subscription_evaluator_path)
     blockers: List[str] = []
     warnings: List[str] = []
     strengths: List[str] = []
     next_steps: List[str] = []
-    if not any([shadow, quality, big5, clv, benchmark, stats, calibration, real_guard, matchday_status, lifecycle, historical_clv, proof_dashboard]):
+    if not any([shadow, quality, big5, clv, benchmark, stats, calibration, real_guard, matchday_status, lifecycle, historical_clv, proof_dashboard, next_days, near_close_window, post_match_results, football_data_import, subscription]):
         blockers.append("Aucun rapport de preuve disponible")
         next_steps.append("Generer shadow_clv_report.py et shadow_quality_audit.py")
         status = "not_started"
@@ -229,6 +239,37 @@ def build_evidence_gate(
             strengths.append(f"proof dashboard: {proof_dashboard.get('global_status')}")
         for blocker in proof_dashboard.get("blockers") or []:
             blockers.append(f"proof dashboard: {blocker}")
+    completed_shadow_count = int(_num((shadow.get("settled_count") or shadow.get("completed") or 0), 0))
+    pending_closing_count = int(_num((quality.get("missing_closing") or lifecycle.get("pending_closing") or near_close_window.get("due_now_count") or 0), 0))
+    pending_results_count = int(_num((quality.get("missing_results") or lifecycle.get("pending_results") or post_match_results.get("unmatched") or 0), 0))
+    historical_data_available = bool(historical_clv)
+    free_historical_data_available = bool(football_data_import.get("has_odds"))
+    quota_status = subscription.get("quota_status")
+    subscription_recommendation = subscription.get("recommendation") or subscription.get("subscription_recommendation")
+    if next_days:
+        if int(_num(next_days.get("selected_total"), 0)) > 0:
+            strengths.append("next-days: observations futures detectees")
+        else:
+            warnings.append("next-days: aucune selection future")
+    if near_close_window:
+        due = int(_num(near_close_window.get("due_now_count"), 0))
+        overdue = int(_num(near_close_window.get("overdue_count"), 0))
+        if due:
+            warnings.append("near-close due now")
+        if overdue:
+            blockers.append("near-close window overdue")
+    if post_match_results:
+        if int(_num(post_match_results.get("matched"), 0)):
+            strengths.append("resultats post-match matchables")
+        if int(_num(post_match_results.get("unmatched"), 0)):
+            blockers.append("resultats post-match non matches")
+    if football_data_import:
+        if football_data_import.get("has_odds"):
+            strengths.append("donnees Football-Data gratuites disponibles")
+        if football_data_import.get("has_odds") and not football_data_import.get("has_true_closing_odds"):
+            blockers.append("Football-Data gratuit: closing vraie non confirmee")
+    if subscription_recommendation:
+        warnings.append(f"subscription recommendation: {subscription_recommendation}")
     if real_guard and real_guard.get("verdict") in {"mixed_test_and_real", "invalid"}:
         status = "blocked"
     elif quality.get("verdict") == "invalid" or any("CLV moyenne <= 0" == item for item in blockers):
@@ -261,6 +302,13 @@ def build_evidence_gate(
         "shadow_clv_coverage": clv_coverage,
         "shadow_clv_mean": clv_mean,
         "shadow_roi": roi,
+        "completed_shadow_count": completed_shadow_count,
+        "pending_closing_count": pending_closing_count,
+        "pending_results_count": pending_results_count,
+        "historical_data_available": historical_data_available,
+        "free_historical_data_available": free_historical_data_available,
+        "quota_status": quota_status,
+        "subscription_recommendation": subscription_recommendation,
         "blockers": seen_blockers,
         "warnings": sorted(set(warnings)),
         "strengths": sorted(set(strengths)),
@@ -278,6 +326,11 @@ def build_evidence_gate(
             "lifecycle": lifecycle_path or None,
             "historical_clv": historical_clv_path or None,
             "proof_dashboard": proof_dashboard_path or None,
+            "next_days": next_days_path or None,
+            "near_close_window": near_close_window_path or None,
+            "post_match_results": post_match_results_path or None,
+            "football_data_import": football_data_import_path or None,
+            "subscription_evaluator": subscription_evaluator_path or None,
         },
         "lab_only": True,
         "can_influence_picks": False,
@@ -341,6 +394,11 @@ def parse_args(argv=None):
     parser.add_argument("--lifecycle", default="")
     parser.add_argument("--historical-clv", default="")
     parser.add_argument("--proof-dashboard", default="")
+    parser.add_argument("--next-days", default="")
+    parser.add_argument("--near-close-window", default="")
+    parser.add_argument("--post-match-results", default="")
+    parser.add_argument("--football-data-import", default="")
+    parser.add_argument("--subscription-evaluator", default="")
     parser.add_argument("--output", default="")
     parser.add_argument("--html", default="")
     return parser.parse_args(argv)
@@ -362,6 +420,11 @@ def main(argv=None) -> int:
             lifecycle_path=args.lifecycle,
             historical_clv_path=args.historical_clv,
             proof_dashboard_path=args.proof_dashboard,
+            next_days_path=args.next_days,
+            near_close_window_path=args.near_close_window,
+            post_match_results_path=args.post_match_results,
+            football_data_import_path=args.football_data_import,
+            subscription_evaluator_path=args.subscription_evaluator,
         )
         if args.output:
             write_json(report, args.output)

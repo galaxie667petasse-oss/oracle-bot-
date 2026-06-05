@@ -50,6 +50,12 @@ from proof_dashboard import build_dashboard as build_proof_dashboard, write_html
 from api_football_same_day_runner import run_same_day as run_api_football_same_day
 from api_football_valid_odds_selector import select_valid_odds as select_api_football_valid_odds, write_selection as write_api_selection, write_summary as write_api_selection_summary
 from near_close_today_helper import build_today_helper as build_near_close_today, write_json as write_near_today_json
+from api_football_next_days_runner import run_next_days as run_api_football_next_days
+from near_close_window_planner import build_window_plan as build_near_close_window, write_html as write_near_window_html, write_json as write_near_window_json
+from post_match_results_runner import run_post_match_results
+from football_data_free_importer import build_import as build_football_data_import
+from data_subscription_evaluator import build_evaluation as build_subscription_evaluation, write_html as write_subscription_html, write_json as write_subscription_json
+from daily_operations_runner import run_daily_operations
 
 
 KEY_MODULES = [
@@ -115,6 +121,12 @@ KEY_MODULES = [
     "api_football_valid_odds_selector.py",
     "api_football_same_day_runner.py",
     "near_close_today_helper.py",
+    "api_football_next_days_runner.py",
+    "near_close_window_planner.py",
+    "post_match_results_runner.py",
+    "football_data_free_importer.py",
+    "data_subscription_evaluator.py",
+    "daily_operations_runner.py",
 ]
 
 
@@ -312,6 +324,70 @@ def near_close_today_ops_report(reports_dir: str, ledger: str, sport_map: str, d
     report = build_near_close_today(ledger, sport_map=sport_map, date=date)
     write_near_today_json(report, _reports_path(reports_dir, "near_close_today.json"))
     return report
+
+
+def api_football_next_days_ops_report(reports_dir: str, date: str, ledger: str) -> Dict[str, Any]:
+    start = date or datetime.now().strftime("%Y-%m-%d")
+    return run_api_football_next_days(
+        start,
+        days=3,
+        output_dir=_reports_path(reports_dir, "api_football_next_days"),
+        ledger=ledger,
+        allow_network=False,
+        dry_run=True,
+        apply=False,
+    )
+
+
+def near_close_window_ops_report(reports_dir: str, ledger: str) -> Dict[str, Any]:
+    report = build_near_close_window(ledger, hours_before=2)
+    write_near_window_json(report, _reports_path(reports_dir, "near_close_window_plan.json"))
+    write_near_window_html(report, _reports_path(reports_dir, "near_close_window_plan.html"))
+    return report
+
+
+def post_match_results_ops_report(reports_dir: str, ledger: str) -> Dict[str, Any]:
+    return run_post_match_results(
+        ledger=ledger,
+        output_dir=_reports_path(reports_dir, "post_match_results"),
+        allow_network=False,
+        dry_run=True,
+        apply=False,
+        dates_from_ledger=True,
+    )
+
+
+def football_data_import_ops_report(reports_dir: str, csv_path: str = "") -> Dict[str, Any]:
+    if not csv_path:
+        return {
+            "available": False,
+            "message": "--football-data-csv requis pour importer un CSV Football-Data gratuit.",
+            "recommended_command": "python football_data_free_importer.py --csv external_data/football_data/E0.csv --output reports/football_data_normalized.csv --summary-json reports/football_data_import_summary.json --html reports/football_data_import_summary.html",
+            "lab_only": True,
+            "can_influence_picks": False,
+        }
+    return build_football_data_import(
+        csv_path,
+        output=_reports_path(reports_dir, "football_data_normalized.csv"),
+        summary_json=_reports_path(reports_dir, "football_data_import_summary.json"),
+        html_output=_reports_path(reports_dir, "football_data_import_summary.html"),
+    )
+
+
+def subscription_evaluator_ops_report(reports_dir: str) -> Dict[str, Any]:
+    report = build_subscription_evaluation(reports_dir)
+    write_subscription_json(report, _reports_path(reports_dir, "data_subscription_evaluator.json"))
+    write_subscription_html(report, _reports_path(reports_dir, "data_subscription_evaluator.html"))
+    return report
+
+
+def daily_ops_report(reports_dir: str, date: str, ledger: str) -> Dict[str, Any]:
+    return run_daily_operations(
+        date=date or datetime.now().strftime("%Y-%m-%d"),
+        reports_dir=_reports_path(reports_dir, "daily_operations"),
+        ledger=ledger,
+        full_dry_run=True,
+    )
 
 
 def evidence_acceleration_report(reports_dir: str, ledger: str, snapshots: str, historical_clv: str = "", sport_map: str = "") -> Dict[str, Any]:
@@ -716,6 +792,12 @@ def parse_args(argv=None):
     actions.add_argument("--api-football-same-day-debug", action="store_true")
     actions.add_argument("--api-football-valid-odds", action="store_true")
     actions.add_argument("--near-close-today", action="store_true")
+    actions.add_argument("--next-days", action="store_true")
+    actions.add_argument("--near-close-window", action="store_true")
+    actions.add_argument("--post-match-results", action="store_true")
+    actions.add_argument("--football-data-import", action="store_true")
+    actions.add_argument("--subscription-evaluator", action="store_true")
+    actions.add_argument("--daily-ops", action="store_true")
     actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
     parser.add_argument("--reports-dir", default="reports")
@@ -724,6 +806,7 @@ def parse_args(argv=None):
     parser.add_argument("--historical-clv-file", default="")
     parser.add_argument("--sport-map", default="config/sport_key_map.example.json")
     parser.add_argument("--odds-csv", default="")
+    parser.add_argument("--football-data-csv", default="")
     parser.add_argument("--apply", action="store_true", help="Applique les changements ledger pour odds-to-shadow/closing-match")
     parser.add_argument("--skip-benchmark", action="store_true")
     parser.add_argument("--skip-dashboard", action="store_true")
@@ -894,6 +977,18 @@ def main(argv=None) -> int:
             print_odds_report("api football valid odds", api_football_valid_odds_ops_report(args.reports_dir, args.odds_csv))
         elif args.near_close_today:
             print_odds_report("near-close today", near_close_today_ops_report(args.reports_dir, args.ledger, args.sport_map, args.date))
+        elif args.next_days:
+            print_odds_report("api football next-days", api_football_next_days_ops_report(args.reports_dir, args.date, args.ledger))
+        elif args.near_close_window:
+            print_odds_report("near-close window", near_close_window_ops_report(args.reports_dir, args.ledger))
+        elif args.post_match_results:
+            print_odds_report("post-match results", post_match_results_ops_report(args.reports_dir, args.ledger))
+        elif args.football_data_import:
+            print_odds_report("football-data free import", football_data_import_ops_report(args.reports_dir, args.football_data_csv))
+        elif args.subscription_evaluator:
+            print_odds_report("subscription evaluator", subscription_evaluator_ops_report(args.reports_dir))
+        elif args.daily_ops:
+            print_odds_report("daily ops", daily_ops_report(args.reports_dir, args.date, args.ledger))
         elif args.archive_tests:
             if not args.apply:
                 print_odds_report("archive tests dry-run", {"dry_run": True, "message": "Relancer avec --apply pour archiver et reset."})

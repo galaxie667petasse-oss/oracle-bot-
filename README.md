@@ -959,3 +959,15 @@ Nouveautes:
 - `oracle_ops.py --api-football-same-day-debug` et `report_runner.py --same-day` exposent le diagnostic.
 
 Le statut reste observation shadow uniquement. Les matchs FT/live/near-close sont exclus par defaut, et `--dry-run` garde le ledger intact.
+## V9.4 Evidence Operations Automation
+
+V9.4 ajoute une couche operations pour ne plus dependre uniquement du scan `today`.
+
+- `api_football_next_days_runner.py` scanne demain et les prochains jours, toujours en dry-run par defaut.
+- `near_close_window_planner.py` indique quelles observations shadow ont besoin d'une near-close.
+- `post_match_results_runner.py` prepare le matching resultats apres match.
+- `football_data_free_importer.py` importe les CSV Football-Data gratuits dans `reports/` sans modifier `data/`.
+- `data_subscription_evaluator.py` aide a decider si un abonnement data est utile pour la couverture, pas pour prouver un edge.
+- `daily_operations_runner.py` regroupe matin / avant match / apres match en laboratoire local.
+
+Aucune activation Telegram, Railway, pick automatique ou mise n'est ajoutee.

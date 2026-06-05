@@ -20,3 +20,14 @@ Le proof dashboard affiche:
 - prochaines actions.
 
 Conclusion attendue tant que CLV/sample live sont insuffisants: preuve insuffisante.
+## V9.4 Sections operations
+
+Le proof dashboard peut afficher les signaux V9.4 quand les rapports existent:
+
+- future intake;
+- near-close window;
+- post-match results;
+- free historical data;
+- subscription/quota status.
+
+Ces sections ne changent pas la politique de promotion. Elles aident seulement a comprendre pourquoi la preuve reste insuffisante.

@@ -124,6 +124,21 @@ def main():
         assert valid_odds["rows_read"] == 1
         near_today = oracle_ops.near_close_today_ops_report(str(root / "reports"), str(ledger), str(root / "missing_sport_map.json"), "2026-06-01")
         assert near_today["pending_today"] == 1
+        next_days = oracle_ops.api_football_next_days_ops_report(str(root / "reports"), "2026-06-05", str(ledger))
+        assert next_days["allow_network"] is False
+        assert next_days["dates_scanned"] == 3
+        near_window = oracle_ops.near_close_window_ops_report(str(root / "reports"), str(ledger))
+        assert near_window["rows_total"] == 1
+        post_match = oracle_ops.post_match_results_ops_report(str(root / "reports"), str(ledger))
+        assert post_match["dry_run"] is True
+        free_source = root / "E0.csv"
+        free_source.write_text("Div,Date,HomeTeam,AwayTeam,FTHG,FTAG,FTR,B365H,B365D,B365A\nE0,01/01/2024,A,B,1,0,H,2.0,3.2,4.0\n", encoding="utf-8")
+        free_import = oracle_ops.football_data_import_ops_report(str(root / "reports"), str(free_source))
+        assert free_import["has_odds"] is True
+        subscription = oracle_ops.subscription_evaluator_ops_report(str(root / "reports"))
+        assert "recommendation" in subscription
+        daily_ops = oracle_ops.daily_ops_report(str(root / "reports"), "2026-06-05", str(ledger))
+        assert daily_ops["full_dry_run"] is True
         assert oracle_ops.main(["--api-pre-match-jleague", "--ledger", str(ledger), "--snapshots", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--lifecycle", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--near-close-schedule", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
@@ -145,6 +160,12 @@ def main():
         assert oracle_ops.main(["--api-football-same-day-debug", "--date", "2026-06-04", "--odds-csv", str(same_day_odds), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--api-football-valid-odds", "--odds-csv", str(odds_store), "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--near-close-today", "--date", "2026-06-01", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--next-days", "--date", "2026-06-05", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--near-close-window", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--post-match-results", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--football-data-import", "--football-data-csv", str(free_source), "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--subscription-evaluator", "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--daily-ops", "--date", "2026-06-05", "--ledger", str(ledger), "--reports-dir", str(root / "reports")]) == 0
         matchday = oracle_ops.matchday_create_report("2026-06-01", str(root / "reports"))
         assert Path(matchday["output_dir"]).exists()
         matchday_status = oracle_ops.build_matchday_status(matchday["output_dir"])

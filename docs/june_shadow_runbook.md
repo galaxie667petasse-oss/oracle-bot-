@@ -241,3 +241,25 @@ Routine prudente:
 6. matcher les resultats par `source_event_id` si disponible.
 
 Si aucune cote valide n'apparait apres enrichment, utiliser le template manuel. Ne pas multiplier les observations si les near-close precedentes ne sont pas encore capturees.
+## V9.4 Routine quotidienne
+
+Matin:
+
+```bash
+python daily_operations_runner.py --date YYYY-MM-DD --full-dry-run
+python api_football_next_days_runner.py --start-date YYYY-MM-DD --days 3 --dry-run
+```
+
+Avant match:
+
+```bash
+python near_close_window_planner.py --ledger reports/shadow_ledger.csv --hours-before 2
+```
+
+Apres match:
+
+```bash
+python post_match_results_runner.py --ledger reports/shadow_ledger.csv --dry-run
+```
+
+Regle: aucune conclusion avant CLV fiable, resultats, sample significatif et revue humaine.

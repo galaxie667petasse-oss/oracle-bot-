@@ -41,3 +41,8 @@ python source_coverage_report.py --same-day-summary reports/api_football_same_da
 Champs utiles: `same_day_api_football_available`, `same_day_valid_odds_count`, `same_day_shadow_candidates`, `manual_required_reason`, `next_best_action`.
 
 Si API-Football ne donne aucune cote valide apres enrichment, le fallback reste la saisie manuelle Betclic ou une autre source fiable. Si des odds valides existent, elles servent seulement a creer des observations shadow limitees.
+## V9.4
+
+Le scan `today` peut etre trop tardif si les matchs exploitables sont deja termines. La strategie de couverture ajoute donc `tomorrow` et `next-N-days`, avec une limite d'observations shadow et un controle des pending closing.
+
+Un abonnement data ne sert qu'a ameliorer la couverture et l'automatisation. Il ne remplace pas CLV, sample, resultats et evidence gate.

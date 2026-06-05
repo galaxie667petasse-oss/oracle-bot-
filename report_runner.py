@@ -1040,6 +1040,101 @@ def same_day_commands(
     return commands
 
 
+def daily_ops_commands(
+    ledger: str = "reports/shadow_ledger.csv",
+    date: str = "",
+    skip_dashboard: bool = False,
+) -> List[ReportCommand]:
+    date = date or datetime.now().strftime("%Y-%m-%d")
+    commands = [
+        ReportCommand(
+            "Daily operations full dry-run",
+            "daily_operations_runner.txt",
+            [
+                "daily_operations_runner.py",
+                "--date",
+                date,
+                "--ledger",
+                ledger,
+                "--reports-dir",
+                "{report_dir}/daily_operations",
+                "--full-dry-run",
+            ],
+            timeout=900,
+        ),
+        ReportCommand(
+            "Evidence gate daily ops",
+            "evidence_gate.txt",
+            [
+                "evidence_gate.py",
+                "--shadow-report",
+                "{report_dir}/daily_operations/shadow_clv_report.json",
+                "--near-close-window",
+                "{report_dir}/daily_operations/near_close_window_plan.json",
+                "--post-match-results",
+                "{report_dir}/daily_operations/post_match_results/summary.json",
+                "--subscription-evaluator",
+                "{report_dir}/daily_operations/daily_operations_summary.json",
+                "--output",
+                "{report_dir}/evidence_gate.json",
+                "--html",
+                "{report_dir}/evidence_gate.html",
+            ],
+            timeout=300,
+        ),
+    ]
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard daily ops", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
+def subscription_commands(skip_dashboard: bool = False) -> List[ReportCommand]:
+    commands = [
+        ReportCommand(
+            "Data subscription evaluator",
+            "data_subscription_evaluator.txt",
+            [
+                "data_subscription_evaluator.py",
+                "--usage-reports",
+                "reports",
+                "--output",
+                "{report_dir}/data_subscription_evaluator.json",
+                "--html",
+                "{report_dir}/data_subscription_evaluator.html",
+            ],
+            timeout=300,
+        )
+    ]
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard subscription", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
+def free_historical_commands(csv_path: str = "", skip_dashboard: bool = False) -> List[ReportCommand]:
+    csv_path = csv_path or "external_data/football_data/E0.csv"
+    commands = [
+        ReportCommand(
+            "Football-Data free importer",
+            "football_data_free_importer.txt",
+            [
+                "football_data_free_importer.py",
+                "--csv",
+                csv_path,
+                "--output",
+                "{report_dir}/football_data_normalized.csv",
+                "--summary-json",
+                "{report_dir}/football_data_import_summary.json",
+                "--html",
+                "{report_dir}/football_data_import_summary.html",
+            ],
+            timeout=600,
+        )
+    ]
+    if not skip_dashboard:
+        commands.append(ReportCommand("Dashboard free historical", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
+    return commands
+
+
 def api_odds_commands(
     ledger: str = "reports/shadow_ledger.csv",
     snapshots: str = "reports/odds_snapshots.csv",
@@ -1627,6 +1722,12 @@ def command_set(mode: str) -> List[ReportCommand]:
         return proof_commands()
     if mode == "same-day":
         return same_day_commands()
+    if mode == "daily-ops":
+        return daily_ops_commands()
+    if mode == "subscription":
+        return subscription_commands()
+    if mode == "free-historical":
+        return free_historical_commands()
     return list(QUICK_COMMANDS)
 
 
@@ -1753,6 +1854,9 @@ def parse_args(argv=None):
     mode.add_argument("--matchday", action="store_true", help="Lance le rapport local de collecte matchday")
     mode.add_argument("--proof", action="store_true", help="Lance les rapports evidence acceleration V9.1 sans reseau")
     mode.add_argument("--same-day", action="store_true", help="Lance le workflow same-day V9.2 sans reseau")
+    mode.add_argument("--daily-ops", action="store_true", help="Lance le runbook operations quotidien V9.4 sans reseau")
+    mode.add_argument("--subscription", action="store_true", help="Lance l'evaluateur quotas/abonnements data V9.4")
+    mode.add_argument("--free-historical", action="store_true", help="Lance l'import Football-Data gratuit V9.4 en laboratoire")
     parser.add_argument("--output", default=None, help="Prefixe du dossier de sortie, ex: reports/oracle_report")
     parser.add_argument("--external-xg", default=DEFAULT_UNDERSTAT_XG, help="CSV Understat local deja exporte")
     parser.add_argument("--xgabora", default="data/features_modern.csv", help="CSV xgabora/features local")
@@ -1767,6 +1871,7 @@ def parse_args(argv=None):
     parser.add_argument("--selection-summary", default="reports/shadow_selection_summary.json", help="Resume selection shadow existant")
     parser.add_argument("--near-close-plan", default="{report_dir}/near_close_plan.json", help="Plan near-close a ecrire")
     parser.add_argument("--historical-clv", default="", help="CSV CLV historique normalise optionnel pour --proof")
+    parser.add_argument("--football-data-csv", default="", help="CSV Football-Data gratuit pour --free-historical")
     parser.add_argument("--sport-map", default="config/sport_key_map.example.json", help="Mapping ligue -> sport key pour near-close")
     parser.add_argument("--date", default="", help="Date locale YYYY-MM-DD pour les modes matchday/same-day")
     parser.add_argument("--out-prefix", default=DEFAULT_UNDERSTAT_PREFIX, help="Prefixe des sorties reports/ du pipeline xG")
@@ -1799,6 +1904,9 @@ def main(argv=None) -> None:
         else "matchday" if args.matchday
         else "proof" if args.proof
         else "same-day" if args.same_day
+        else "daily-ops" if args.daily_ops
+        else "subscription" if args.subscription
+        else "free-historical" if args.free_historical
         else "big5-xg" if args.big5_xg
         else "xg-understat" if args.xg_understat
         else "full" if args.full
@@ -1918,6 +2026,19 @@ def main(argv=None) -> None:
             ledger=args.ledger,
             sport_map=args.sport_map,
             date=args.date,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "daily-ops":
+        commands = daily_ops_commands(
+            ledger=args.ledger,
+            date=args.date,
+            skip_dashboard=args.skip_dashboard,
+        )
+    elif mode == "subscription":
+        commands = subscription_commands(skip_dashboard=args.skip_dashboard)
+    elif mode == "free-historical":
+        commands = free_historical_commands(
+            csv_path=args.football_data_csv,
             skip_dashboard=args.skip_dashboard,
         )
     else:

@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from dashboard_builder import build_dashboard
-from report_runner import ReportCommand, api_odds_commands, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_shadow_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, proof_commands, run_report, same_day_commands, shadow_commands, shadow_ops_commands, source_coverage_commands, xg_understat_commands
+from report_runner import ReportCommand, api_odds_commands, big5_xg_commands, closing_preview_commands, closing_readiness_commands, command_set, daily_ops_commands, daily_shadow_commands, free_historical_commands, matchday_commands, odds_intake_commands, odds_lab_commands, ops_commands, project_blueprint_commands, proof_commands, run_report, same_day_commands, shadow_commands, shadow_ops_commands, source_coverage_commands, subscription_commands, xg_understat_commands
 
 
 def write_report(path: Path, text: str) -> None:
@@ -355,6 +355,9 @@ Understat xG Full Pipeline Quality Gate
         assert any(command.name == "Architecture canonique" for command in command_set("project-blueprint"))
         assert any(command.name == "Matchday status" for command in command_set("matchday"))
         assert any(command.name == "Proof dashboard" for command in command_set("proof"))
+        assert any(command.name == "Daily operations full dry-run" for command in command_set("daily-ops"))
+        assert any(command.name == "Data subscription evaluator" for command in command_set("subscription"))
+        assert any(command.name == "Football-Data free importer" for command in command_set("free-historical"))
         dry_commands = xg_understat_commands("external.csv", "features.csv", "prefix", skip_benchmark=True, skip_model=True, dry_run=True)
         assert "--dry-run" in dry_commands[0].args
         assert "--skip-benchmark" in dry_commands[0].args
@@ -427,6 +430,13 @@ Understat xG Full Pipeline Quality Gate
         assert any("source_coverage_report.py" in command.args and "--same-day-summary" in command.args for command in same_cmds)
         assert any("proof_dashboard.py" in command.args and "--same-day" in command.args for command in same_cmds)
         assert not any("dashboard_builder.py" in command.args for command in same_cmds)
+        daily_ops_cmds = daily_ops_commands(str(root / "reports" / "shadow_ledger.csv"), date="2026-06-05", skip_dashboard=True)
+        assert any("daily_operations_runner.py" in command.args and "--full-dry-run" in command.args for command in daily_ops_cmds)
+        assert any("evidence_gate.py" in command.args and "--near-close-window" in command.args for command in daily_ops_cmds)
+        subscription_cmds = subscription_commands(skip_dashboard=True)
+        assert any("data_subscription_evaluator.py" in command.args for command in subscription_cmds)
+        free_cmds = free_historical_commands(str(root / "E0.csv"), skip_dashboard=True)
+        assert any("football_data_free_importer.py" in command.args for command in free_cmds)
         same_manifest = run_report(
             same_day_commands(str(root / "reports" / "shadow_ledger.csv"), date="2026-06-04", skip_dashboard=True),
             root / "reports" / "same_day_manifest",

@@ -177,6 +177,12 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "api_football_results_workflow.md").exists()
     assert (root / "docs" / "near_close_batch_runner.md").exists()
     assert (root / "docs" / "proof_dashboard.md").exists()
+    assert (root / "docs" / "api_football_next_days_runner.md").exists()
+    assert (root / "docs" / "near_close_window_planner.md").exists()
+    assert (root / "docs" / "post_match_results_runner.md").exists()
+    assert (root / "docs" / "football_data_free_importer.md").exists()
+    assert (root / "docs" / "data_subscription_evaluator.md").exists()
+    assert (root / "docs" / "daily_operations_runner.md").exists()
 
 
 def main():
