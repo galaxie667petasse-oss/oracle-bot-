@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V8.9 Autonomous Odds Operations, Event Lifecycle Manager, Near-Close Scheduler & Evidence Dashboard.
+V9.5.1 Telegram Notifier HTTP 400 Diagnostics & Plain Text Fallback.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. V8.7 rend le matchday runner phase-aware et le full-dry-run predictif via staging temporaire. V8.8 ajoute le scanner soccer The Odds API, la selection shadow limitee, le workflow near-close et le guard scope ledger. V8.9 ajoute le lifecycle des observations, le scheduler near-close, le helper resultats, le dashboard progress et l'autopilot dry-run. Aucun signal robuste active. Aucun changement V8.9 ne branche Telegram, Railway ou un pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. V8.7 rend le matchday runner phase-aware et le full-dry-run predictif via staging temporaire. V8.8 ajoute le scanner soccer The Odds API, la selection shadow limitee, le workflow near-close et le guard scope ledger. V8.9 ajoute le lifecycle des observations, le scheduler near-close, le helper resultats, le dashboard progress et l'autopilot dry-run. V9.5 ajoute Telegram read-only. V9.5.1 ajoute le diagnostic HTTP 400 et le fallback plain text. Aucun signal robuste active. Telegram reste une lecture privee du laboratoire, sans Railway, sans mise et sans pick automatique.
 
 V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre operations et le gate de preuve.
 
@@ -58,7 +58,7 @@ V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre opera
 - Validation statistique disponible via `statistical_validation.py`.
 - Benchmark gouvernance V8.0 disponible.
 - Aucun signal robuste active et aucun candidat robuste sans CLV positive.
-- Railway/Telegram toujours en attente.
+- Railway reste en attente. Telegram est limite a la lecture privee read-only.
 
 ## Vrai blocage
 
@@ -344,3 +344,16 @@ Statut: en place localement.
 - Evidence gate/proof dashboard exposent `telegram_read_only_allowed=true` et `telegram_live_pick_allowed=false`.
 
 Conclusion: Telegram est autorise uniquement comme lecture privee du laboratoire. Aucun Railway, aucune mise, aucun pick automatique, aucun token commite.
+
+## V9.5.1 Telegram Notifier HTTP 400 Diagnostics & Plain Text Fallback
+
+Statut: en place localement.
+
+- `telegram_notifier.py` lit les fichiers message en `utf-8-sig` et retire les BOM invisibles de debut de fichier.
+- Les erreurs Telegram loggent `error_code`, `description`, `retry_after`, `chunk_index`, `parse_mode`, `fallback_used` et la reponse Telegram sans token.
+- `--plain-text`, `--no-parse-mode` et `TELEGRAM_PARSE_MODE=""` envoient sans `parse_mode`.
+- Si Markdown echoue avec `can't parse entities`, le notifier retente automatiquement le chunk sans `parse_mode`.
+- `telegram_message_formatter.py` echappe les underscores et caracteres Markdown sensibles dans les champs dynamiques.
+- Les tests Telegram utilisent uniquement des mocks HTTP ; aucun Telegram reel n'est envoye en test.
+
+Conclusion: la cause probable d'un `http 400` apres un test PowerShell reussi est un message Markdown mal interprete par Telegram, typiquement un underscore non echappe dans un ID ou une entite Markdown incomplete. Le fallback plain text corrige ce cas sans changer la gouvernance.

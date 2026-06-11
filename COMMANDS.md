@@ -1279,3 +1279,23 @@ python telegram_ops_runner.py --date YYYY-MM-DD --pre-close --allow-send
 python telegram_ops_runner.py --date YYYY-MM-DD --post-match --allow-send
 python report_runner.py --telegram --skip-dashboard
 ```
+
+## V9.5.1 Telegram Notifier HTTP 400 Diagnostics & Plain Text Fallback
+
+Dry-run offline par defaut:
+
+```bash
+python telegram_notifier.py --message-file reports/telegram_test_message.md --dry-run
+python telegram_notifier.py --message-file reports/telegram_daily_preview.md --dry-run
+python telegram_daily_reporter.py --date 2026-06-11 --dry-run
+```
+
+Diagnostic d'envoi reel, seulement apres verification humaine:
+
+```bash
+python telegram_notifier.py --message-file reports/telegram_test_message.md --allow-send --plain-text
+python telegram_notifier.py --message-file reports/telegram_daily_preview.md --allow-send --show-error-detail
+$env:TELEGRAM_PARSE_MODE=""
+```
+
+Regles: le token n'est jamais affiche ni logge, l'URL Telegram complete n'est jamais loggee, `reports/` reste non tracke, et Telegram reste read-only avec `lab_only=true` et `can_influence_picks=false`.

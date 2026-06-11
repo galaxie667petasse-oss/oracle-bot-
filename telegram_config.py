@@ -22,7 +22,10 @@ def load_telegram_config(env: Optional[Mapping[str, str]] = None) -> Dict[str, A
     env = env or os.environ
     token = str(env.get(TOKEN_ENV) or "").strip()
     chat_id = str(env.get(CHAT_ENV) or "").strip()
-    parse_mode = str(env.get(PARSE_MODE_ENV) or "Markdown").strip() or "Markdown"
+    if PARSE_MODE_ENV in env:
+        parse_mode = str(env.get(PARSE_MODE_ENV) or "").strip()
+    else:
+        parse_mode = "Markdown"
     disable_send = _truthy(env.get(DISABLE_SEND_ENV), default=True)
     can_send = bool(token and chat_id and not disable_send)
     return {

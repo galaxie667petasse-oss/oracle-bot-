@@ -755,10 +755,22 @@ def check_telegram_read_only_release(root: Path, result: AuditResult, use_git: b
         result.add_error("Telegram read-only: --allow-send absent du verrou d'envoi.")
     else:
         result.add_ok("L'envoi Telegram reel exige --allow-send.")
+    if "_redact_secret" in notifier and "append_log" in notifier and "token=" in notifier:
+        result.add_ok("Le notifier redige les secrets avant ecriture des logs.")
+    else:
+        result.add_error("Telegram notifier: hygiene de log du token non verifiable.")
     if "urllib.request.urlopen" in notifier and "allow_send" in notifier:
         result.add_ok("Le reseau Telegram est contenu dans telegram_notifier.py et garde par allow_send.")
     else:
         result.add_error("Telegram notifier sans garde reseau claire.")
+    if "fallback_used" in notifier and "can't parse entities" in notifier and "plain_text" in notifier:
+        result.add_ok("Le fallback Telegram plain text reste diagnostique et read-only.")
+    else:
+        result.add_warning("Fallback Telegram plain text a verifier manuellement.")
+    if '"lab_only": True' in notifier and '"can_influence_picks": False' in notifier:
+        result.add_ok("Le notifier conserve lab_only=true et can_influence_picks=false.")
+    else:
+        result.add_error("Telegram notifier: garde-fous lab_only/can_influence_picks absents.")
     if use_git:
         try:
             tracked_files = _git_ls_files(root, ["*.py", "*.md", "*.json", "*.txt", "config/*"])

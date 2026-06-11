@@ -42,6 +42,10 @@ def main():
         }, ensure_ascii=False), encoding="utf-8")
         near_text = formatter.format_near_close_preview(str(near))
         assert "NEAR-CLOSE" in near_text
+        assert "sh\\_1" in near_text
+        near_plain = formatter.format_near_close_preview(str(near), plain_text=True)
+        assert "sh_1" in near_plain
+        assert "sh\\_1" not in near_plain
         proof = root / "reports" / "proof.json"
         proof.write_text(json.dumps({"global_status": "insufficient_evidence", "sections": {"shadow": {"sample": 1}, "evidence_gate": {"global_status": "insufficient_evidence"}}}, ensure_ascii=False), encoding="utf-8")
         proof_text = formatter.format_proof_preview(str(proof))

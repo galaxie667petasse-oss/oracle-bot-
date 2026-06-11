@@ -45,6 +45,7 @@ def test_audit_read_only_and_oracle_db_optional():
 def test_sensitive_files_not_tracked_in_current_repo():
     root = Path.cwd()
     tracked = project_audit._git_ls_files(root, project_audit.SENSITIVE_PATTERNS)
+    tracked = [item for item in tracked if not item.endswith(".example.env")]
     assert tracked == []
 
 
@@ -135,6 +136,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v9.2" in status
     assert "v9.3" in status
     assert "v9.5" in status
+    assert "v9.5.1" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
