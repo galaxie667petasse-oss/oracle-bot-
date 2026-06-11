@@ -213,3 +213,17 @@ python oracle_ops.py --telegram-ops
 ```
 
 Ces commandes restent en preview/dry-run par defaut. L'emission reelle demande `--allow-send` et une configuration locale valide. Telegram ne change pas la decision: evidence gate reste l'autorite, et les messages restent des observations shadow non validees.
+
+## V9.6 Live scan et scheduler Windows
+
+V9.6 corrige la propagation de `--allow-network` dans `api_football_next_days_runner.py` et `daily_operations_runner.py`. Le reseau est autorise seulement si le flag est present, tandis que l'ecriture ledger reste separee par dry-run/apply.
+
+Commandes de diagnostic:
+
+```bash
+python api_football_next_days_runner.py --start-date YYYY-MM-DD --days 2 --allow-network --debug-network --max-events-per-day 2 --max-total-events 3
+python live_scan_smoke_test.py --date YYYY-MM-DD --days 2 --allow-network --debug
+python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --dry-run
+```
+
+Les scripts Windows dans `scripts/` sont des preparations uniquement. Ils ne contiennent pas de token et gardent l'envoi Telegram derriere `ORACLE_ALLOW_TELEGRAM_SEND=true`.

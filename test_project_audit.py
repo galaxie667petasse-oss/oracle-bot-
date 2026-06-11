@@ -111,6 +111,7 @@ def test_release_candidate_docs_exist_and_have_sections():
         "decision policy",
         "telegram",
         "telegram read-only",
+        "v9.6",
         "railway plus tard",
         "securite",
         "commandes principales",
@@ -137,6 +138,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v9.3" in status
     assert "v9.5" in status
     assert "v9.5.1" in status
+    assert "v9.6" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -190,6 +192,13 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "telegram_read_only_publisher.md").exists()
     assert (root / "docs" / "telegram_message_policy.md").exists()
     assert (root / "docs" / "telegram_setup.md").exists()
+    assert (root / "docs" / "live_scan_smoke_test.md").exists()
+    assert (root / "docs" / "telegram_pipeline_smoke_test.md").exists()
+    assert (root / "docs" / "windows_scheduler_setup.md").exists()
+    assert (root / "scripts" / "oracle_daily_morning.ps1").exists()
+    assert (root / "scripts" / "oracle_pre_close.ps1").exists()
+    assert (root / "scripts" / "oracle_post_match.ps1").exists()
+    assert (root / "scripts" / "install_windows_tasks.example.ps1").exists()
 
 
 def main():

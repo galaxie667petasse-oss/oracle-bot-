@@ -977,3 +977,22 @@ Aucune activation Telegram, Railway, pick automatique ou mise n'est ajoutee.
 V9.5 ajoute une couche Telegram privee en lecture seule pour publier les observations shadow du jour, les fenetres near-close a capturer et les resultats renseignes. Le mode reste laboratoire: dry-run par defaut, previews Markdown dans `reports/`, emission reelle uniquement avec `--allow-send`, token masque, et `can_influence_picks=false`.
 
 Telegram ne change pas la gouvernance. L'evidence gate reste l'autorite: CLV absente, sample insuffisant, resultats incomplets ou preuve statistique incomplete impliquent `non valide`. Les messages doivent parler d'observation shadow, watchlist, preuve insuffisante et aucune mise.
+
+## V9.6 Network Flag Fix, Live Scan & Safe Publish
+
+V9.6 separe clairement le reseau et l'ecriture ledger. `--allow-network` autorise les appels API-Football dans les runners, tandis que le ledger reste en dry-run tant qu'aucun apply explicite n'est demande. `api_football_next_days_runner.py --debug-network` affiche la propagation interne sans afficher de cle.
+
+Nouveaux outils:
+
+- `live_scan_smoke_test.py` diagnostique aujourd'hui/demain sans ledger ni Telegram ;
+- `telegram_pipeline_smoke_test.py` verifie Telegram sans publier d'observations ;
+- `telegram_shadow_publisher.py --since-date --only-new --max-messages` evite de spammer les anciennes observations ;
+- scripts Windows dans `scripts/`, non installes automatiquement.
+
+Commandes:
+
+```bash
+python live_scan_smoke_test.py --date YYYY-MM-DD --days 2 --allow-network --debug
+python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --dry-run
+python telegram_shadow_publisher.py --ledger reports/shadow_ledger.csv --since-date YYYY-MM-DD --only-new --max-messages 2 --dry-run
+```

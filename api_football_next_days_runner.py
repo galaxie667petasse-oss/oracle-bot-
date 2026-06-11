@@ -65,6 +65,7 @@ def run_next_days(
     force_lab: bool = False,
     fixtures_json_dir: str = "",
     odds_json_dir: str = "",
+    debug_network: bool = False,
 ) -> Dict[str, Any]:
     if not start_date:
         raise ValueError("--start-date requis")
@@ -74,6 +75,7 @@ def run_next_days(
         raise ValueError("--max-total-events doit etre positif")
     pending_before = len(pending_closing(ledger))
     effective_apply = bool(apply and not dry_run)
+    effective_network = bool(allow_network)
     if effective_apply and pending_before > 20 and not force_lab:
         raise ValueError("Apply refuse: pending closing > 20. Utiliser --force-lab seulement apres revue humaine.")
 
@@ -83,6 +85,7 @@ def run_next_days(
     remaining = max_total_events
     total_selected = 0
     total_added = 0
+    network_debug: List[Dict[str, Any]] = []
     for date in dates:
         if remaining <= 0:
             reports.append({
@@ -94,17 +97,32 @@ def run_next_days(
             })
             continue
         per_day = min(max_events_per_day, remaining)
+        day_output_dir = str(out_dir / date.replace("-", "_"))
+        fixtures_json = _fixture_path(fixtures_json_dir, date)
+        odds_json = _odds_path(odds_json_dir, date)
+        network_debug.append({
+            "date": date,
+            "internal_call": "run_same_day",
+            "allow_network_propagated": effective_network,
+            "output_dir": day_output_dir,
+            "fixtures_json": fixtures_json,
+            "odds_json": odds_json,
+            "lab_only": True,
+            "can_influence_picks": False,
+        })
         report = run_same_day(
             date,
-            output_dir=str(out_dir / date.replace("-", "_")),
+            output_dir=day_output_dir,
             ledger=ledger,
-            fixtures_json=_fixture_path(fixtures_json_dir, date),
-            odds_json=_odds_path(odds_json_dir, date),
-            allow_network=bool(allow_network and not dry_run),
+            fixtures_json=fixtures_json,
+            odds_json=odds_json,
+            allow_network=effective_network,
             apply=effective_apply,
             max_events=per_day,
             debug=True,
         )
+        if effective_network and not bool(report.get("allow_network")):
+            raise RuntimeError("Erreur: --allow-network demande mais non propage. Verifier argparse/runner config.")
         selected = int(report.get("selection_rows") or 0)
         added = int(report.get("would_add_or_added") or 0)
         total_selected += selected
@@ -117,7 +135,9 @@ def run_next_days(
         "days": days,
         "dates": dates,
         "output_dir": str(out_dir),
-        "allow_network": bool(allow_network and not dry_run),
+        "allow_network": effective_network,
+        "network_requested": bool(allow_network),
+        "network_message": "reseau autorise explicitement" if effective_network else "reseau non autorise: ajouter --allow-network pour interroger API-Football",
         "dry_run": bool(dry_run),
         "applied": effective_apply,
         "pending_closing_before": pending_before,
@@ -130,6 +150,8 @@ def run_next_days(
         "selected_total": total_selected,
         "would_add_or_added_total": total_added,
         "date_reports": reports,
+        "debug_network": bool(debug_network),
+        "network_debug": network_debug if debug_network else [],
         "message": "Next-days API-Football: observation shadow seulement, laboratoire local.",
         "lab_only": True,
         "can_influence_picks": False,
@@ -175,6 +197,17 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Start date: {report.get('start_date')}")
     print(f"- Days: {report.get('days')}")
     print(f"- Reseau autorise: {report.get('allow_network')}")
+    if not report.get("allow_network"):
+        print("- Reseau non autorise: aucun appel API-Football reel.")
+    if report.get("debug_network"):
+        for item in report.get("network_debug") or []:
+            print(
+                f"- Debug reseau {item.get('date')}: {item.get('internal_call')} "
+                f"allow_network={item.get('allow_network_propagated')} "
+                f"output_dir={item.get('output_dir')}"
+            )
+            print(f"  fixtures_json={item.get('fixtures_json') or 'aucun'}")
+            print(f"  odds_json={item.get('odds_json') or 'aucun'}")
     for item in report.get("date_reports") or []:
         print(
             f"- {item.get('date')}: fixtures={item.get('fixtures', 0)}, "
@@ -200,6 +233,7 @@ def parse_args(argv=None):
     parser.add_argument("--output-dir", default="reports/api_football_next_days")
     parser.add_argument("--fixtures-json-dir", default="")
     parser.add_argument("--odds-json-dir", default="")
+    parser.add_argument("--debug-network", action="store_true")
     parser.add_argument("--summary-json", default="")
     parser.add_argument("--html", default="")
     return parser.parse_args(argv)
@@ -222,6 +256,7 @@ def main(argv=None) -> int:
             force_lab=args.force_lab,
             fixtures_json_dir=args.fixtures_json_dir,
             odds_json_dir=args.odds_json_dir,
+            debug_network=args.debug_network,
         )
         if args.summary_json:
             write_json(report, args.summary_json)

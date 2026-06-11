@@ -42,3 +42,22 @@ Diagnostic V9.5.1:
 - le token et l'URL complete contenant le token ne doivent jamais etre imprimes ni logges.
 
 Telegram read-only ne change pas la gouvernance. L'evidence gate reste l'autorite: sample faible, CLV absente ou preuve incomplete impliquent `non valide`.
+
+## Publication safe V9.6
+
+Pour eviter de republier les anciennes observations:
+
+```bash
+python telegram_shadow_publisher.py --ledger reports/shadow_ledger.csv --mark-existing-as-published --dry-run
+python telegram_shadow_publisher.py --ledger reports/shadow_ledger.csv --since-date YYYY-MM-DD --only-new --max-messages 2 --dry-run
+python telegram_shadow_publisher.py --ledger reports/shadow_ledger.csv --since-date YYYY-MM-DD --only-new --max-messages 2 --allow-send
+```
+
+Si `--only-new` est utilise sans tracking existant et sans `--since-date`, le publisher ignore les anciennes observations pour eviter le spam. Une selection vide n'envoie aucun message Telegram.
+
+Smoke test pipeline:
+
+```bash
+python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --dry-run
+python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --allow-send --plain-text-test
+```

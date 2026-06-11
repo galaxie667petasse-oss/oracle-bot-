@@ -205,6 +205,7 @@ def run_same_day(
 def print_report(report: Dict[str, Any]) -> None:
     print("API-Football same-day runner")
     print(f"- Date: {report.get('date')}")
+    print(f"- Reseau autorise: {report.get('allow_network')}")
     print(f"- Fixtures: {report.get('fixtures')}")
     print(f"- Odds total: {report.get('odds_total_rows')}")
     print(f"- Odds valides: {report.get('odds_valid')}")
@@ -246,7 +247,7 @@ def parse_args(argv=None):
 def main(argv=None) -> int:
     args = parse_args(argv)
     try:
-        effective_allow_network = bool(args.allow_network and not args.dry_run)
+        effective_allow_network = bool(args.allow_network)
         effective_apply = bool(args.apply and not args.dry_run)
         report = run_same_day(
             args.date,

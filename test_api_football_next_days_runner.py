@@ -1,7 +1,10 @@
 import json
 import tempfile
 from pathlib import Path
+from contextlib import redirect_stdout
+from io import StringIO
 
+import api_football_next_days_runner as runner
 from api_football_next_days_runner import run_next_days
 from shadow_ledger import read_ledger
 
@@ -81,6 +84,91 @@ def main():
         assert len(rows) == 1
         assert rows[0]["market_type"] == "h2h"
         assert (root / "reports" / "next_days_apply" / "summary.json").exists()
+
+        calls = []
+        original_same_day = runner.run_same_day
+
+        def fake_same_day(date, **kwargs):
+            calls.append({"date": date, **kwargs})
+            return {
+                "date": date,
+                "allow_network": kwargs.get("allow_network"),
+                "fixtures": 0,
+                "odds_valid": 0,
+                "valid_h2h_not_finished_rows": 0,
+                "selection_rows": 0,
+                "would_add_or_added": 0,
+                "lab_only": True,
+                "can_influence_picks": False,
+            }
+
+        runner.run_same_day = fake_same_day
+        try:
+            no_network = runner.run_next_days(
+                "2026-06-07",
+                days=1,
+                output_dir=str(root / "reports" / "mock_no_network"),
+                ledger=str(root / "reports" / "mock_ledger.csv"),
+                allow_network=False,
+                dry_run=True,
+                apply=False,
+                debug_network=True,
+            )
+            assert calls[-1]["allow_network"] is False
+            assert no_network["allow_network"] is False
+
+            network = runner.run_next_days(
+                "2026-06-08",
+                days=1,
+                output_dir=str(root / "reports" / "mock_network"),
+                ledger=str(root / "reports" / "mock_ledger.csv"),
+                allow_network=True,
+                dry_run=True,
+                apply=False,
+                debug_network=True,
+            )
+            assert calls[-1]["allow_network"] is True
+            assert network["allow_network"] is True
+            assert network["network_debug"][0]["allow_network_propagated"] is True
+
+            out = StringIO()
+            with redirect_stdout(out):
+                runner.print_report(network)
+            printed = out.getvalue()
+            assert "allow_network=True" in printed
+            assert "API_FOOTBALL_KEY" not in printed
+            assert "SECRET" not in printed
+        finally:
+            runner.run_same_day = original_same_day
+
+        def fake_broken_same_day(date, **kwargs):
+            return {
+                "date": date,
+                "allow_network": False,
+                "fixtures": 0,
+                "odds_valid": 0,
+                "valid_h2h_not_finished_rows": 0,
+                "selection_rows": 0,
+                "would_add_or_added": 0,
+            }
+
+        runner.run_same_day = fake_broken_same_day
+        try:
+            try:
+                runner.run_next_days(
+                    "2026-06-09",
+                    days=1,
+                    output_dir=str(root / "reports" / "broken_network"),
+                    ledger=str(root / "reports" / "mock_ledger.csv"),
+                    allow_network=True,
+                    dry_run=True,
+                    apply=False,
+                )
+                raise AssertionError("propagation reseau cassee non detectee")
+            except RuntimeError as exc:
+                assert "--allow-network demande mais non propage" in str(exc)
+        finally:
+            runner.run_same_day = original_same_day
 
     print("test_api_football_next_days_runner ok")
 

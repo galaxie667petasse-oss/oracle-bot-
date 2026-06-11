@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V9.5.1 Telegram Notifier HTTP 400 Diagnostics & Plain Text Fallback.
+V9.6 Network Flag Fix, Today/Tomorrow Live Scan, Telegram Safe Publish & Windows Scheduler Prep.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. V8.7 rend le matchday runner phase-aware et le full-dry-run predictif via staging temporaire. V8.8 ajoute le scanner soccer The Odds API, la selection shadow limitee, le workflow near-close et le guard scope ledger. V8.9 ajoute le lifecycle des observations, le scheduler near-close, le helper resultats, le dashboard progress et l'autopilot dry-run. V9.5 ajoute Telegram read-only. V9.5.1 ajoute le diagnostic HTTP 400 et le fallback plain text. Aucun signal robuste active. Telegram reste une lecture privee du laboratoire, sans Railway, sans mise et sans pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. V8.7 rend le matchday runner phase-aware et le full-dry-run predictif via staging temporaire. V8.8 ajoute le scanner soccer The Odds API, la selection shadow limitee, le workflow near-close et le guard scope ledger. V8.9 ajoute le lifecycle des observations, le scheduler near-close, le helper resultats, le dashboard progress et l'autopilot dry-run. V9.5 ajoute Telegram read-only. V9.5.1 ajoute le diagnostic HTTP 400 et le fallback plain text. V9.6 corrige le flag reseau, ajoute les smoke tests live/Telegram et prepare le scheduler Windows. Aucun signal robuste active. Telegram reste une lecture privee du laboratoire, sans Railway, sans mise et sans pick automatique.
 
 V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre operations et le gate de preuve.
 
@@ -357,3 +357,17 @@ Statut: en place localement.
 - Les tests Telegram utilisent uniquement des mocks HTTP ; aucun Telegram reel n'est envoye en test.
 
 Conclusion: la cause probable d'un `http 400` apres un test PowerShell reussi est un message Markdown mal interprete par Telegram, typiquement un underscore non echappe dans un ID ou une entite Markdown incomplete. Le fallback plain text corrige ce cas sans changer la gouvernance.
+
+## V9.6 Network Flag Fix, Today/Tomorrow Live Scan, Telegram Safe Publish & Windows Scheduler Prep
+
+Statut: en place localement.
+
+- Cause du bug: `api_football_next_days_runner.py` calculait `allow_network and not dry_run`; comme la CLI met le ledger en dry-run par defaut sans `--apply`, `--allow-network` etait neutralise.
+- `api_football_next_days_runner.py --debug-network` affiche la propagation interne sans cle.
+- `daily_operations_runner.py --allow-network --morning` propage maintenant le reseau au next-days runner et affiche les statuts reseau.
+- `live_scan_smoke_test.py` diagnostique today/tomorrow sans ecrire ledger et sans Telegram.
+- `telegram_pipeline_smoke_test.py` teste config + preview + notifier dry-run, avec envoi court seulement si `--allow-send --plain-text-test`.
+- `telegram_shadow_publisher.py` supporte `--since-date`, `--max-messages`, `--mark-existing-as-published` et `--preview-only-new`.
+- Les scripts Windows sont prepares dans `scripts/`, sans token et sans activation automatique.
+
+Conclusion: V9.6 facilite le scan live et la publication read-only prudente, mais evidence gate reste strict. Aucun Railway, aucune mise, aucun pick automatique.

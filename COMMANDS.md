@@ -1299,3 +1299,31 @@ $env:TELEGRAM_PARSE_MODE=""
 ```
 
 Regles: le token n'est jamais affiche ni logge, l'URL Telegram complete n'est jamais loggee, `reports/` reste non tracke, et Telegram reste read-only avec `lab_only=true` et `can_influence_picks=false`.
+
+## V9.6 Network Flag Fix, Live Scan & Safe Telegram Publish
+
+Diagnostic reseau:
+
+```bash
+python api_football_next_days_runner.py --start-date YYYY-MM-DD --days 2 --allow-network --debug-network --max-events-per-day 2 --max-total-events 3
+python live_scan_smoke_test.py --date YYYY-MM-DD --days 2 --allow-network --debug
+```
+
+Telegram safe:
+
+```bash
+python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --dry-run
+python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --allow-send --plain-text-test
+python telegram_shadow_publisher.py --ledger reports/shadow_ledger.csv --mark-existing-as-published --dry-run
+python telegram_shadow_publisher.py --ledger reports/shadow_ledger.csv --since-date YYYY-MM-DD --only-new --max-messages 2 --dry-run
+```
+
+Windows:
+
+```powershell
+scripts/oracle_daily_morning.ps1
+scripts/oracle_pre_close.ps1
+scripts/oracle_post_match.ps1
+```
+
+Regles: `--allow-network` autorise seulement les requetes API, pas l'ecriture ledger. `--allow-send` reste requis pour Telegram reel. Les scripts Windows lisent les autorisations via `ORACLE_ALLOW_NETWORK` et `ORACLE_ALLOW_TELEGRAM_SEND`.

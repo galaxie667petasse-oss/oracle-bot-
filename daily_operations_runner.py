@@ -48,18 +48,21 @@ def run_daily_operations(
     active_date = date or datetime.now().strftime("%Y-%m-%d")
     out_dir = _safe_dir(reports_dir)
     phases: Dict[str, Any] = {}
-    effective_network = bool(allow_network and not full_dry_run)
+    effective_network = bool(allow_network)
     if morning or full_dry_run:
+        next_days = run_next_days(
+            active_date,
+            days=3,
+            output_dir=str(out_dir / "next_days"),
+            ledger=ledger,
+            allow_network=effective_network,
+            dry_run=True,
+            apply=False,
+        )
         phases["morning"] = {
-            "next_days": run_next_days(
-                active_date,
-                days=3,
-                output_dir=str(out_dir / "next_days"),
-                ledger=ledger,
-                allow_network=effective_network,
-                dry_run=True,
-                apply=False,
-            ),
+            "network": effective_network,
+            "next_days_network": bool(next_days.get("allow_network")),
+            "next_days": next_days,
             "source_coverage": build_source_coverage_report(),
         }
     if pre_close or full_dry_run:
@@ -84,6 +87,9 @@ def run_daily_operations(
         "date": active_date,
         "reports_dir": str(out_dir),
         "allow_network": effective_network,
+        "network_requested": bool(allow_network),
+        "morning_scan_network": bool(effective_network and (morning or full_dry_run)),
+        "next_days_runner_network": bool((phases.get("morning") or {}).get("next_days_network")),
         "full_dry_run": bool(full_dry_run),
         "phases": phases,
         "subscription_evaluator": subscription,
@@ -117,6 +123,8 @@ def print_report(report: Dict[str, Any]) -> None:
     print("Daily operations runner")
     print(f"- Date: {report.get('date')}")
     print(f"- Reseau autorise: {report.get('allow_network')}")
+    print(f"- Morning scan: network {report.get('morning_scan_network')}")
+    print(f"- Next-days runner: network {report.get('next_days_runner_network')}")
     print(f"- Phases: {', '.join((report.get('phases') or {}).keys()) or 'aucune'}")
     print(f"- Subscription: {(report.get('subscription_evaluator') or {}).get('recommendation')}")
     print("- Workflow local, aucune mise.")

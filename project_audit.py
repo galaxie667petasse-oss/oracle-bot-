@@ -79,6 +79,7 @@ ESSENTIAL_FILES = [
     "api_football_same_day_runner.py",
     "api_football_odds_debug_report.py",
     "api_football_next_days_runner.py",
+    "live_scan_smoke_test.py",
     "near_close_window_planner.py",
     "post_match_results_runner.py",
     "football_data_free_importer.py",
@@ -91,10 +92,18 @@ ESSENTIAL_FILES = [
     "telegram_daily_reporter.py",
     "telegram_result_reporter.py",
     "telegram_ops_runner.py",
+    "telegram_pipeline_smoke_test.py",
+    "scripts/oracle_daily_morning.ps1",
+    "scripts/oracle_pre_close.ps1",
+    "scripts/oracle_post_match.ps1",
+    "scripts/install_windows_tasks.example.ps1",
     "config/telegram.example.env",
     "docs/telegram_read_only_publisher.md",
     "docs/telegram_message_policy.md",
     "docs/telegram_setup.md",
+    "docs/live_scan_smoke_test.md",
+    "docs/telegram_pipeline_smoke_test.md",
+    "docs/windows_scheduler_setup.md",
     "near_close_today_helper.py",
     "manual_betclic_intake_helper.py",
     "external_evidence_catalog.py",
@@ -236,6 +245,7 @@ MAIN_TESTS = [
     "test_api_football_same_day_runner.py",
     "test_api_football_odds_debug_report.py",
     "test_api_football_next_days_runner.py",
+    "test_live_scan_smoke_test.py",
     "test_near_close_window_planner.py",
     "test_post_match_results_runner.py",
     "test_football_data_free_importer.py",
@@ -248,6 +258,8 @@ MAIN_TESTS = [
     "test_telegram_daily_reporter.py",
     "test_telegram_result_reporter.py",
     "test_telegram_ops_runner.py",
+    "test_telegram_pipeline_smoke_test.py",
+    "test_windows_scheduler_scripts.py",
     "test_near_close_today_helper.py",
     "test_manual_betclic_intake_helper.py",
     "test_external_evidence_catalog.py",
@@ -350,6 +362,7 @@ IMPORT_MODULES = [
     "api_football_same_day_runner",
     "api_football_odds_debug_report",
     "api_football_next_days_runner",
+    "live_scan_smoke_test",
     "near_close_window_planner",
     "post_match_results_runner",
     "football_data_free_importer",
@@ -362,6 +375,7 @@ IMPORT_MODULES = [
     "telegram_daily_reporter",
     "telegram_result_reporter",
     "telegram_ops_runner",
+    "telegram_pipeline_smoke_test",
     "near_close_today_helper",
     "manual_betclic_intake_helper",
     "external_evidence_catalog",
@@ -431,6 +445,7 @@ OFFLINE_COMMAND_FILES = [
     "api_football_odds_adapter.py",
     "api_football_odds_debug_report.py",
     "api_football_next_days_runner.py",
+    "live_scan_smoke_test.py",
     "near_close_window_planner.py",
     "post_match_results_runner.py",
     "football_data_free_importer.py",
@@ -482,6 +497,32 @@ TELEGRAM_FORBIDDEN_SNIPPETS = [
     "Application.builder",
     "run_polling(",
     "TELEGRAM_BOT_TOKEN",
+]
+
+V96_FILES = [
+    "live_scan_smoke_test.py",
+    "telegram_pipeline_smoke_test.py",
+    "docs/live_scan_smoke_test.md",
+    "docs/telegram_pipeline_smoke_test.md",
+    "docs/windows_scheduler_setup.md",
+    "test_live_scan_smoke_test.py",
+    "test_telegram_pipeline_smoke_test.py",
+    "test_windows_scheduler_scripts.py",
+]
+
+WINDOWS_SCHEDULER_SCRIPTS = [
+    "scripts/oracle_daily_morning.ps1",
+    "scripts/oracle_pre_close.ps1",
+    "scripts/oracle_post_match.ps1",
+    "scripts/install_windows_tasks.example.ps1",
+]
+
+SCRIPT_SECRET_SNIPPETS = [
+    "TELEGRAM_BOT_TOKEN=",
+    "API_FOOTBALL" + "_KEY=",
+    "THE_ODDS_API" + "_KEY=",
+    "api.telegram.org/bot",
+    "x-apisports-key",
 ]
 
 
@@ -725,7 +766,8 @@ def check_telegram_read_only_release(root: Path, result: AuditResult, use_git: b
         "telegram_shadow_publisher.py",
         "telegram_daily_reporter.py",
         "telegram_result_reporter.py",
-        "telegram_ops_runner.py",
+    "telegram_ops_runner.py",
+    "telegram_pipeline_smoke_test.py",
     ]
     docs = [
         "docs/telegram_read_only_publisher.md",
@@ -797,6 +839,49 @@ def check_telegram_read_only_release(root: Path, result: AuditResult, use_git: b
         result.add_warning("Policy Telegram: verifier manuellement les termes interdits.")
 
 
+def check_v96_release(root: Path, result: AuditResult) -> None:
+    missing = [name for name in V96_FILES + WINDOWS_SCHEDULER_SCRIPTS if not (root / name).exists()]
+    if missing:
+        result.add_error("Release V9.6 incomplete: " + ", ".join(missing))
+    else:
+        result.add_ok("Modules, docs, tests et scripts V9.6 presents.")
+
+    next_days = _read_text(root / "api_football_next_days_runner.py")
+    daily_ops = _read_text(root / "daily_operations_runner.py")
+    if next_days.strip() == "# fichier test" and daily_ops.strip() == "# fichier test":
+        result.add_ok("V9.6 stub present pour test minimal.")
+    else:
+        if "debug_network" in next_days and "allow_network=effective_network" in next_days:
+            result.add_ok("Le next-days runner propage --allow-network meme en dry-run ledger.")
+        else:
+            result.add_error("V9.6: propagation --allow-network next-days non verifiable.")
+        if "morning_scan_network" in daily_ops and "next_days_runner_network" in daily_ops:
+            result.add_ok("Daily operations expose le diagnostic reseau morning/next-days.")
+        else:
+            result.add_error("V9.6: diagnostic reseau daily operations absent.")
+
+    for pattern in ("reports/", "external_data/"):
+        if pattern not in SENSITIVE_PATTERNS:
+            result.add_error(f"V9.6: pattern sensible absent de l'audit: {pattern}")
+    scripts_with_secret = []
+    unsafe_allow_send = []
+    for rel in WINDOWS_SCHEDULER_SCRIPTS:
+        text = _read_text(root / rel)
+        for snippet in SCRIPT_SECRET_SNIPPETS:
+            if snippet in text:
+                scripts_with_secret.append(f"{rel}: {snippet}")
+        if "--allow-send" in text and "ORACLE_ALLOW_TELEGRAM_SEND" not in text:
+            unsafe_allow_send.append(rel)
+    if scripts_with_secret:
+        result.add_error("Scripts Windows avec secret ou endpoint sensible: " + ", ".join(scripts_with_secret))
+    else:
+        result.add_ok("Scripts Windows sans token ni cle API en clair.")
+    if unsafe_allow_send:
+        result.add_error("--allow-send non protege dans scripts Windows: " + ", ".join(unsafe_allow_send))
+    else:
+        result.add_ok("Scripts Windows protegent --allow-send par variable d'environnement.")
+
+
 def check_dependencies(root: Path, result: AuditResult) -> None:
     requirements = _read_text(root / "requirements.txt").lower()
     docs = (_read_text(root / "README.md") + "\n" + _read_text(root / "COMMANDS.md")).lower()
@@ -857,6 +942,7 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
         check_imports(result)
     check_telegram_guard(root, result)
     check_telegram_read_only_release(root, result, use_git=use_git)
+    check_v96_release(root, result)
     check_dependencies(root, result)
     check_docs(root, result)
     result.add_recommendation("Conserver le bot en mode analyse prudente tant qu'aucun signal robuste n'est valide en test 2024+.")
