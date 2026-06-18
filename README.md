@@ -996,3 +996,24 @@ python live_scan_smoke_test.py --date YYYY-MM-DD --days 2 --allow-network --debu
 python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --dry-run
 python telegram_shadow_publisher.py --ledger reports/shadow_ledger.csv --since-date YYYY-MM-DD --only-new --max-messages 2 --dry-run
 ```
+
+## V9.7 API-Football Near-Close Apply & Telegram Near-Close
+
+V9.7 ajoute le near-close apply API-Football et le telegram near-close reporter. Le but est de prendre une near-close deja capturee dans `reports/api_football_near_close_*.csv`, de l'appliquer au ledger shadow uniquement avec `--apply`, puis de produire une notification Telegram read-only uniquement avec `--allow-send`.
+
+Nouveaux outils:
+
+- `api_football_near_close_apply.py` matche par `source_event_id` / `fixture_id`, `market_type`, `side`, puis bookmaker exact si disponible ;
+- `telegram_near_close_reporter.py` publie seulement l'information "near-close capturee" pour une observation deja presente dans le ledger ;
+- `shadow_clv_report.py` lit maintenant `closing_odds`, `clv`, `clv_pct`, `closing_quality` et `closing_status` ;
+- `evidence_gate.py` lit par defaut `reports/shadow_clv_report.json`, `reports/shadow_quality_audit.json` et `reports/proof_dashboard.json` si presents.
+
+Commandes principales:
+
+```bash
+python api_football_near_close_apply.py --ledger reports/shadow_ledger.csv --near-close-file reports/api_football_near_close_1489385.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+python api_football_near_close_apply.py --ledger reports/shadow_ledger.csv --near-close-file reports/api_football_near_close_1489385.csv --shadow-id sh_20260617210447_2ee081d9 --apply
+python telegram_near_close_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+```
+
+Regles: aucun reseau dans les tests, aucun Telegram reel dans les tests, aucune cle loggee, `reports/` et `external_data/` non trackes, aucune mise, aucun pick automatique, `lab_only=true`, `can_influence_picks=false`.

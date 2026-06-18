@@ -101,3 +101,19 @@ V9.5 ajoute deux champs de gouvernance:
 - `telegram_live_pick_allowed=false` pour interdire toute activation de signal via Telegram.
 
 Un message Telegram ne peut pas lever les blockers. Si CLV, sample, resultats, calibration ou multiple testing sont insuffisants, le statut reste `non valide`.
+
+## V9.7 rapports par defaut
+
+`evidence_gate.py` cherche maintenant par defaut:
+
+- `reports/shadow_clv_report.json`
+- `reports/shadow_quality_audit.json`
+- `reports/proof_dashboard.json` si present
+
+Aliases CLI:
+
+```bash
+python evidence_gate.py --clv-report reports/shadow_clv_report.json --quality-report reports/shadow_quality_audit.json
+```
+
+La regle de promotion n'est pas assouplie. Les champs `closing_quality`, `closing_status`, `clv` et `clv_pct` ameliorent l'audit CLV, mais un Telegram read-only reste seulement une lecture laboratoire.

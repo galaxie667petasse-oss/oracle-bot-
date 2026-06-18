@@ -1,4 +1,5 @@
 import tempfile
+import csv
 from pathlib import Path
 
 import oracle_ops
@@ -186,6 +187,35 @@ def main():
         assert phase_report["phase"]["phase"] == "pre_match"
         matchday_report = oracle_ops.matchday_report(matchday["output_dir"], str(ledger), str(odds_store), str(root / "reports"), phase="pre_match")
         assert "evidence" in matchday_report
+
+        near_entry = shadow_ledger.add_shadow_entry(
+            str(ledger),
+            match_date="2026-06-17",
+            league="World Cup",
+            home="Ghana",
+            away="Panama",
+            market="h2h",
+            side="home",
+            taken_odds="2.26",
+            bookmaker="10Bet",
+            strategy_name="api_football_same_day_shadow_v1",
+            notes="source=api_football; source_event_id=1489385",
+        )
+        near_file = root / "reports" / "api_football_near_close_1489385.csv"
+        with near_file.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=["captured_at", "source_event_id", "bookmaker", "market_type", "side", "odds"])
+            writer.writeheader()
+            writer.writerow({"captured_at": "2026-06-17T21:20:43", "source_event_id": "1489385", "bookmaker": "10Bet", "market_type": "h2h", "side": "home", "odds": "2.26"})
+        near_apply_dry = oracle_ops.near_close_apply_ops_report(str(root / "reports"), str(ledger), str(near_file), shadow_id=near_entry["shadow_id"], apply=False)
+        assert near_apply_dry["would_update"] == 1
+        assert near_apply_dry["dry_run"] is True
+        near_apply_real = oracle_ops.near_close_apply_ops_report(str(root / "reports"), str(ledger), str(near_file), shadow_id=near_entry["shadow_id"], apply=True)
+        assert near_apply_real["updated"] == 1
+        telegram_near = oracle_ops.telegram_near_close_report(str(root / "reports"), str(ledger), shadow_id=near_entry["shadow_id"], allow_send=False)
+        assert telegram_near["dry_run"] is True
+        assert Path(telegram_near["preview"]).exists()
+        assert oracle_ops.main(["--near-close-apply", "--ledger", str(ledger), "--near-close-file", str(near_file), "--shadow-id", near_entry["shadow_id"], "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--telegram-near-close", "--ledger", str(ledger), "--shadow-id", near_entry["shadow_id"], "--reports-dir", str(root / "reports")]) == 0
 
         absent = oracle_ops.build_health(root / "absent", str(ledger))
         assert absent["status"] == "bloquant"

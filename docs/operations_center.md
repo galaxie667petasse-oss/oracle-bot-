@@ -227,3 +227,15 @@ python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --dry-run
 ```
 
 Les scripts Windows dans `scripts/` sont des preparations uniquement. Ils ne contiennent pas de token et gardent l'envoi Telegram derriere `ORACLE_ALLOW_TELEGRAM_SEND=true`.
+
+## V9.7 Near-close apply
+
+`oracle_ops.py` expose deux actions locales:
+
+```bash
+python oracle_ops.py --near-close-apply --ledger reports/shadow_ledger.csv --near-close-file reports/api_football_near_close_1489385.csv --shadow-id sh_20260617210447_2ee081d9
+python oracle_ops.py --near-close-apply --ledger reports/shadow_ledger.csv --near-close-file reports/api_football_near_close_1489385.csv --shadow-id sh_20260617210447_2ee081d9 --apply
+python oracle_ops.py --telegram-near-close --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9
+```
+
+La premiere commande reste en dry-run. La deuxieme modifie le ledger seulement apres `--apply`. La troisieme cree une preview Telegram near-close et n'envoie rien sans `--allow-send`.

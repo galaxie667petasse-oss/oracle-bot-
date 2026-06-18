@@ -215,11 +215,11 @@ def print_report(report: Dict[str, Any]) -> None:
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Dashboard de preuve Oracle.")
-    parser.add_argument("--shadow", default="")
-    parser.add_argument("--evidence", default="")
+    parser.add_argument("--shadow", default="reports/shadow_clv_report.json")
+    parser.add_argument("--evidence", default="reports/evidence_gate.json")
     parser.add_argument("--big5", default="")
     parser.add_argument("--historical-clv", default="")
-    parser.add_argument("--quality", default="")
+    parser.add_argument("--quality", default="reports/shadow_quality_audit.json")
     parser.add_argument("--intake", default="")
     parser.add_argument("--same-day", default="")
     parser.add_argument("--near-close-today", default="")

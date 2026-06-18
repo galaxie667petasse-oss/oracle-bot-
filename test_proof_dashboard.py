@@ -38,6 +38,10 @@ def main():
         assert out.exists() and html.exists()
         only_hist = proof_dashboard.build_dashboard(historical_clv_path=str(historical))
         assert only_hist["global_status"] == "historical_evidence_only"
+        args = proof_dashboard.parse_args([])
+        assert args.shadow == "reports/shadow_clv_report.json"
+        assert args.evidence == "reports/evidence_gate.json"
+        assert args.quality == "reports/shadow_quality_audit.json"
     print("test_proof_dashboard ok")
 
 

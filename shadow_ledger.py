@@ -113,11 +113,17 @@ def read_ledger(path: str = DEFAULT_LEDGER) -> List[Dict[str, str]]:
 
 def write_ledger(rows: Iterable[Dict[str, Any]], path: str = DEFAULT_LEDGER) -> Path:
     target = ensure_writable_path(path)
+    materialized = [dict(row) for row in rows]
+    fieldnames = list(LEDGER_COLUMNS)
+    for row in materialized:
+        for column in row.keys():
+            if column not in fieldnames:
+                fieldnames.append(column)
     with target.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=LEDGER_COLUMNS, extrasaction="ignore")
+        writer = csv.DictWriter(fh, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
-        for row in rows:
-            writer.writerow({column: row.get(column, "") for column in LEDGER_COLUMNS})
+        for row in materialized:
+            writer.writerow({column: row.get(column, "") for column in fieldnames})
     return target
 
 

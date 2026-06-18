@@ -62,6 +62,8 @@ from telegram_message_formatter import format_ledger_preview, write_text as writ
 from telegram_result_reporter import publish_results as publish_telegram_results
 from telegram_shadow_publisher import publish_shadow_observations as publish_telegram_shadow
 from telegram_ops_runner import run_telegram_ops
+from telegram_near_close_reporter import publish_near_close as publish_telegram_near_close
+from api_football_near_close_apply import apply_near_close
 
 
 KEY_MODULES = [
@@ -82,6 +84,7 @@ KEY_MODULES = [
     "odds_snapshot_store.py",
     "manual_odds_import.py",
     "api_football_odds_adapter.py",
+    "api_football_near_close_apply.py",
     "the_odds_api_adapter.py",
     "odds_to_shadow.py",
     "odds_closing_matcher.py",
@@ -139,6 +142,7 @@ KEY_MODULES = [
     "telegram_shadow_publisher.py",
     "telegram_daily_reporter.py",
     "telegram_result_reporter.py",
+    "telegram_near_close_reporter.py",
     "telegram_ops_runner.py",
 ]
 
@@ -359,6 +363,28 @@ def near_close_window_ops_report(reports_dir: str, ledger: str) -> Dict[str, Any
     return report
 
 
+def near_close_apply_ops_report(
+    reports_dir: str,
+    ledger: str,
+    near_close_file: str,
+    shadow_id: str = "",
+    apply: bool = False,
+) -> Dict[str, Any]:
+    if not near_close_file:
+        return {
+            "available": False,
+            "message": "--near-close-file requis pour appliquer une near-close API-Football.",
+            "recommended_command": "python api_football_near_close_apply.py --ledger reports/shadow_ledger.csv --near-close-file reports/api_football_near_close_1489385.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run",
+            "dry_run": True,
+            "lab_only": True,
+            "can_influence_picks": False,
+        }
+    report = apply_near_close(ledger, near_close_file, shadow_id=shadow_id, apply=apply)
+    target = Path(_reports_path(reports_dir, "api_football_near_close_apply.json"))
+    target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    return report
+
+
 def post_match_results_ops_report(reports_dir: str, ledger: str) -> Dict[str, Any]:
     return run_post_match_results(
         ledger=ledger,
@@ -439,6 +465,30 @@ def telegram_results_report(reports_dir: str, ledger: str, allow_send: bool = Fa
         output=_reports_path(reports_dir, "telegram_results_preview.md"),
         tracking=_reports_path(reports_dir, "telegram_published_results.json"),
         only_updated=True,
+        allow_send=allow_send,
+        dry_run=not allow_send,
+    )
+
+
+def telegram_near_close_report(
+    reports_dir: str,
+    ledger: str,
+    shadow_id: str = "",
+    allow_send: bool = False,
+) -> Dict[str, Any]:
+    if not shadow_id:
+        return {
+            "available": False,
+            "message": "--shadow-id requis pour publier une near-close.",
+            "dry_run": True,
+            "lab_only": True,
+            "can_influence_picks": False,
+        }
+    return publish_telegram_near_close(
+        ledger=ledger,
+        shadow_id=shadow_id,
+        output=_reports_path(reports_dir, "telegram_near_close_preview.md"),
+        tracking=_reports_path(reports_dir, "telegram_published_near_close.json"),
         allow_send=allow_send,
         dry_run=not allow_send,
     )
@@ -873,6 +923,7 @@ def parse_args(argv=None):
     actions.add_argument("--near-close-today", action="store_true")
     actions.add_argument("--next-days", action="store_true")
     actions.add_argument("--near-close-window", action="store_true")
+    actions.add_argument("--near-close-apply", action="store_true")
     actions.add_argument("--post-match-results", action="store_true")
     actions.add_argument("--football-data-import", action="store_true")
     actions.add_argument("--subscription-evaluator", action="store_true")
@@ -881,6 +932,7 @@ def parse_args(argv=None):
     actions.add_argument("--telegram-preview", action="store_true")
     actions.add_argument("--telegram-daily", action="store_true")
     actions.add_argument("--telegram-results", action="store_true")
+    actions.add_argument("--telegram-near-close", action="store_true")
     actions.add_argument("--telegram-ops", action="store_true")
     actions.add_argument("--archive-tests", action="store_true")
     parser.add_argument("--ledger", default="reports/shadow_ledger.csv")
@@ -891,6 +943,8 @@ def parse_args(argv=None):
     parser.add_argument("--sport-map", default="config/sport_key_map.example.json")
     parser.add_argument("--odds-csv", default="")
     parser.add_argument("--football-data-csv", default="")
+    parser.add_argument("--near-close-file", default="")
+    parser.add_argument("--shadow-id", default="")
     parser.add_argument("--apply", action="store_true", help="Applique les changements ledger pour odds-to-shadow/closing-match")
     parser.add_argument("--allow-send", action="store_true", help="Autorise explicitement l'envoi Telegram read-only")
     parser.add_argument("--skip-benchmark", action="store_true")
@@ -1066,6 +1120,8 @@ def main(argv=None) -> int:
             print_odds_report("api football next-days", api_football_next_days_ops_report(args.reports_dir, args.date, args.ledger))
         elif args.near_close_window:
             print_odds_report("near-close window", near_close_window_ops_report(args.reports_dir, args.ledger))
+        elif args.near_close_apply:
+            print_odds_report("api football near-close apply", near_close_apply_ops_report(args.reports_dir, args.ledger, args.near_close_file, shadow_id=args.shadow_id, apply=args.apply))
         elif args.post_match_results:
             print_odds_report("post-match results", post_match_results_ops_report(args.reports_dir, args.ledger))
         elif args.football_data_import:
@@ -1082,6 +1138,8 @@ def main(argv=None) -> int:
             print_odds_report("telegram daily", telegram_daily_report(args.reports_dir, args.date, args.ledger, allow_send=args.allow_send))
         elif args.telegram_results:
             print_odds_report("telegram results", telegram_results_report(args.reports_dir, args.ledger, allow_send=args.allow_send))
+        elif args.telegram_near_close:
+            print_odds_report("telegram near-close", telegram_near_close_report(args.reports_dir, args.ledger, shadow_id=args.shadow_id, allow_send=args.allow_send))
         elif args.telegram_ops:
             print_odds_report("telegram ops", telegram_ops_report(args.reports_dir, args.date, args.ledger, allow_send=args.allow_send))
         elif args.archive_tests:

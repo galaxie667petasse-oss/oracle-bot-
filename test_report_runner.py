@@ -434,9 +434,12 @@ Understat xG Full Pipeline Quality Gate
         daily_ops_cmds = daily_ops_commands(str(root / "reports" / "shadow_ledger.csv"), date="2026-06-05", skip_dashboard=True)
         assert any("daily_operations_runner.py" in command.args and "--full-dry-run" in command.args for command in daily_ops_cmds)
         assert any("evidence_gate.py" in command.args and "--near-close-window" in command.args for command in daily_ops_cmds)
-        telegram_cmds = telegram_commands(str(root / "reports" / "shadow_ledger.csv"), date="2026-06-05", skip_dashboard=True)
+        captured_ledger = root / "reports" / "captured_shadow_ledger.csv"
+        write_report(captured_ledger, "shadow_id,home_team,away_team,market_type,side,taken_odds,closing_odds,closing_status,clv_pct\nsh_cap,A,B,h2h,home,2.00,2.10,captured,5.0\n")
+        telegram_cmds = telegram_commands(str(captured_ledger), date="2026-06-05", skip_dashboard=True)
         assert any("telegram_config.py" in command.args for command in telegram_cmds)
         assert any("telegram_daily_reporter.py" in command.args and "--dry-run" in command.args for command in telegram_cmds)
+        assert any("telegram_near_close_reporter.py" in command.args and "--dry-run" in command.args for command in telegram_cmds)
         assert not any("--allow-send" in command.args for command in telegram_cmds)
         subscription_cmds = subscription_commands(skip_dashboard=True)
         assert any("data_subscription_evaluator.py" in command.args for command in subscription_cmds)

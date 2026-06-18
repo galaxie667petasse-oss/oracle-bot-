@@ -61,3 +61,14 @@ Smoke test pipeline:
 python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --dry-run
 python telegram_pipeline_smoke_test.py --date YYYY-MM-DD --allow-send --plain-text-test
 ```
+
+## V9.7 near-close capturee
+
+Une near-close appliquee au ledger peut etre publiee en lecture seule:
+
+```bash
+python telegram_near_close_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+python telegram_near_close_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --allow-send --plain-text
+```
+
+Le tracking `reports/telegram_published_near_close.json` evite les doublons. `--force` permet une republication volontaire. Le message reste informatif: near-close capturee, CLV, qualite, resultat en attente, aucune mise.

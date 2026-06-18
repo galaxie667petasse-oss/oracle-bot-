@@ -112,6 +112,9 @@ def test_release_candidate_docs_exist_and_have_sections():
         "telegram",
         "telegram read-only",
         "v9.6",
+        "v9.7",
+        "near-close apply",
+        "telegram near-close",
         "railway plus tard",
         "securite",
         "commandes principales",
@@ -139,6 +142,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v9.5" in status
     assert "v9.5.1" in status
     assert "v9.6" in status
+    assert "v9.7" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -190,6 +194,8 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "data_subscription_evaluator.md").exists()
     assert (root / "docs" / "daily_operations_runner.md").exists()
     assert (root / "docs" / "telegram_read_only_publisher.md").exists()
+    assert (root / "docs" / "api_football_near_close_apply.md").exists()
+    assert (root / "docs" / "telegram_near_close_reporter.md").exists()
     assert (root / "docs" / "telegram_message_policy.md").exists()
     assert (root / "docs" / "telegram_setup.md").exists()
     assert (root / "docs" / "live_scan_smoke_test.md").exists()

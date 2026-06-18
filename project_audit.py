@@ -52,6 +52,7 @@ ESSENTIAL_FILES = [
     "odds_snapshot_store.py",
     "manual_odds_import.py",
     "api_football_odds_adapter.py",
+    "api_football_near_close_apply.py",
     "api_football_valid_odds_selector.py",
     "api_football_same_day_runner.py",
     "the_odds_api_adapter.py",
@@ -89,6 +90,7 @@ ESSENTIAL_FILES = [
     "telegram_message_formatter.py",
     "telegram_notifier.py",
     "telegram_shadow_publisher.py",
+    "telegram_near_close_reporter.py",
     "telegram_daily_reporter.py",
     "telegram_result_reporter.py",
     "telegram_ops_runner.py",
@@ -99,6 +101,8 @@ ESSENTIAL_FILES = [
     "scripts/install_windows_tasks.example.ps1",
     "config/telegram.example.env",
     "docs/telegram_read_only_publisher.md",
+    "docs/telegram_near_close_reporter.md",
+    "docs/api_football_near_close_apply.md",
     "docs/telegram_message_policy.md",
     "docs/telegram_setup.md",
     "docs/live_scan_smoke_test.md",
@@ -221,6 +225,7 @@ MAIN_TESTS = [
     "test_odds_snapshot_store.py",
     "test_manual_odds_import.py",
     "test_api_football_odds_adapter.py",
+    "test_api_football_near_close_apply.py",
     "test_the_odds_api_adapter.py",
     "test_odds_to_shadow.py",
     "test_odds_closing_matcher.py",
@@ -255,6 +260,7 @@ MAIN_TESTS = [
     "test_telegram_message_formatter.py",
     "test_telegram_notifier.py",
     "test_telegram_shadow_publisher.py",
+    "test_telegram_near_close_reporter.py",
     "test_telegram_daily_reporter.py",
     "test_telegram_result_reporter.py",
     "test_telegram_ops_runner.py",
@@ -338,6 +344,7 @@ IMPORT_MODULES = [
     "odds_snapshot_store",
     "manual_odds_import",
     "api_football_odds_adapter",
+    "api_football_near_close_apply",
     "the_odds_api_adapter",
     "odds_to_shadow",
     "odds_closing_matcher",
@@ -372,6 +379,7 @@ IMPORT_MODULES = [
     "telegram_message_formatter",
     "telegram_notifier",
     "telegram_shadow_publisher",
+    "telegram_near_close_reporter",
     "telegram_daily_reporter",
     "telegram_result_reporter",
     "telegram_ops_runner",
@@ -443,6 +451,7 @@ OFFLINE_COMMAND_FILES = [
     "odds_snapshot_store.py",
     "manual_odds_import.py",
     "api_football_odds_adapter.py",
+    "api_football_near_close_apply.py",
     "api_football_odds_debug_report.py",
     "api_football_next_days_runner.py",
     "live_scan_smoke_test.py",
@@ -508,6 +517,15 @@ V96_FILES = [
     "test_live_scan_smoke_test.py",
     "test_telegram_pipeline_smoke_test.py",
     "test_windows_scheduler_scripts.py",
+]
+
+V97_FILES = [
+    "api_football_near_close_apply.py",
+    "telegram_near_close_reporter.py",
+    "test_api_football_near_close_apply.py",
+    "test_telegram_near_close_reporter.py",
+    "docs/api_football_near_close_apply.md",
+    "docs/telegram_near_close_reporter.md",
 ]
 
 WINDOWS_SCHEDULER_SCRIPTS = [
@@ -763,14 +781,16 @@ def check_telegram_read_only_release(root: Path, result: AuditResult, use_git: b
         "telegram_config.py",
         "telegram_message_formatter.py",
         "telegram_notifier.py",
+        "telegram_near_close_reporter.py",
         "telegram_shadow_publisher.py",
         "telegram_daily_reporter.py",
         "telegram_result_reporter.py",
-    "telegram_ops_runner.py",
-    "telegram_pipeline_smoke_test.py",
+        "telegram_ops_runner.py",
+        "telegram_pipeline_smoke_test.py",
     ]
     docs = [
         "docs/telegram_read_only_publisher.md",
+        "docs/telegram_near_close_reporter.md",
         "docs/telegram_message_policy.md",
         "docs/telegram_setup.md",
     ]
@@ -778,6 +798,7 @@ def check_telegram_read_only_release(root: Path, result: AuditResult, use_git: b
         "test_telegram_config.py",
         "test_telegram_message_formatter.py",
         "test_telegram_notifier.py",
+        "test_telegram_near_close_reporter.py",
         "test_telegram_shadow_publisher.py",
         "test_telegram_daily_reporter.py",
         "test_telegram_result_reporter.py",
@@ -882,6 +903,44 @@ def check_v96_release(root: Path, result: AuditResult) -> None:
         result.add_ok("Scripts Windows protegent --allow-send par variable d'environnement.")
 
 
+def check_v97_release(root: Path, result: AuditResult) -> None:
+    missing = [name for name in V97_FILES if not (root / name).exists()]
+    if missing:
+        result.add_error("Release V9.7 incomplete: " + ", ".join(missing))
+    else:
+        result.add_ok("Modules, docs et tests V9.7 presents.")
+
+    apply_text = _read_text(root / "api_football_near_close_apply.py")
+    if apply_text.strip() == "# fichier test":
+        result.add_ok("V9.7 near-close apply stub present pour test minimal.")
+    else:
+        if "--apply" in apply_text and "apply: bool = False" in apply_text and "dry_run" in apply_text:
+            result.add_ok("V9.7: application ledger exige --apply et reste dry-run par defaut.")
+        else:
+            result.add_error("V9.7: verrou --apply near-close non verifiable.")
+        if "API_FOOTBALL_KEY" in apply_text or "TELEGRAM_BOT_TOKEN" in apply_text:
+            result.add_error("V9.7: secret mentionne dans api_football_near_close_apply.py.")
+        else:
+            result.add_ok("V9.7: apply near-close sans token ni cle API.")
+
+    telegram_text = _read_text(root / "telegram_near_close_reporter.py")
+    if telegram_text.strip() == "# fichier test":
+        result.add_ok("V9.7 Telegram near-close stub present pour test minimal.")
+    else:
+        if "--allow-send" in telegram_text and "allow_send: bool = False" in telegram_text and "dry_run" in telegram_text:
+            result.add_ok("V9.7: Telegram near-close exige --allow-send et reste dry-run par defaut.")
+        else:
+            result.add_error("V9.7: verrou --allow-send Telegram near-close non verifiable.")
+        if '"lab_only": True' in telegram_text and '"can_influence_picks": False' in telegram_text:
+            result.add_ok("V9.7: Telegram near-close conserve lab_only=true et can_influence_picks=false.")
+        else:
+            result.add_error("V9.7: garde-fous Telegram near-close absents.")
+        if "TELEGRAM_BOT_TOKEN" in telegram_text or "API_FOOTBALL_KEY" in telegram_text:
+            result.add_error("V9.7: secret mentionne dans telegram_near_close_reporter.py.")
+        else:
+            result.add_ok("V9.7: reporter near-close sans token ni cle API en clair.")
+
+
 def check_dependencies(root: Path, result: AuditResult) -> None:
     requirements = _read_text(root / "requirements.txt").lower()
     docs = (_read_text(root / "README.md") + "\n" + _read_text(root / "COMMANDS.md")).lower()
@@ -943,6 +1002,7 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     check_telegram_guard(root, result)
     check_telegram_read_only_release(root, result, use_git=use_git)
     check_v96_release(root, result)
+    check_v97_release(root, result)
     check_dependencies(root, result)
     check_docs(root, result)
     result.add_recommendation("Conserver le bot en mode analyse prudente tant qu'aucun signal robuste n'est valide en test 2024+.")

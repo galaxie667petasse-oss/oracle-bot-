@@ -392,8 +392,8 @@ def print_report(report: Dict[str, Any]) -> None:
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Centralise le gate de preuve Oracle Bot.")
-    parser.add_argument("--shadow-report", default="")
-    parser.add_argument("--quality-audit", default="")
+    parser.add_argument("--shadow-report", "--clv-report", dest="shadow_report", default="reports/shadow_clv_report.json")
+    parser.add_argument("--quality-audit", "--quality-report", dest="quality_audit", default="reports/shadow_quality_audit.json")
     parser.add_argument("--big5-summary", default="")
     parser.add_argument("--clv-readiness", default="")
     parser.add_argument("--benchmark-summary", default="")
@@ -403,7 +403,7 @@ def parse_args(argv=None):
     parser.add_argument("--matchday-status", default="")
     parser.add_argument("--lifecycle", default="")
     parser.add_argument("--historical-clv", default="")
-    parser.add_argument("--proof-dashboard", default="")
+    parser.add_argument("--proof-dashboard", default="reports/proof_dashboard.json")
     parser.add_argument("--next-days", default="")
     parser.add_argument("--near-close-window", default="")
     parser.add_argument("--post-match-results", default="")

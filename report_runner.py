@@ -1,4 +1,5 @@
 import argparse
+import csv
 import json
 import os
 import subprocess
@@ -1088,6 +1089,23 @@ def daily_ops_commands(
     return commands
 
 
+def _first_captured_near_close_shadow_id(ledger: str) -> str:
+    path = Path(ledger)
+    if not path.exists():
+        return ""
+    try:
+        with path.open(newline="", encoding="utf-8-sig") as fh:
+            for row in csv.DictReader(fh):
+                shadow_id = str(row.get("shadow_id") or "").strip()
+                closing_status = str(row.get("closing_status") or "").strip().lower()
+                closing_odds = str(row.get("closing_odds") or "").strip()
+                if shadow_id and (closing_status == "captured" or closing_odds):
+                    return shadow_id
+    except Exception:
+        return ""
+    return ""
+
+
 def telegram_commands(
     ledger: str = "reports/shadow_ledger.csv",
     date: str = "",
@@ -1135,6 +1153,25 @@ def telegram_commands(
             timeout=300,
         ),
     ]
+    captured_shadow_id = _first_captured_near_close_shadow_id(ledger)
+    if captured_shadow_id:
+        commands.append(
+            ReportCommand(
+                "Telegram near-close reporter dry-run",
+                "telegram_near_close_reporter.txt",
+                [
+                    "telegram_near_close_reporter.py",
+                    "--ledger",
+                    ledger,
+                    "--shadow-id",
+                    captured_shadow_id,
+                    "--output",
+                    "{report_dir}/telegram_near_close_preview.md",
+                    "--dry-run",
+                ],
+                timeout=300,
+            )
+        )
     if not skip_dashboard:
         commands.append(ReportCommand("Dashboard Telegram", "dashboard_builder.txt", ["dashboard_builder.py", "--input", "{report_dir}"], timeout=300))
     return commands

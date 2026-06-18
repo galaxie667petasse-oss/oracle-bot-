@@ -1327,3 +1327,31 @@ scripts/oracle_post_match.ps1
 ```
 
 Regles: `--allow-network` autorise seulement les requetes API, pas l'ecriture ledger. `--allow-send` reste requis pour Telegram reel. Les scripts Windows lisent les autorisations via `ORACLE_ALLOW_NETWORK` et `ORACLE_ALLOW_TELEGRAM_SEND`.
+
+## V9.7 API-Football Near-Close Apply & Telegram Near-Close
+
+Capture near-close Ghana - Panama:
+
+```bash
+python api_football_odds_adapter.py --allow-network --fixture-id 1489385 --output reports/api_football_near_close_1489385.csv --raw-output reports/api_football_near_close_1489385.json
+```
+
+Dry-run application ledger:
+
+```bash
+python api_football_near_close_apply.py --ledger reports/shadow_ledger.csv --near-close-file reports/api_football_near_close_1489385.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+```
+
+Application ledger apres verification humaine:
+
+```bash
+python api_football_near_close_apply.py --ledger reports/shadow_ledger.csv --near-close-file reports/api_football_near_close_1489385.csv --shadow-id sh_20260617210447_2ee081d9 --apply
+```
+
+Preview Telegram read-only:
+
+```bash
+python telegram_near_close_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+```
+
+Regles: dry-run par defaut, aucune mise, aucun pick automatique, aucun token commite, aucun envoi Telegram sans `--allow-send`.

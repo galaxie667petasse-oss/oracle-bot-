@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -17,6 +18,12 @@ def main():
         assert empty["global_status"] == "not_started"
         assert empty["telegram_read_only_allowed"] is True
         assert empty["telegram_live_pick_allowed"] is False
+        args = evidence_gate.parse_args([])
+        assert args.shadow_report == "reports/shadow_clv_report.json"
+        assert args.quality_audit == "reports/shadow_quality_audit.json"
+        alias_args = evidence_gate.parse_args(["--clv-report", "reports/a.json", "--quality-report", "reports/b.json"])
+        assert alias_args.shadow_report == "reports/a.json"
+        assert alias_args.quality_audit == "reports/b.json"
 
         shadow = root / "reports" / "shadow.json"
         quality = root / "reports" / "quality.json"
@@ -88,6 +95,23 @@ def main():
         evidence_gate.write_html(big5_blocked, str(out_html))
         assert out_json.exists()
         assert out_html.exists()
+
+        default_reports = root / "default_cli"
+        write_json(default_reports / "reports" / "shadow_clv_report.json", {"signals_total": 1, "sample_size": 1, "clv_coverage": 100.0, "clv_mean": 0.01, "roi": None, "verdict": "observation_only"})
+        write_json(default_reports / "reports" / "shadow_quality_audit.json", {"verdict": "usable_with_warnings", "missing_closing": 0, "missing_results": 1})
+        old_cwd = Path.cwd()
+        os.chdir(default_reports)
+        try:
+            cli_args = evidence_gate.parse_args([])
+            default_gate = evidence_gate.build_evidence_gate(
+                shadow_report_path=cli_args.shadow_report,
+                quality_audit_path=cli_args.quality_audit,
+                proof_dashboard_path=cli_args.proof_dashboard,
+            )
+        finally:
+            os.chdir(old_cwd)
+        assert "Aucun rapport de preuve disponible" not in default_gate["blockers"]
+        assert default_gate["telegram_read_only_allowed"] is True
 
     print("test_evidence_gate ok")
 

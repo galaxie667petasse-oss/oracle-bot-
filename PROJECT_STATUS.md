@@ -371,3 +371,17 @@ Statut: en place localement.
 - Les scripts Windows sont prepares dans `scripts/`, sans token et sans activation automatique.
 
 Conclusion: V9.6 facilite le scan live et la publication read-only prudente, mais evidence gate reste strict. Aucun Railway, aucune mise, aucun pick automatique.
+
+## V9.7 API-Football Near-Close Apply, CLV Update & Telegram Closing Report
+
+Statut: en place localement.
+
+- `api_football_near_close_apply.py` applique une near-close API-Football au ledger seulement avec `--apply`.
+- Le matching utilise `source_event_id` / `fixture_id`, `market_type`, `side` et le bookmaker exact quand il existe.
+- `shadow_clv_report.py` lit les champs V9.7 `closing_odds`, `clv`, `clv_pct`, `closing_quality` et `closing_status`.
+- `evidence_gate.py` lit par defaut les rapports standard dans `reports/` et garde la promotion bloquee tant que sample, CLV, resultats et qualite restent insuffisants.
+- `telegram_near_close_reporter.py` publie une near-close capturee uniquement en read-only, avec envoi reel seulement sous `--allow-send`.
+
+Etat Ghana - Panama attendu: cote prise `2.26`, cote near-close `2.26`, CLV `0.00%`, qualite `same_bookmaker`.
+
+Conclusion: V9.7 ameliore le suivi closing et le reporting Telegram read-only. Aucun signal robuste active, aucune mise, aucun pick automatique.

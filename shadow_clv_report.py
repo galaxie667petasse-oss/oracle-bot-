@@ -28,6 +28,48 @@ def _truthy(value: Any) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "oui", "y"}
 
 
+def _clv_decimal(row: Dict[str, str]):
+    direct = _float(row.get("clv"))
+    if direct is not None:
+        return direct
+    pct = _float(row.get("clv_pct"))
+    if pct is not None:
+        return pct / 100.0
+    legacy = _float(row.get("clv_percent"))
+    if legacy is not None and (_truthy(row.get("clv_available")) or str(row.get("closing_odds") or "").strip()):
+        return legacy
+    return None
+
+
+def _has_closing(row: Dict[str, str]) -> bool:
+    status = str(row.get("closing_status") or "").strip().lower()
+    return status == "captured" or bool(str(row.get("closing_odds") or "").strip())
+
+
+def _closing_status(row: Dict[str, str]) -> str:
+    status = str(row.get("closing_status") or "").strip().lower()
+    if status:
+        return status
+    return "captured" if _has_closing(row) else "missing"
+
+
+def _closing_quality(row: Dict[str, str]) -> str:
+    quality = str(row.get("closing_quality") or "").strip()
+    if quality:
+        return quality
+    if _has_closing(row):
+        return "manual_unverified"
+    return "unavailable"
+
+
+def _counts(values: Iterable[str]) -> Dict[str, int]:
+    out: Dict[str, int] = {}
+    for value in values:
+        key = str(value or "inconnu").strip() or "inconnu"
+        out[key] = out.get(key, 0) + 1
+    return dict(sorted(out.items(), key=lambda item: (-item[1], item[0])))
+
+
 def _median(values: List[float]):
     return round(statistics.median(values), 6) if values else None
 
@@ -76,7 +118,7 @@ def _group_stats(rows: Iterable[Dict[str, str]], key: str) -> Dict[str, Dict[str
         grouped.setdefault(str(row.get(key) or "inconnu"), []).append(row)
     out: Dict[str, Dict[str, Any]] = {}
     for group, items in grouped.items():
-        clvs = [_float(item.get("clv_percent")) for item in items if _truthy(item.get("clv_available"))]
+        clvs = [_clv_decimal(item) for item in items if _clv_decimal(item) is not None]
         clvs = [value for value in clvs if value is not None]
         profits = [_profit(item) for item in items]
         profits = [value for value in profits if value is not None]
@@ -102,17 +144,37 @@ def _month(row: Dict[str, str]) -> str:
 
 def build_shadow_clv_report(ledger_path: str) -> Dict[str, Any]:
     rows = read_ledger(ledger_path)
-    clvs = [_float(row.get("clv_percent")) for row in rows if _truthy(row.get("clv_available"))]
+    clvs = [_clv_decimal(row) for row in rows if _clv_decimal(row) is not None]
     clvs = [value for value in clvs if value is not None]
     profits = [_profit(row) for row in rows]
     profits = [value for value in profits if value is not None]
     wins = sum(1 for row in rows if str(row.get("result") or "").lower() == "win")
     losses = sum(1 for row in rows if str(row.get("result") or "").lower() == "loss")
     settled = wins + losses + sum(1 for row in rows if str(row.get("result") or "").lower() == "push")
-    pending_closing = sum(1 for row in rows if not str(row.get("closing_odds") or "").strip())
+    signals_with_closing = sum(1 for row in rows if _has_closing(row))
+    pending_closing = sum(1 for row in rows if not _has_closing(row))
+    overdue_missing = sum(1 for row in rows if _closing_status(row) == "overdue_missing")
     pending_results = sum(1 for row in rows if str(row.get("result") or "unknown").lower() == "unknown")
     clv_mean = round(sum(clvs) / len(clvs), 6) if clvs else None
     roi = round(sum(profits) / len(profits) * 100.0, 2) if profits else None
+    closing_rows = [
+        {
+            "shadow_id": row.get("shadow_id"),
+            "match_date": row.get("match_date"),
+            "league": row.get("league"),
+            "match": f"{row.get('home_team') or ''} - {row.get('away_team') or ''}".strip(),
+            "market_type": row.get("market_type"),
+            "side": row.get("side"),
+            "taken_odds": row.get("taken_odds"),
+            "closing_odds": row.get("closing_odds"),
+            "closing_bookmaker": row.get("closing_bookmaker") or row.get("bookmaker"),
+            "closing_quality": _closing_quality(row),
+            "closing_status": _closing_status(row),
+            "clv": _clv_decimal(row),
+        }
+        for row in rows
+        if _has_closing(row)
+    ]
     warnings: List[str] = []
     if len(rows) < 100:
         warnings.append("sample <30: bruit extreme") if len(rows) < 30 else None
@@ -147,13 +209,18 @@ def build_shadow_clv_report(ledger_path: str) -> Dict[str, Any]:
     return {
         "ledger": ledger_path,
         "signals_total": len(rows),
-        "signals_with_closing": len(clvs),
+        "signals_with_closing": signals_with_closing,
+        "signals_with_clv": len(clvs),
+        "signals_with_closing_details": closing_rows,
         "pending_closing": pending_closing,
+        "overdue_missing": overdue_missing,
         "pending_results": pending_results,
         "clv_coverage": round(len(clvs) / len(rows) * 100.0, 2) if rows else 0.0,
         "clv_mean": clv_mean,
         "clv_median": _median(clvs),
         "clv_positive_rate": round(sum(1 for value in clvs if value > 0) / len(clvs) * 100.0, 2) if clvs else None,
+        "closing_quality_breakdown": _counts(_closing_quality(row) for row in rows),
+        "closing_status_breakdown": _counts(_closing_status(row) for row in rows),
         "clv_by_league": _group_stats(rows, "league"),
         "clv_by_market": _group_stats(rows, "market_type"),
         "clv_by_side": _group_stats(rows, "side"),
@@ -203,6 +270,14 @@ def write_json(report: Dict[str, Any], path: str) -> Path:
 def write_html(report: Dict[str, Any], path: str) -> Path:
     target = ensure_reports_path(path)
     warnings = "".join(f"<li>{html.escape(str(item))}</li>" for item in report.get("warnings") or [])
+    quality = "".join(
+        f"<li>{html.escape(str(key))}: {value}</li>"
+        for key, value in (report.get("closing_quality_breakdown") or {}).items()
+    )
+    status = "".join(
+        f"<li>{html.escape(str(key))}: {value}</li>"
+        for key, value in (report.get("closing_status_breakdown") or {}).items()
+    )
     target.write_text("\n".join([
         "<!doctype html>",
         "<html lang='fr'><head><meta charset='utf-8'>",
@@ -215,15 +290,19 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         f"<tr><th>Signaux</th><td>{report.get('signals_total')}</td></tr>",
         f"<tr><th>Avec closing</th><td>{report.get('signals_with_closing')}</td></tr>",
         f"<tr><th>Pending closing</th><td>{report.get('pending_closing')}</td></tr>",
+        f"<tr><th>Overdue missing</th><td>{report.get('overdue_missing')}</td></tr>",
         f"<tr><th>Pending resultats</th><td>{report.get('pending_results')}</td></tr>",
         f"<tr><th>Coverage CLV</th><td>{report.get('clv_coverage')}%</td></tr>",
         f"<tr><th>CLV moyenne</th><td>{report.get('clv_mean')}</td></tr>",
+        f"<tr><th>CLV mediane</th><td>{report.get('clv_median')}</td></tr>",
         f"<tr><th>CLV positive</th><td>{report.get('clv_positive_rate')}%</td></tr>",
         f"<tr><th>ROI</th><td>{report.get('roi')}</td></tr>",
         f"<tr><th>Profit unite</th><td>{report.get('profit')}</td></tr>",
         f"<tr><th>Max drawdown</th><td>{report.get('drawdown')}</td></tr>",
         f"<tr><th>Verdict</th><td>{html.escape(str(report.get('verdict')))}</td></tr>",
         "</tbody></table>",
+        f"<section><h2>Closing quality</h2><ul>{quality or '<li>Aucun</li>'}</ul></section>",
+        f"<section><h2>Closing status</h2><ul>{status or '<li>Aucun</li>'}</ul></section>",
         f"<section class='warn'><h2>Avertissements</h2><ul>{warnings}</ul></section>",
         "<p>Aucun Telegram, aucune mise, aucun pick automatique.</p>",
         "</body></html>",
@@ -237,11 +316,14 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Signaux shadow: {report.get('signals_total')}")
     print(f"- Signaux avec closing odds: {report.get('signals_with_closing')}")
     print(f"- Pending closing: {report.get('pending_closing')}")
+    print(f"- Overdue missing: {report.get('overdue_missing')}")
     print(f"- Pending resultats: {report.get('pending_results')}")
     print(f"- Coverage CLV: {report.get('clv_coverage')}%")
     print(f"- CLV moyenne: {report.get('clv_mean')}")
     print(f"- CLV mediane: {report.get('clv_median')}")
     print(f"- CLV positive: {report.get('clv_positive_rate')}%")
+    print(f"- Breakdown closing_quality: {json.dumps(report.get('closing_quality_breakdown'), ensure_ascii=False)}")
+    print(f"- Breakdown closing_status: {json.dumps(report.get('closing_status_breakdown'), ensure_ascii=False)}")
     print(f"- ROI resultats disponibles: {report.get('roi')}")
     print(f"- Profit unite: {report.get('profit')}")
     print(f"- Winrate: {report.get('winrate')}")
