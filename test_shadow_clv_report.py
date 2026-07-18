@@ -39,18 +39,33 @@ def main():
 
         report = shadow_clv_report.build_shadow_clv_report(str(ledger))
         assert report["signals_total"] == 3
+        assert report["total_signals"] == 3
         assert report["signals_with_closing"] == 2
+        assert report["with_closing_odds"] == 2
         assert report["signals_with_clv"] == 2
+        assert report["with_results"] == 2
+        assert report["completed_cycles"] == 2
         assert report["pending_closing"] == 1
         assert report["overdue_missing"] == 1
         assert report["pending_results"] == 1
         assert report["clv_coverage"] == 66.67
+        assert report["result_coverage"] == 66.67
+        assert report["completed_cycle_coverage"] == 66.67
         assert report["clv_mean"] == 0.0
+        assert report["average_clv"] == 0.0
         assert report["clv_median"] == 0.0
+        assert report["median_clv"] == 0.0
         assert report["clv_positive_rate"] == 50.0
         assert report["sample_size"] == 3
+        assert report["roi_available_count"] == 2
         assert report["roi"] == 5.0
+        assert report["roi_percent_total"] == 5.0
         assert report["profit"] == 0.1
+        assert report["profit_units_total"] == 0.1
+        assert report["wins"] == 1
+        assert report["losses"] == 1
+        assert report["pushes"] == 0
+        assert report["average_profit_per_observation"] == 0.05
         assert report["drawdown"] == -1.0
         assert report["winrate"] == 50.0
         assert report["verdict"] == "not_validated"

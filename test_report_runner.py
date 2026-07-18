@@ -441,6 +441,10 @@ Understat xG Full Pipeline Quality Gate
         assert any("telegram_daily_reporter.py" in command.args and "--dry-run" in command.args for command in telegram_cmds)
         assert any("telegram_near_close_reporter.py" in command.args and "--dry-run" in command.args for command in telegram_cmds)
         assert not any("--allow-send" in command.args for command in telegram_cmds)
+        settled_ledger = root / "reports" / "settled_shadow_ledger.csv"
+        write_report(settled_ledger, "shadow_id,home_team,away_team,market_type,side,taken_odds,closing_odds,result_status,result_home_goals,result_away_goals,settlement_status,is_result_final,profit_units\nsh_set,Ghana,Panama,h2h,home,2.26,2.26,win,1,0,settled,True,1.26\n")
+        telegram_settled_cmds = telegram_commands(str(settled_ledger), date="2026-06-05", skip_dashboard=True)
+        assert any("telegram_result_reporter.py" in command.args and "--shadow-id" in command.args and "sh_set" in command.args and "--dry-run" in command.args for command in telegram_settled_cmds)
         subscription_cmds = subscription_commands(skip_dashboard=True)
         assert any("data_subscription_evaluator.py" in command.args for command in subscription_cmds)
         free_cmds = free_historical_commands(str(root / "E0.csv"), skip_dashboard=True)

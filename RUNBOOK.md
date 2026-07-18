@@ -1,0 +1,60 @@
+# Runbook V10
+
+## Provider indisponible
+
+Utiliser replay ou fixtures locales. Ne pas crasher toute l'application si `API_FOOTBALL_KEY` manque.
+
+## 429 ou rate limit
+
+Arreter le job, journaliser le provider et respecter `Retry-After` dans le futur adaptateur HTTP.
+
+## Telegram en panne
+
+Conserver preview local. Aucun envoi sans `--allow-send` et sans configuration valide.
+
+## Mode LLM indisponible
+
+Basculer deterministic-only ou mock-agent. Marquer la decision comme non validee par LLM.
+
+## Budget atteint
+
+Stopper les appels LLM, garder les candidats deterministes, ne pas promouvoir de signal.
+
+## Donnees incoherentes
+
+Retourner FAIL ou CONFLICTING dans data quality. Le juge final doit refuser.
+
+## Commandes utiles
+
+```bash
+python app.py doctor
+python app.py config validate
+python app.py db upgrade
+python app.py db status
+python app.py db doctor
+python app.py demo end-to-end
+python app.py demo end-to-end --json
+python app.py demo postgres-end-to-end
+python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --dry-run
+python app.py legacy discover
+python scripts/secret_scan.py --root .
+```
+
+## Migration echouee
+
+Verifier `DATABASE_URL`, puis relancer :
+
+```bash
+python app.py db status
+python app.py db doctor
+```
+
+Si la base Railway est nouvelle, appliquer `python app.py db upgrade`. Ne pas lancer de downgrade sur une base contenant des donnees utiles sans sauvegarde.
+
+## Replay bloque
+
+Le replay utilise un lock deterministe pour eviter deux imports concurrents. Si un job echoue, relancer le meme fichier : raw payloads et odds snapshots sont dedupliques par hash.
+
+## Donnees temporelles
+
+Toute erreur de datetime naïve doit etre traitee comme bug de normalisation. Les requetes de decision doivent passer par les fonctions `as_of`, jamais par la derniere cote globale.

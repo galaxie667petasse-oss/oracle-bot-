@@ -1,0 +1,79 @@
+name: oracle-local-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: oracle
+          POSTGRES_PASSWORD: oracle
+          POSTGRES_DB: oracle_v10
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oracle -d oracle_v10"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      APP_ENV: ci
+      DRY_RUN: "true"
+      REAL_MONEY_ACTIONS_ENABLED: "false"
+      DATABASE_URL: postgresql+psycopg://oracle:oracle@localhost:5432/oracle_v10
+      API_FOOTBALL_KEY: fake_ci_api_football_key
+      OPENAI_API_KEY: fake_ci_openai_key
+      TELEGRAM_BOT_TOKEN: fake_ci_telegram_token
+      TELEGRAM_CHAT_ID: fake_ci_chat_id
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Secret scan
+        run: python scripts/secret_scan.py --root .
+      - name: Compile
+        run: python -m compileall -q .
+      - name: Alembic upgrade
+        run: python app.py db upgrade
+      - name: Alembic status
+        run: python app.py db status
+      - name: V10 tests
+        run: |
+          python test_v10_foundation.py
+          python test_v10_persistence.py
+      - name: Replay smoke
+        run: |
+          python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --dry-run
+          python app.py demo postgres-end-to-end --json --database-url "$DATABASE_URL"
+      - name: Historical tests
+        run: |
+          set -e
+          for f in test_*.py; do
+            python "$f"
+          done
+      - name: Lint if configured
+        run: |
+          if [ -f pyproject.toml ] && grep -q "ruff" pyproject.toml; then
+            python -m ruff check .
+          else
+            echo "ruff non configure"
+          fi
+      - name: Type check if configured
+        run: |
+          if [ -f mypy.ini ] || ([ -f pyproject.toml ] && grep -q "mypy" pyproject.toml); then
+            python -m mypy .
+          else
+            echo "type check non configure"
+          fi
+      - name: Project audit smoke
+        run: python project_audit.py --no-imports --no-git
+      - name: Docker build
+        run: docker build -t oracle-football-bot-ci .

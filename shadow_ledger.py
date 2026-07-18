@@ -34,9 +34,23 @@ LEDGER_COLUMNS = [
     "closing_source",
     "clv_percent",
     "clv_available",
+    "result_status",
+    "result_home_goals",
+    "result_away_goals",
+    "result_winner",
+    "result_date",
+    "result_source",
+    "result_fixture_id",
+    "result_captured_at",
+    "is_result_final",
+    "profit_units",
+    "roi_percent",
+    "settled_at",
+    "settlement_status",
+    "observation_status",
     "notes",
 ]
-VALID_STATUS = {"observation", "watchlist", "rejected", "pending_result", "settled"}
+VALID_STATUS = {"observation", "watchlist", "rejected", "pending_result", "settled", "completed", "settled_shadow"}
 VALID_RESULT = {"win", "loss", "push", "void", "unknown"}
 CANDIDATE_IMPORT_COLUMNS = [
     "match_date",
@@ -168,6 +182,7 @@ def add_shadow_entry(path: str = DEFAULT_LEDGER, **kwargs: Any) -> Dict[str, Any
         "reason": str(kwargs.get("reason") or "").strip(),
         "status": status,
         "result": result,
+        "result_status": result,
         "closing_odds": "" if closing_odds is None else closing_odds,
         "closing_source": str(kwargs.get("closing_source") or "").strip(),
         "notes": str(kwargs.get("notes") or "").strip(),
@@ -265,7 +280,10 @@ def pending_closing(path: str = DEFAULT_LEDGER) -> List[Dict[str, str]]:
 
 
 def pending_results(path: str = DEFAULT_LEDGER) -> List[Dict[str, str]]:
-    return [row for row in read_ledger(path) if str(row.get("result") or "unknown").lower() == "unknown"]
+    return [
+        row for row in read_ledger(path)
+        if str(row.get("result_status") or row.get("result") or "unknown").lower() == "unknown"
+    ]
 
 
 def set_result(path: str, shadow_id: str, result: str) -> Dict[str, Any]:
@@ -277,8 +295,10 @@ def set_result(path: str, shadow_id: str, result: str) -> Dict[str, Any]:
     for row in rows:
         if row.get("shadow_id") == shadow_id:
             row["result"] = result
+            row["result_status"] = result
             if result in {"win", "loss", "push", "void"}:
                 row["status"] = "settled"
+                row["settlement_status"] = "settled"
             updated = True
             break
     if not updated:
@@ -327,10 +347,23 @@ def print_rows(rows: List[Dict[str, str]]) -> None:
         print("- Aucun signal shadow enregistre.")
         return
     for row in rows:
+        result_status = row.get("result_status") or row.get("result") or "unknown"
+        score = ""
+        if str(row.get("result_home_goals") or "").strip() and str(row.get("result_away_goals") or "").strip():
+            score = f"{row.get('result_home_goals')}-{row.get('result_away_goals')}"
+        profit = str(row.get("profit_units") or "").strip()
+        if profit:
+            try:
+                profit_value = float(profit)
+                profit = f"{profit_value:+.2f}u"
+            except Exception:
+                profit = f"{profit}u"
+        settlement_status = row.get("settlement_status") or row.get("status") or "pending_result"
         print(
-            f"- {row.get('shadow_id')} | {row.get('match_date')} | {row.get('league')} | "
-            f"{row.get('home_team')} - {row.get('away_team')} | {row.get('market_type')} {row.get('side')} | "
-            f"cote={row.get('taken_odds')} | statut={row.get('status')} | CLV={row.get('clv_percent') or 'n/a'}"
+            f"- {row.get('shadow_id')} | {row.get('home_team')} - {row.get('away_team')} | "
+            f"{row.get('market_type')} {row.get('side')} | cote={row.get('taken_odds')} | "
+            f"CLV={row.get('clv') or row.get('clv_percent') or 'n/a'} | resultat={result_status} | "
+            f"score={score or 'n/a'} | profit={profit or 'n/a'} | statut={settlement_status}"
         )
 
 

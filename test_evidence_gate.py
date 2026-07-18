@@ -29,23 +29,26 @@ def main():
         quality = root / "reports" / "quality.json"
         big5 = root / "reports" / "big5.json"
         clv = root / "reports" / "clv.json"
-        write_json(shadow, {"signals_total": 25, "sample_size": 25, "clv_coverage": 0.0, "clv_mean": None, "roi": None, "verdict": "not_validated"})
+        write_json(shadow, {"signals_total": 25, "sample_size": 25, "clv_coverage": 0.0, "result_coverage": 0.0, "completed_cycles": 0, "profit_units_total": None, "clv_mean": None, "roi": None, "verdict": "not_validated"})
         write_json(quality, {"verdict": "usable_with_warnings", "missing_closing": 25, "missing_results": 25})
         weak = evidence_gate.build_evidence_gate(str(shadow), str(quality))
         assert weak["global_status"] == "insufficient_evidence"
         assert any("sample shadow" in blocker for blocker in weak["blockers"])
         assert any("CLV absente" in blocker for blocker in weak["blockers"])
 
-        write_json(shadow, {"signals_total": 300, "sample_size": 300, "clv_coverage": 90.0, "clv_mean": 0.01, "roi": 4.0, "verdict": "observation_only"})
+        write_json(shadow, {"signals_total": 300, "sample_size": 300, "clv_coverage": 90.0, "result_coverage": 90.0, "completed_cycles": 270, "profit_units_total": 12.0, "clv_mean": 0.01, "roi": 4.0, "verdict": "observation_only"})
         positive_small = evidence_gate.build_evidence_gate(str(shadow), str(quality))
-        assert positive_small["global_status"] == "promising_but_unvalidated"
+        assert positive_small["global_status"] == "insufficient_evidence"
+        assert positive_small["completed_cycles"] == 270
+        assert positive_small["shadow_result_coverage"] == 90.0
+        assert positive_small["profit_units_total"] == 12.0
 
         write_json(quality, {"verdict": "invalid", "missing_closing": 0, "missing_results": 0})
         invalid = evidence_gate.build_evidence_gate(str(shadow), str(quality))
         assert invalid["global_status"] == "blocked"
 
         write_json(quality, {"verdict": "clean", "missing_closing": 0, "missing_results": 0})
-        write_json(shadow, {"signals_total": 1000, "sample_size": 1000, "clv_coverage": 90.0, "clv_mean": 0.01, "roi": 4.0, "verdict": "deep_analysis_candidate"})
+        write_json(shadow, {"signals_total": 1000, "sample_size": 1000, "clv_coverage": 90.0, "result_coverage": 90.0, "completed_cycles": 900, "profit_units_total": 40.0, "clv_mean": 0.01, "roi": 4.0, "verdict": "deep_analysis_candidate"})
         deep = evidence_gate.build_evidence_gate(str(shadow), str(quality))
         assert deep["global_status"] == "ready_for_deep_review"
         assert deep["telegram_policy"]["can_influence_picks"] is False
@@ -97,7 +100,7 @@ def main():
         assert out_html.exists()
 
         default_reports = root / "default_cli"
-        write_json(default_reports / "reports" / "shadow_clv_report.json", {"signals_total": 1, "sample_size": 1, "clv_coverage": 100.0, "clv_mean": 0.01, "roi": None, "verdict": "observation_only"})
+        write_json(default_reports / "reports" / "shadow_clv_report.json", {"signals_total": 1, "sample_size": 1, "clv_coverage": 100.0, "result_coverage": 100.0, "completed_cycles": 1, "profit_units_total": 1.26, "clv_mean": 0.01, "roi": None, "verdict": "observation_only"})
         write_json(default_reports / "reports" / "shadow_quality_audit.json", {"verdict": "usable_with_warnings", "missing_closing": 0, "missing_results": 1})
         old_cwd = Path.cwd()
         os.chdir(default_reports)

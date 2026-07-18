@@ -1355,3 +1355,107 @@ python telegram_near_close_reporter.py --ledger reports/shadow_ledger.csv --shad
 ```
 
 Regles: dry-run par defaut, aucune mise, aucun pick automatique, aucun token commite, aucun envoi Telegram sans `--allow-send`.
+
+## V9.8 Shadow Result Apply, Completed Cycle & Telegram Result Report
+
+Dry-run settlement Ghana - Panama:
+
+```bash
+python shadow_result_matcher.py --ledger reports/shadow_ledger.csv --results reports/api_football_results_2026-06-17.csv --target-shadow-id sh_20260617210447_2ee081d9 --dry-run
+```
+
+Application ledger apres verification humaine:
+
+```bash
+python shadow_result_matcher.py --ledger reports/shadow_ledger.csv --results reports/api_football_results_2026-06-17.csv --target-shadow-id sh_20260617210447_2ee081d9 --apply
+```
+
+Regeneration rapport preuve:
+
+```bash
+python shadow_clv_report.py --ledger reports/shadow_ledger.csv --output reports/shadow_clv_report.json --html reports/shadow_clv_report.html
+python evidence_gate.py --clv-report reports/shadow_clv_report.json --quality-report reports/shadow_quality_audit.json
+python proof_dashboard.py --shadow reports/shadow_clv_report.json --evidence reports/evidence_gate.json --quality reports/shadow_quality_audit.json --output reports/proof_dashboard.json --html reports/proof_dashboard.html
+```
+
+Preview Telegram result reporter:
+
+```bash
+python telegram_result_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+```
+
+Operations center:
+
+```bash
+python oracle_ops.py --result-apply --ledger reports/shadow_ledger.csv --results-file reports/api_football_results_2026-06-17.csv --shadow-id sh_20260617210447_2ee081d9
+python oracle_ops.py --telegram-result --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9
+```
+
+Regles: `--apply` est obligatoire pour modifier le ledger. `--allow-send` est obligatoire pour tout Telegram reel. Le completed cycle reste une observation laboratoire: aucune mise, aucun pick automatique, aucun sample faible valide.
+
+## V10 Hybrid Foundation
+
+Diagnostic local sans secret:
+
+```bash
+python app.py doctor
+```
+
+Demo end-to-end offline:
+
+```bash
+python app.py demo end-to-end
+python app.py demo end-to-end --json
+python v10_demo.py --json
+```
+
+Tests et scans offline:
+
+```bash
+python -m compileall -q .
+python test_v10_foundation.py
+python scripts/secret_scan.py --root .
+python project_audit.py --no-imports --no-git
+```
+
+Regles V10: aucun reseau dans la demo, aucun Telegram reel, aucun token affiche, `REAL_MONEY_ACTIONS_ENABLED=false`, `DRY_RUN=true`, paper betting uniquement.
+
+## V10 Phase 2 Persistence et replay
+
+Configuration et base:
+
+```bash
+python app.py config validate
+python app.py db upgrade
+python app.py db status
+python app.py db doctor
+```
+
+Replay provider offline:
+
+```bash
+python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --dry-run
+python app.py replay provider --file tests/fixtures/providers/api_football/odds_sample.json --provider api_football --dry-run
+python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --apply
+python app.py replay provider --file tests/fixtures/providers/api_football/odds_sample.json --provider api_football --apply
+python app.py replay run --run-id <uuid>
+```
+
+Legacy et qualite:
+
+```bash
+python app.py legacy discover
+python app.py legacy import --source tests/fixtures/providers/api_football/odds_sample.json --dry-run
+python app.py quality fixture --fixture-id <uuid>
+python app.py odds latest --fixture-id <uuid>
+python app.py odds history --fixture-id <uuid>
+```
+
+Demo persistence offline:
+
+```bash
+python app.py demo postgres-end-to-end
+python app.py demo postgres-end-to-end --json
+```
+
+Regles Phase 2: `--apply` est obligatoire pour persister un replay/import; les snapshots de cotes ne sont pas ecrases; SQLite sert seulement au smoke test offline; PostgreSQL reste la cible Railway.

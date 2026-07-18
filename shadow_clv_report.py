@@ -46,6 +46,14 @@ def _has_closing(row: Dict[str, str]) -> bool:
     return status == "captured" or bool(str(row.get("closing_odds") or "").strip())
 
 
+def _result_status(row: Dict[str, str]) -> str:
+    return str(row.get("result_status") or row.get("result") or "unknown").strip().lower()
+
+
+def _has_result(row: Dict[str, str]) -> bool:
+    return _result_status(row) in {"win", "loss", "push", "void"}
+
+
 def _closing_status(row: Dict[str, str]) -> str:
     status = str(row.get("closing_status") or "").strip().lower()
     if status:
@@ -86,7 +94,10 @@ def _max_drawdown(profits: List[float]) -> float:
 
 
 def _profit(row: Dict[str, str]):
-    result = str(row.get("result") or "").lower()
+    direct = _float(row.get("profit_units"))
+    if direct is not None and _has_result(row):
+        return direct
+    result = _result_status(row)
     odds = _float(row.get("taken_odds"))
     if odds is None or result not in {"win", "loss", "push", "void"}:
         return None
@@ -148,15 +159,20 @@ def build_shadow_clv_report(ledger_path: str) -> Dict[str, Any]:
     clvs = [value for value in clvs if value is not None]
     profits = [_profit(row) for row in rows]
     profits = [value for value in profits if value is not None]
-    wins = sum(1 for row in rows if str(row.get("result") or "").lower() == "win")
-    losses = sum(1 for row in rows if str(row.get("result") or "").lower() == "loss")
-    settled = wins + losses + sum(1 for row in rows if str(row.get("result") or "").lower() == "push")
+    wins = sum(1 for row in rows if _result_status(row) == "win")
+    losses = sum(1 for row in rows if _result_status(row) == "loss")
+    pushes = sum(1 for row in rows if _result_status(row) == "push")
+    settled = wins + losses + pushes
     signals_with_closing = sum(1 for row in rows if _has_closing(row))
+    with_results = sum(1 for row in rows if _has_result(row))
+    completed_cycles = sum(1 for row in rows if _has_closing(row) and _has_result(row))
     pending_closing = sum(1 for row in rows if not _has_closing(row))
     overdue_missing = sum(1 for row in rows if _closing_status(row) == "overdue_missing")
-    pending_results = sum(1 for row in rows if str(row.get("result") or "unknown").lower() == "unknown")
+    pending_results = sum(1 for row in rows if not _has_result(row))
     clv_mean = round(sum(clvs) / len(clvs), 6) if clvs else None
+    profit_total = round(sum(profits), 6) if profits else None
     roi = round(sum(profits) / len(profits) * 100.0, 2) if profits else None
+    average_profit = round(sum(profits) / len(profits), 6) if profits else None
     closing_rows = [
         {
             "shadow_id": row.get("shadow_id"),
@@ -171,6 +187,8 @@ def build_shadow_clv_report(ledger_path: str) -> Dict[str, Any]:
             "closing_quality": _closing_quality(row),
             "closing_status": _closing_status(row),
             "clv": _clv_decimal(row),
+            "result_status": _result_status(row),
+            "profit_units": _profit(row),
         }
         for row in rows
         if _has_closing(row)
@@ -208,17 +226,32 @@ def build_shadow_clv_report(ledger_path: str) -> Dict[str, Any]:
         rows_by_month.append(item)
     return {
         "ledger": ledger_path,
+        "total_signals": len(rows),
         "signals_total": len(rows),
+        "with_closing_odds": signals_with_closing,
         "signals_with_closing": signals_with_closing,
         "signals_with_clv": len(clvs),
+        "with_results": with_results,
+        "completed_cycles": completed_cycles,
         "signals_with_closing_details": closing_rows,
         "pending_closing": pending_closing,
         "overdue_missing": overdue_missing,
         "pending_results": pending_results,
         "clv_coverage": round(len(clvs) / len(rows) * 100.0, 2) if rows else 0.0,
+        "result_coverage": round(with_results / len(rows) * 100.0, 2) if rows else 0.0,
+        "completed_cycle_coverage": round(completed_cycles / len(rows) * 100.0, 2) if rows else 0.0,
+        "average_clv": clv_mean,
         "clv_mean": clv_mean,
+        "median_clv": _median(clvs),
         "clv_median": _median(clvs),
         "clv_positive_rate": round(sum(1 for value in clvs if value > 0) / len(clvs) * 100.0, 2) if clvs else None,
+        "roi_available_count": len(profits),
+        "profit_units_total": profit_total,
+        "roi_percent_total": roi,
+        "wins": wins,
+        "losses": losses,
+        "pushes": pushes,
+        "average_profit_per_observation": average_profit,
         "closing_quality_breakdown": _counts(_closing_quality(row) for row in rows),
         "closing_status_breakdown": _counts(_closing_status(row) for row in rows),
         "clv_by_league": _group_stats(rows, "league"),
@@ -229,8 +262,9 @@ def build_shadow_clv_report(ledger_path: str) -> Dict[str, Any]:
         "clv_by_bookmaker": _group_stats(rows, "bookmaker"),
         "clv_by_month": _group_stats(rows_by_month, "_month"),
         "roi": roi,
-        "profit": round(sum(profits), 6) if profits else None,
+        "profit": profit_total,
         "settled_signals": settled,
+        "settled_count": settled,
         "winrate": round(wins / (wins + losses) * 100.0, 2) if wins + losses else None,
         "drawdown": _max_drawdown(profits) if profits else None,
         "sample_size": len(rows),
@@ -289,15 +323,20 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         "<table><tbody>",
         f"<tr><th>Signaux</th><td>{report.get('signals_total')}</td></tr>",
         f"<tr><th>Avec closing</th><td>{report.get('signals_with_closing')}</td></tr>",
+        f"<tr><th>Avec resultats</th><td>{report.get('with_results')}</td></tr>",
+        f"<tr><th>Cycles complets</th><td>{report.get('completed_cycles')}</td></tr>",
         f"<tr><th>Pending closing</th><td>{report.get('pending_closing')}</td></tr>",
         f"<tr><th>Overdue missing</th><td>{report.get('overdue_missing')}</td></tr>",
         f"<tr><th>Pending resultats</th><td>{report.get('pending_results')}</td></tr>",
         f"<tr><th>Coverage CLV</th><td>{report.get('clv_coverage')}%</td></tr>",
+        f"<tr><th>Coverage resultats</th><td>{report.get('result_coverage')}%</td></tr>",
+        f"<tr><th>Coverage cycles complets</th><td>{report.get('completed_cycle_coverage')}%</td></tr>",
         f"<tr><th>CLV moyenne</th><td>{report.get('clv_mean')}</td></tr>",
         f"<tr><th>CLV mediane</th><td>{report.get('clv_median')}</td></tr>",
         f"<tr><th>CLV positive</th><td>{report.get('clv_positive_rate')}%</td></tr>",
         f"<tr><th>ROI</th><td>{report.get('roi')}</td></tr>",
         f"<tr><th>Profit unite</th><td>{report.get('profit')}</td></tr>",
+        f"<tr><th>Win/loss/push</th><td>{report.get('wins')}/{report.get('losses')}/{report.get('pushes')}</td></tr>",
         f"<tr><th>Max drawdown</th><td>{report.get('drawdown')}</td></tr>",
         f"<tr><th>Verdict</th><td>{html.escape(str(report.get('verdict')))}</td></tr>",
         "</tbody></table>",
@@ -315,10 +354,14 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Ledger: {report.get('ledger')}")
     print(f"- Signaux shadow: {report.get('signals_total')}")
     print(f"- Signaux avec closing odds: {report.get('signals_with_closing')}")
+    print(f"- Signaux avec resultats: {report.get('with_results')}")
+    print(f"- Cycles complets: {report.get('completed_cycles')}")
     print(f"- Pending closing: {report.get('pending_closing')}")
     print(f"- Overdue missing: {report.get('overdue_missing')}")
     print(f"- Pending resultats: {report.get('pending_results')}")
     print(f"- Coverage CLV: {report.get('clv_coverage')}%")
+    print(f"- Coverage resultats: {report.get('result_coverage')}%")
+    print(f"- Coverage cycles complets: {report.get('completed_cycle_coverage')}%")
     print(f"- CLV moyenne: {report.get('clv_mean')}")
     print(f"- CLV mediane: {report.get('clv_median')}")
     print(f"- CLV positive: {report.get('clv_positive_rate')}%")
@@ -326,6 +369,8 @@ def print_report(report: Dict[str, Any]) -> None:
     print(f"- Breakdown closing_status: {json.dumps(report.get('closing_status_breakdown'), ensure_ascii=False)}")
     print(f"- ROI resultats disponibles: {report.get('roi')}")
     print(f"- Profit unite: {report.get('profit')}")
+    print(f"- Wins/Losses/Pushes: {report.get('wins')}/{report.get('losses')}/{report.get('pushes')}")
+    print(f"- Profit moyen par observation reglee: {report.get('average_profit_per_observation')}")
     print(f"- Winrate: {report.get('winrate')}")
     print(f"- Drawdown: {report.get('drawdown')}")
     print(f"- Verdict: {report.get('verdict')}")

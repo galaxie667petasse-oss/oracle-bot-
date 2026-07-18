@@ -2,9 +2,9 @@
 
 ## Version actuelle
 
-V9.6 Network Flag Fix, Today/Tomorrow Live Scan, Telegram Safe Publish & Windows Scheduler Prep.
+V9.8 Shadow Result Apply, ROI Settlement, Completed Cycle & Telegram Result Report.
 
-Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. V8.7 rend le matchday runner phase-aware et le full-dry-run predictif via staging temporaire. V8.8 ajoute le scanner soccer The Odds API, la selection shadow limitee, le workflow near-close et le guard scope ledger. V8.9 ajoute le lifecycle des observations, le scheduler near-close, le helper resultats, le dashboard progress et l'autopilot dry-run. V9.5 ajoute Telegram read-only. V9.5.1 ajoute le diagnostic HTTP 400 et le fallback plain text. V9.6 corrige le flag reseau, ajoute les smoke tests live/Telegram et prepare le scheduler Windows. Aucun signal robuste active. Telegram reste une lecture privee du laboratoire, sans Railway, sans mise et sans pick automatique.
+Etat : local prudent. V7.0 Statistical Proof Foundation, V7.2 Understat xG Full Pipeline Quality Gate, V7.3 Multi-League Join Diagnostics, V7.4 Bundesliga Team Alias Expansion, V7.5 Big Five xG Aggregation, V7.6 Closing Odds Recovery, V7.7 Partial CLV Pipeline, V7.8 Closing Column Forensics et V8.0/V8.1 Shadow Mode restent en place. V8.2 ajoute un Operations Center, un audit qualite ledger, un evidence gate, un simulateur, un sample size planner, un formatter texte sans envoi et un June runbook. V8.3 ajoute le Odds Source Lab, les snapshots de cotes, les adaptateurs API optionnels et le matching near-close vers shadow ledger. V8.4 ajoute le wizard manuel, l'audit intake, la demo E2E synthetique et les garde-fous taken/near-close. V8.5 fixe la carte d'architecture canonique, les contrats de pipeline, le contrat LLM analyste, le schema de restitution, la boucle progressive et la scorecard projet. V8.6 ajoute l'archive de tests, le guard reel, le matchday pack, le matchday runner et les garde-fous de saisie humaine. V8.7 rend le matchday runner phase-aware et le full-dry-run predictif via staging temporaire. V8.8 ajoute le scanner soccer The Odds API, la selection shadow limitee, le workflow near-close et le guard scope ledger. V8.9 ajoute le lifecycle des observations, le scheduler near-close, le helper resultats, le dashboard progress et l'autopilot dry-run. V9.5 ajoute Telegram read-only. V9.5.1 ajoute le diagnostic HTTP 400 et le fallback plain text. V9.6 corrige le flag reseau, ajoute les smoke tests live/Telegram et prepare le scheduler Windows. V9.7 applique les near-close capturees. V9.8 ajoute le shadow result settlement, le completed cycle et le telegram result reporter. Aucun signal robuste active. Telegram reste une lecture privee du laboratoire, sans Railway, sans mise et sans pick automatique.
 
 V8.1 Shadow UX reste la base du workflow quotidien ; V8.2 ajoute le centre operations et le gate de preuve.
 
@@ -385,3 +385,53 @@ Statut: en place localement.
 Etat Ghana - Panama attendu: cote prise `2.26`, cote near-close `2.26`, CLV `0.00%`, qualite `same_bookmaker`.
 
 Conclusion: V9.7 ameliore le suivi closing et le reporting Telegram read-only. Aucun signal robuste active, aucune mise, aucun pick automatique.
+
+## V9.8 Shadow Result Apply, ROI Settlement, Completed Cycle & Telegram Result Report
+
+Statut: en place localement.
+
+- `shadow_result_matcher.py` ajoute `--apply`, `--target-shadow-id`, `--strict-fixture-id` et les colonnes de settlement resultat.
+- Le matcher reste dry-run par defaut; il n'ecrit le ledger qu'avec `--apply`.
+- Le resultat shadow calcule `result_status`, `profit_units`, `roi_percent`, `settlement_status` et synchronise le champ legacy `result`.
+- `shadow_ledger.py --list` affiche CLV, resultat, score, profit et statut settlement.
+- `shadow_clv_report.py` distingue `with_closing_odds`, `with_results`, `completed_cycles`, `pending_results`, `profit_units_total`, win/loss/push et winrate.
+- `proof_dashboard.py` et `evidence_gate.py` affichent completed cycles, coverage CLV/resultats et profit total, sans assouplir les seuils.
+- `telegram_result_reporter.py` publie un resultat settled en read-only, avec tracking anti-doublon et envoi reel seulement via `--allow-send`.
+- `oracle_ops.py` expose `--result-apply` et `--telegram-result`; `report_runner.py --telegram` genere une preview resultat en dry-run.
+
+Etat Ghana - Panama attendu apres application resultat: score `1-0`, side `home`, resultat shadow `win`, profit shadow `+1.26u`, ROI shadow `126.0%`, CLV `0.00%`.
+
+Conclusion: V9.8 ferme le premier completed cycle shadow, mais la preuve reste insuffisante. Aucun signal robuste active, aucune mise, aucun pick automatique, aucun Telegram reel en test.
+
+## V10 Hybrid Foundation
+
+Statut: premiere couche additive en place localement.
+
+- `v10/` ajoute les primitives deterministes: odds, EV, CLV, data quality, candidate filtering, risk paper-only, settlement multi-marches, contrats agents, final judge de demo.
+- `app.py doctor` expose une verification locale sans afficher les secrets.
+- `app.py demo end-to-end` execute un scenario synthetique complet sans cle, sans reseau et sans Telegram reel.
+- `.env.example` documente les variables V10 avec valeurs factices.
+- `.dockerignore` exclut les dumps locaux, `data/`, `reports/` et `external_data/` du contexte Docker.
+- `scripts/secret_scan.py` detecte les affectations sensibles probables sans afficher les valeurs.
+- `.github/workflows/ci.yml` prepare une CI offline: secret scan, compile, tests V10, audit smoke et Docker build.
+
+Limites restantes: pas encore de schema PostgreSQL normalise, pas d'Alembic, pas de providers replay V10, pas de modeles Elo/Poisson/Dixon-Coles V10, pas d'agents LLM reels ni de backtest walk-forward complet.
+
+Conclusion: V10 est amorce sans casser V9.x. Les calculs Python restent source de verite; les agents LLM restent explicatifs/critiqueurs et ne publient rien.
+
+## V10 Phase 2 Persistence PostgreSQL, Historisation et Replay
+
+Statut: premiere couche relationnelle additive en place localement.
+
+- SQLAlchemy 2, Alembic et configuration DB typee sont ajoutes sous `v10/db`.
+- Le schema `v10_*` couvre providers, competitions, seasons, teams, fixtures, fixture status history, bookmakers, markets, market selections, ingestion runs, raw API payloads, odds snapshots et normalized market snapshots.
+- `v10_odds_snapshots` conserve l'historique de cotes en append-only avec fingerprint d'idempotence.
+- Les datetimes metier sont normalisees UTC et les dates naïves sont refusees.
+- Le replay provider conserve le raw payload puis reconstruit les entites canoniques.
+- API-Football fixtures/odds et The Odds API odds sont supportes en replay local.
+- Les commandes `db`, `legacy`, `replay`, `quality`, `odds` et `demo postgres-end-to-end` sont exposees dans `app.py`.
+- Les tests Phase 2 couvrent migrations SQLite, idempotence, snapshots modifies, requetes `as_of`, Decimal, invalid odds, import dry-run et locks fallback.
+
+Limites restantes: PostgreSQL reel n'a pas encore ete valide localement si aucun service n'est disponible; les modeles statistiques V10 reels, feature snapshots, predictions calibrables et backtest walk-forward restent Phase 3/4.
+
+Conclusion: une future decision peut maintenant etre rejouee a partir des donnees observees avant son heure de decision, mais aucune performance de pronostic n'est revendiquee.

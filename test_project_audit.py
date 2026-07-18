@@ -113,8 +113,14 @@ def test_release_candidate_docs_exist_and_have_sections():
         "telegram read-only",
         "v9.6",
         "v9.7",
+        "v9.8",
         "near-close apply",
         "telegram near-close",
+        "shadow result settlement",
+        "telegram result reporter",
+        "completed cycle",
+        "v10 hybrid foundation",
+        "v10 persistence",
         "railway plus tard",
         "securite",
         "commandes principales",
@@ -143,6 +149,8 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v9.5.1" in status
     assert "v9.6" in status
     assert "v9.7" in status
+    assert "v9.8" in status
+    assert "v10 hybrid foundation" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -195,12 +203,38 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "daily_operations_runner.md").exists()
     assert (root / "docs" / "telegram_read_only_publisher.md").exists()
     assert (root / "docs" / "api_football_near_close_apply.md").exists()
+    assert (root / "docs" / "shadow_result_settlement.md").exists()
+    assert (root / "docs" / "telegram_result_reporter.md").exists()
     assert (root / "docs" / "telegram_near_close_reporter.md").exists()
     assert (root / "docs" / "telegram_message_policy.md").exists()
     assert (root / "docs" / "telegram_setup.md").exists()
     assert (root / "docs" / "live_scan_smoke_test.md").exists()
     assert (root / "docs" / "telegram_pipeline_smoke_test.md").exists()
     assert (root / "docs" / "windows_scheduler_setup.md").exists()
+    assert (root / "docs" / "AUDIT_V9_6.md").exists()
+    assert (root / "docs" / "PHASE2_PERSISTENCE_LOG.md").exists()
+    assert (root / "docs" / "POSTGRESQL_SETUP.md").exists()
+    assert (root / "docs" / "REPLAY_GUIDE.md").exists()
+    assert (root / "docs" / "LEGACY_IMPORT.md").exists()
+    assert (root / "docs" / "TEMPORAL_DATA_MODEL.md").exists()
+    assert (root / "AGENTS.md").exists()
+    assert (root / "PLANS.md").exists()
+    assert (root / "ARCHITECTURE.md").exists()
+    assert (root / "DECISIONS.md").exists()
+    assert (root / "DATA_DICTIONARY.md").exists()
+    assert (root / "PROMPTS.md").exists()
+    assert (root / "EVALUATION.md").exists()
+    assert (root / "RUNBOOK.md").exists()
+    assert (root / "SECURITY.md").exists()
+    assert (root / "app.py").exists()
+    assert (root / "v10" / "demo.py").exists()
+    assert (root / "scripts" / "secret_scan.py").exists()
+    assert (root / "test_v10_foundation.py").exists()
+    assert (root / "test_v10_persistence.py").exists()
+    assert (root / "tests" / "fixtures" / "providers" / "api_football" / "fixtures_sample.json").exists()
+    assert (root / "tests" / "fixtures" / "providers" / "api_football" / "odds_sample.json").exists()
+    assert (root / "tests" / "fixtures" / "providers" / "api_football" / "odds_sample_changed.json").exists()
+    assert (root / "tests" / "fixtures" / "providers" / "the_odds_api" / "odds_sample.json").exists()
     assert (root / "scripts" / "oracle_daily_morning.ps1").exists()
     assert (root / "scripts" / "oracle_pre_close.ps1").exists()
     assert (root / "scripts" / "oracle_post_match.ps1").exists()

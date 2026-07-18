@@ -79,6 +79,9 @@ def build_evidence_gate(
         status = "collecting_evidence"
     sample = int(_num(shadow.get("sample_size") or shadow.get("signals_total"), 0))
     clv_coverage = _num(shadow.get("clv_coverage"), 0.0)
+    result_coverage = _num(shadow.get("result_coverage"), 0.0)
+    completed_cycles = int(_num(shadow.get("completed_cycles"), 0))
+    profit_units_total = shadow.get("profit_units_total") if shadow.get("profit_units_total") is not None else shadow.get("profit")
     clv_mean = shadow.get("clv_mean")
     roi = shadow.get("roi")
     if shadow:
@@ -239,7 +242,7 @@ def build_evidence_gate(
             strengths.append(f"proof dashboard: {proof_dashboard.get('global_status')}")
         for blocker in proof_dashboard.get("blockers") or []:
             blockers.append(f"proof dashboard: {blocker}")
-    completed_shadow_count = int(_num((shadow.get("settled_count") or shadow.get("completed") or 0), 0))
+    completed_shadow_count = int(_num((shadow.get("completed_cycles") or shadow.get("settled_count") or shadow.get("completed") or 0), 0))
     pending_closing_count = int(_num((quality.get("missing_closing") or lifecycle.get("pending_closing") or near_close_window.get("due_now_count") or 0), 0))
     pending_results_count = int(_num((quality.get("missing_results") or lifecycle.get("pending_results") or post_match_results.get("unmatched") or 0), 0))
     historical_data_available = bool(historical_clv)
@@ -272,12 +275,10 @@ def build_evidence_gate(
         warnings.append(f"subscription recommendation: {subscription_recommendation}")
     if real_guard and real_guard.get("verdict") in {"mixed_test_and_real", "invalid"}:
         status = "blocked"
-    elif quality.get("verdict") == "invalid" or any("CLV moyenne <= 0" == item for item in blockers):
+    elif quality.get("verdict") == "invalid" or (sample >= 1000 and any("CLV moyenne <= 0" == item for item in blockers)):
         status = "blocked"
     elif sample >= 1000 and clv_coverage >= 80.0 and clv_mean is not None and _num(clv_mean) > 0 and roi is not None and _num(roi) > 0 and quality.get("verdict") in {"clean", "usable_with_warnings"}:
         status = "ready_for_deep_review"
-    elif sample > 0 and (clv_mean is not None and _num(clv_mean) > 0):
-        status = "promising_but_unvalidated"
     elif historical_clv and not shadow and historical_sample:
         status = "historical_evidence_only"
     elif sample > 0 or shadow or quality:
@@ -300,9 +301,12 @@ def build_evidence_gate(
         "global_status": status,
         "not_validated": status != "ready_for_deep_review",
         "shadow_sample": sample,
+        "completed_cycles": completed_cycles,
         "shadow_clv_coverage": clv_coverage,
+        "shadow_result_coverage": result_coverage,
         "shadow_clv_mean": clv_mean,
         "shadow_roi": roi,
+        "profit_units_total": profit_units_total,
         "completed_shadow_count": completed_shadow_count,
         "pending_closing_count": pending_closing_count,
         "pending_results_count": pending_results_count,
@@ -367,6 +371,13 @@ def write_html(report: Dict[str, Any], path: str) -> Path:
         "</head><body><h1>Evidence Gate Oracle Bot</h1>",
         f"<p><strong>Statut global:</strong> {html.escape(str(report.get('global_status')))}</p>",
         f"<p>{html.escape(str(report.get('message')))}</p>",
+        "<table><tbody>",
+        f"<tr><th>Sample shadow</th><td>{report.get('shadow_sample')}</td></tr>",
+        f"<tr><th>Cycles complets</th><td>{report.get('completed_cycles')}</td></tr>",
+        f"<tr><th>Coverage CLV</th><td>{report.get('shadow_clv_coverage')}%</td></tr>",
+        f"<tr><th>Coverage resultats</th><td>{report.get('shadow_result_coverage')}%</td></tr>",
+        f"<tr><th>Profit unite total</th><td>{report.get('profit_units_total')}</td></tr>",
+        "</tbody></table>",
         f"<section class='warn'><h2>Blockers</h2><ul>{blockers or '<li>Aucun</li>'}</ul></section>",
         f"<section><h2>Warnings</h2><ul>{warnings or '<li>Aucun</li>'}</ul></section>",
         f"<section><h2>Forces</h2><ul>{strengths or '<li>Aucune</li>'}</ul></section>",
@@ -380,7 +391,10 @@ def print_report(report: Dict[str, Any]) -> None:
     print("Evidence Gate Oracle Bot")
     print(f"- Statut global: {report.get('global_status')}")
     print(f"- Sample shadow: {report.get('shadow_sample')}")
+    print(f"- Cycles complets: {report.get('completed_cycles')}")
     print(f"- CLV coverage: {report.get('shadow_clv_coverage')}%")
+    print(f"- Result coverage: {report.get('shadow_result_coverage')}%")
+    print(f"- Profit unite total: {report.get('profit_units_total')}")
     for blocker in report.get("blockers") or []:
         print(f"- Bloquant: {blocker}")
     for warning in report.get("warnings") or []:

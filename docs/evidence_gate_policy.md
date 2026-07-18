@@ -117,3 +117,29 @@ python evidence_gate.py --clv-report reports/shadow_clv_report.json --quality-re
 ```
 
 La regle de promotion n'est pas assouplie. Les champs `closing_quality`, `closing_status`, `clv` et `clv_pct` ameliorent l'audit CLV, mais un Telegram read-only reste seulement une lecture laboratoire.
+
+## V9.8 completed cycles
+
+L'evidence gate lit par defaut:
+
+- `reports/shadow_clv_report.json`
+- `reports/shadow_quality_audit.json`
+- `reports/proof_dashboard.json`
+
+Les champs V9.8 affiches sont:
+
+- sample shadow total;
+- completed cycles;
+- CLV coverage;
+- result coverage;
+- profit_units_total si disponible.
+
+Un completed cycle exige closing/near-close + resultat final. Un seul cycle, meme gagnant, reste `insufficient_evidence` ou `not_validated`. Le gate ne passe jamais valide avec un sample faible.
+
+## V10 evidence policy
+
+Le moteur V10 ajoute des champs de preuve deterministes en amont: `data_quality_status`, `edge_probability_points`, `expected_value_per_unit`, `uncertainty_width`, `settlement_status` et CLV. Ces champs peuvent renforcer un dossier de revue, mais ils ne changent pas les seuils de promotion.
+
+Un candidat V10 issu de `app.py demo end-to-end` reste `WATCH` et non valide, car il est synthetique, sans sample historique, sans calibration et sans revue LLM reelle.
+
+Le ROI court terme est descriptif. Il ne remplace pas la CLV, la taille d'echantillon, la calibration, la validation statistique et la revue humaine.

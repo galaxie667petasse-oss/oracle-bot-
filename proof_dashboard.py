@@ -59,7 +59,7 @@ def build_dashboard(
         blockers.extend(historical.get("blockers") or [])
     if (shadow.get("sample_size") or shadow.get("signals_total") or 0) < 1000:
         blockers.append("sample shadow < 1000")
-    if not shadow.get("clv_mean"):
+    if shadow.get("clv_mean") is None:
         blockers.append("CLV shadow absente")
     global_big5 = big5.get("global") or {}
     sections = {
@@ -68,6 +68,12 @@ def build_dashboard(
             "sample": shadow.get("sample_size") or shadow.get("signals_total"),
             "clv_mean": shadow.get("clv_mean"),
             "clv_coverage": shadow.get("clv_coverage"),
+            "result_coverage": shadow.get("result_coverage"),
+            "completed_cycles": shadow.get("completed_cycles"),
+            "pending_closing": shadow.get("pending_closing"),
+            "pending_results": shadow.get("pending_results"),
+            "profit_units_total": shadow.get("profit_units_total") if shadow.get("profit_units_total") is not None else shadow.get("profit"),
+            "first_complete_cycle": bool((shadow.get("completed_cycles") or 0) >= 1),
             "roi": shadow.get("roi"),
             "verdict": shadow.get("verdict"),
         },

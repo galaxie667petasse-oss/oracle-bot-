@@ -1,0 +1,42 @@
+{
+  "get": "fixtures",
+  "parameters": {
+    "date": "2026-06-01"
+  },
+  "errors": [],
+  "results": 1,
+  "response": [
+    {
+      "fixture": {
+        "id": 91001,
+        "date": "2026-06-01T19:00:00+00:00",
+        "venue": {
+          "name": "Replay Stadium"
+        },
+        "status": {
+          "long": "Not Started",
+          "short": "NS",
+          "elapsed": null
+        }
+      },
+      "league": {
+        "id": 39,
+        "name": "Premier League",
+        "country": "England",
+        "season": 2026,
+        "round": "Regular Season - 1"
+      },
+      "teams": {
+        "home": {
+          "id": 42,
+          "name": "Arsenal"
+        },
+        "away": {
+          "id": 49,
+          "name": "Chelsea"
+        }
+      }
+    }
+  ]
+}
+

@@ -59,6 +59,23 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 - `project_audit.py` : audit release candidate local.
 - `model_registry.json` : metadonnees agregees des modeles/strategies evalues.
 
+## V10 Persistence et replay
+
+La fondation V10 est additive sous `v10/` et `app.py`. Elle ajoute une couche PostgreSQL/Alembic pour stocker les payloads bruts, normaliser competitions/equipes/fixtures/bookmakers/marches et conserver les cotes sous forme de snapshots temporels immuables.
+
+Commandes principales :
+
+```bash
+python app.py config validate
+python app.py db upgrade
+python app.py db status
+python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --dry-run
+python app.py replay provider --file tests/fixtures/providers/api_football/odds_sample.json --provider api_football --dry-run
+python app.py demo postgres-end-to-end
+```
+
+Sans `DATABASE_URL`, la demo utilise SQLite uniquement pour un smoke test offline. PostgreSQL reste la cible production et Railway. Les details sont dans `docs/POSTGRESQL_SETUP.md`, `docs/REPLAY_GUIDE.md`, `docs/LEGACY_IMPORT.md` et `docs/TEMPORAL_DATA_MODEL.md`.
+
 ## Pipeline local
 
 1. Verifier l'environnement et les fichiers sensibles.
@@ -1017,3 +1034,49 @@ python telegram_near_close_reporter.py --ledger reports/shadow_ledger.csv --shad
 ```
 
 Regles: aucun reseau dans les tests, aucun Telegram reel dans les tests, aucune cle loggee, `reports/` et `external_data/` non trackes, aucune mise, aucun pick automatique, `lab_only=true`, `can_influence_picks=false`.
+
+## V9.8 Shadow Result Settlement, Completed Cycle & Telegram Result Reporter
+
+V9.8 ajoute le shadow result settlement: `shadow_result_matcher.py` peut maintenant appliquer un resultat fini au ledger uniquement avec `--apply`. Par defaut, la commande reste en dry-run. Le matching utilise d'abord `fixture_id` / `source_event_id`, puis date + equipes normalisees + ligue, jamais un nom approximatif sans date.
+
+Un completed cycle signifie: observation shadow + near-close/closing odds + resultat final. `shadow_clv_report.py`, `proof_dashboard.py` et `evidence_gate.py` affichent maintenant `completed_cycles`, `result_coverage`, `pending_results`, `profit_units_total` et les compteurs win/loss/push. Un premier completed cycle ne valide rien: le sample reste insuffisant tant que les seuils de preuve ne sont pas atteints.
+
+Le telegram result reporter publie seulement une lecture read-only d'un resultat settled, avec tracking anti-doublon dans `reports/telegram_published_results.json`. Aucun envoi reel n'est possible sans `--allow-send`.
+
+Commandes principales:
+
+```bash
+python shadow_result_matcher.py --ledger reports/shadow_ledger.csv --results reports/api_football_results_2026-06-17.csv --target-shadow-id sh_20260617210447_2ee081d9 --dry-run
+python shadow_result_matcher.py --ledger reports/shadow_ledger.csv --results reports/api_football_results_2026-06-17.csv --target-shadow-id sh_20260617210447_2ee081d9 --apply
+python shadow_clv_report.py --ledger reports/shadow_ledger.csv --output reports/shadow_clv_report.json --html reports/shadow_clv_report.html
+python telegram_result_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+```
+
+Garde-fous: aucun reseau dans les tests, aucune modification de `data/`, aucun `reports/` tracke, aucun pick automatique, aucune mise, aucun staking, aucun Kelly, aucune promesse de rentabilite.
+
+## V10 Hybrid Foundation
+
+V10 demarre comme une couche additive sous `v10/`, sans modifier `main.py`. Elle formalise les primitives deterministes qui doivent rester source de verite avant tout agent LLM: normalisation des cotes, no-vig proportionnel, EV, CLV, data quality, filtrage candidat, risk paper-only, settlement multi-marches, contrats agents et juge final deterministe de demo.
+
+La demo end-to-end est offline: fixture synthetique future, bookmakers synthetiques, probabilite modele fournie par Python, agents mock, decision `WATCH`, preview Telegram locale, resultat fictif, settlement, CLV. Aucun reseau et aucun Telegram reel.
+
+```bash
+python app.py doctor
+python app.py demo end-to-end
+python app.py demo end-to-end --json
+python v10_demo.py --json
+python scripts/secret_scan.py --root .
+python test_v10_foundation.py
+```
+
+Fichiers V10 principaux:
+
+- `v10/odds.py` : decimal odds, implied probability, no-vig, EV, CLV;
+- `v10/data_quality.py` : PASS, PASS_WITH_WARNINGS, FAIL, STALE, CONFLICTING;
+- `v10/candidates.py` : filtre deterministe avant agents;
+- `v10/risk.py` : paper betting only, aucune action bookmaker;
+- `v10/settlement.py` : settlement match winner, DNB, double chance, totals, BTTS;
+- `v10/agents.py` : contrats des 12 agents et mocks offline;
+- `v10/final_judge.py` : juge de demo qui peut refuser mais n'invente rien.
+
+La cible V10 complete reste progressive: PostgreSQL normalise, replay providers, modeles Elo/Poisson/Dixon-Coles/ML, calibration, agents LLM stricts, backtest walk-forward et deploiement Railway documente.

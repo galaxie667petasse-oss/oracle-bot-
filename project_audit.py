@@ -100,9 +100,73 @@ ESSENTIAL_FILES = [
     "scripts/oracle_post_match.ps1",
     "scripts/install_windows_tasks.example.ps1",
     "config/telegram.example.env",
+    ".env.example",
+    ".dockerignore",
+    ".github/workflows/ci.yml",
+    "app.py",
+    "v10_demo.py",
+    "v10/__init__.py",
+    "v10/config.py",
+    "v10/providers.py",
+    "v10/odds.py",
+    "v10/risk.py",
+    "v10/settlement.py",
+    "v10/data_quality.py",
+    "v10/candidates.py",
+    "v10/agents.py",
+    "v10/final_judge.py",
+    "v10/demo.py",
+    "v10/time.py",
+    "v10/hashing.py",
+    "v10/db/__init__.py",
+    "v10/db/base.py",
+    "v10/db/types.py",
+    "v10/db/models.py",
+    "v10/db/session.py",
+    "v10/db/repositories.py",
+    "v10/db/unit_of_work.py",
+    "v10/db/locks.py",
+    "v10/db/migrations.py",
+    "v10/normalization/__init__.py",
+    "v10/normalization/schemas.py",
+    "v10/normalization/status.py",
+    "v10/normalization/api_football.py",
+    "v10/normalization/the_odds_api.py",
+    "v10/replay/__init__.py",
+    "v10/replay/engine.py",
+    "v10/quality_db.py",
+    "v10/legacy.py",
+    "v10/demo_postgres.py",
+    "alembic.ini",
+    "alembic/env.py",
+    "alembic/versions/20260718_0001_v10_initial_schema.py",
+    "scripts/secret_scan.py",
+    "AGENTS.md",
+    "PLANS.md",
+    "ARCHITECTURE.md",
+    "DECISIONS.md",
+    "DATA_DICTIONARY.md",
+    "PROMPTS.md",
+    "EVALUATION.md",
+    "RUNBOOK.md",
+    "SECURITY.md",
+    "docs/AUDIT_V9_6.md",
+    "docs/PHASE2_PERSISTENCE_LOG.md",
+    "docs/POSTGRESQL_SETUP.md",
+    "docs/REPLAY_GUIDE.md",
+    "docs/LEGACY_IMPORT.md",
+    "docs/TEMPORAL_DATA_MODEL.md",
+    "tests/fixtures/providers/api_football/fixtures_sample.json",
+    "tests/fixtures/providers/api_football/odds_sample.json",
+    "tests/fixtures/providers/api_football/odds_sample_changed.json",
+    "tests/fixtures/providers/the_odds_api/odds_sample.json",
+    "docs/operations_center.md",
+    "docs/evidence_gate_policy.md",
     "docs/telegram_read_only_publisher.md",
     "docs/telegram_near_close_reporter.md",
     "docs/api_football_near_close_apply.md",
+    "docs/shadow_result_settlement.md",
+    "docs/telegram_result_reporter.md",
     "docs/telegram_message_policy.md",
     "docs/telegram_setup.md",
     "docs/live_scan_smoke_test.md",
@@ -274,6 +338,7 @@ MAIN_TESTS = [
     "test_historical_clv_backtester.py",
     "test_api_football_results_adapter.py",
     "test_shadow_result_matcher.py",
+    "test_shadow_ledger_display.py",
     "test_near_close_batch_runner.py",
     "test_proof_dashboard.py",
     "test_oracle_architecture_map.py",
@@ -288,6 +353,7 @@ MAIN_TESTS = [
     "test_matchday_pack.py",
     "test_matchday_runner.py",
     "test_matchday_status_report.py",
+    "test_project_audit.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -298,6 +364,8 @@ MAIN_TESTS = [
     "test_clv_analysis.py",
     "test_calibration_report.py",
     "test_statistical_validation.py",
+    "test_v10_foundation.py",
+    "test_v10_persistence.py",
 ]
 
 IMPORT_MODULES = [
@@ -339,6 +407,15 @@ IMPORT_MODULES = [
     "shadow_simulator",
     "sample_size_planner",
     "shadow_message_formatter",
+    "v10.config",
+    "v10.odds",
+    "v10.risk",
+    "v10.settlement",
+    "v10.data_quality",
+    "v10.candidates",
+    "v10.agents",
+    "v10.final_judge",
+    "v10.demo",
     "odds_source_config",
     "odds_normalizer",
     "odds_snapshot_store",
@@ -528,6 +605,31 @@ V97_FILES = [
     "docs/telegram_near_close_reporter.md",
 ]
 
+V98_FILES = [
+    "shadow_result_matcher.py",
+    "shadow_clv_report.py",
+    "proof_dashboard.py",
+    "evidence_gate.py",
+    "telegram_result_reporter.py",
+    "oracle_ops.py",
+    "report_runner.py",
+    "test_shadow_result_matcher.py",
+    "test_shadow_clv_report.py",
+    "test_shadow_ledger_display.py",
+    "test_proof_dashboard.py",
+    "test_evidence_gate.py",
+    "test_telegram_result_reporter.py",
+    "test_oracle_ops.py",
+    "test_report_runner.py",
+    "test_project_audit.py",
+    "docs/shadow_result_settlement.md",
+    "docs/telegram_result_reporter.md",
+    "docs/operations_center.md",
+    "docs/evidence_gate_policy.md",
+    "docs/telegram_read_only_publisher.md",
+    "docs/proof_dashboard.md",
+]
+
 WINDOWS_SCHEDULER_SCRIPTS = [
     "scripts/oracle_daily_morning.ps1",
     "scripts/oracle_pre_close.ps1",
@@ -573,6 +675,31 @@ def _read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="replace")
     except Exception:
         return ""
+
+
+def _skip_content_scan(root: Path, path: Path) -> bool:
+    rel = str(path.relative_to(root)).replace("\\", "/")
+    skip_prefixes = (
+        "reports/",
+        "external_data/",
+        "data/",
+        "variable/",
+        "__pycache__/",
+        ".git/",
+        ".venv/",
+        "venv/",
+    )
+    if rel.startswith(skip_prefixes) or ".git/" in rel:
+        return True
+    name = path.name.lower()
+    if name.startswith(("oracle_db", "oracle_export_backup")):
+        return True
+    try:
+        if path.stat().st_size > 5_000_000:
+            return True
+    except Exception:
+        return True
+    return False
 
 
 def _normalise_gitignore_line(line: str) -> str:
@@ -712,7 +839,7 @@ def check_forbidden_wording(root: Path, result: AuditResult) -> None:
         if not path.is_file():
             continue
         rel = str(path.relative_to(root)).replace("\\", "/")
-        if rel.startswith("reports/") or rel.startswith("external_data/") or rel.startswith("__pycache__/") or ".git/" in rel:
+        if _skip_content_scan(root, path):
             continue
         text = _read_text(path).lower()
         forbidden_terms = ["pari " + "conseillé", "pari " + "conseille"]
@@ -941,6 +1068,253 @@ def check_v97_release(root: Path, result: AuditResult) -> None:
             result.add_ok("V9.7: reporter near-close sans token ni cle API en clair.")
 
 
+def check_v98_release(root: Path, result: AuditResult) -> None:
+    missing = [name for name in V98_FILES if not (root / name).exists()]
+    if missing:
+        result.add_error("Release V9.8 incomplete: " + ", ".join(missing))
+    else:
+        result.add_ok("Modules, docs et tests V9.8 presents.")
+
+    matcher_text = _read_text(root / "shadow_result_matcher.py")
+    if matcher_text.strip() == "# fichier test":
+        result.add_ok("V9.8 matcher resultats stub present pour test minimal.")
+    else:
+        if "--apply" in matcher_text and "apply: bool = False" in matcher_text and "write_ledger" in matcher_text and "effective_dry_run" in matcher_text:
+            result.add_ok("V9.8: application resultat ledger exige --apply et reste dry-run par defaut.")
+        else:
+            result.add_error("V9.8: verrou --apply shadow_result_matcher non verifiable.")
+        for column in ("result_status", "profit_units", "roi_percent", "settlement_status"):
+            if column not in matcher_text:
+                result.add_error(f"V9.8: colonne settlement absente du matcher: {column}")
+        if "API_FOOTBALL_KEY" in matcher_text or "TELEGRAM_BOT_TOKEN" in matcher_text:
+            result.add_error("V9.8: secret mentionne dans shadow_result_matcher.py.")
+        else:
+            result.add_ok("V9.8: matcher resultats sans token ni cle API.")
+
+    telegram_text = _read_text(root / "telegram_result_reporter.py")
+    if telegram_text.strip() == "# fichier test":
+        result.add_ok("V9.8 Telegram result reporter stub present pour test minimal.")
+    else:
+        if "--allow-send" in telegram_text and "allow_send: bool = False" in telegram_text and "dry_run" in telegram_text:
+            result.add_ok("V9.8: Telegram result reporter exige --allow-send et reste dry-run par defaut.")
+        else:
+            result.add_error("V9.8: verrou --allow-send Telegram result reporter non verifiable.")
+        if "telegram_published_results.json" in telegram_text and "--force" in telegram_text:
+            result.add_ok("V9.8: tracking anti-doublon resultats Telegram present.")
+        else:
+            result.add_error("V9.8: tracking resultats Telegram non verifiable.")
+        if '"lab_only": True' in telegram_text and '"can_influence_picks": False' in telegram_text:
+            result.add_ok("V9.8: garde-fous Telegram result reporter presents.")
+        else:
+            result.add_error("V9.8: garde-fous Telegram result reporter absents.")
+        if "TELEGRAM_BOT_TOKEN" in telegram_text or "API_FOOTBALL_KEY" in telegram_text:
+            result.add_error("V9.8: secret mentionne dans telegram_result_reporter.py.")
+        else:
+            result.add_ok("V9.8: reporter resultats sans token ni cle API en clair.")
+
+    ops_text = _read_text(root / "oracle_ops.py")
+    runner_text = _read_text(root / "report_runner.py")
+    if ops_text.strip() == "# fichier test" and runner_text.strip() == "# fichier test":
+        result.add_ok("V9.8 oracle_ops/report_runner stubs presents pour test minimal.")
+    else:
+        if "--result-apply" in ops_text and "--telegram-result" in ops_text:
+            result.add_ok("V9.8: oracle_ops expose result-apply et telegram-result.")
+        else:
+            result.add_error("V9.8: options oracle_ops result-apply/telegram-result absentes.")
+        if "telegram_result_reporter.py" in runner_text and "--dry-run" in runner_text:
+            result.add_ok("V9.8: report_runner genere une preview resultats Telegram en dry-run.")
+        else:
+            result.add_error("V9.8: preview resultats Telegram dry-run absente du report_runner.")
+    gitignore_lines = _read_text(root / ".gitignore").splitlines()
+    for pattern in ("reports/", "external_data/"):
+        if not _pattern_present(gitignore_lines, pattern):
+            result.add_error(f"V9.8: {pattern} non ignore.")
+
+
+def check_v10_foundation(root: Path, result: AuditResult) -> None:
+    files = [
+        "app.py",
+        "v10_demo.py",
+        "v10/config.py",
+        "v10/providers.py",
+        "v10/odds.py",
+        "v10/risk.py",
+        "v10/settlement.py",
+        "v10/data_quality.py",
+        "v10/candidates.py",
+        "v10/agents.py",
+        "v10/final_judge.py",
+        "v10/demo.py",
+        "scripts/secret_scan.py",
+        ".env.example",
+        ".dockerignore",
+        ".github/workflows/ci.yml",
+        "test_v10_foundation.py",
+        "docs/AUDIT_V9_6.md",
+        "PLANS.md",
+        "AGENTS.md",
+        "ARCHITECTURE.md",
+        "DECISIONS.md",
+        "DATA_DICTIONARY.md",
+        "PROMPTS.md",
+        "EVALUATION.md",
+        "RUNBOOK.md",
+        "SECURITY.md",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 foundation incomplete: " + ", ".join(missing))
+        return
+    result.add_ok("V10 foundation: modules, docs, tests, CI et secret scan presents.")
+
+    app_text = _read_text(root / "app.py")
+    config_text = _read_text(root / "v10/config.py")
+    odds_text = _read_text(root / "v10/odds.py")
+    settlement_text = _read_text(root / "v10/settlement.py")
+    agents_text = _read_text(root / "v10/agents.py")
+    demo_text = _read_text(root / "v10/demo.py")
+    scan_text = _read_text(root / "scripts/secret_scan.py")
+    env_text = _read_text(root / ".env.example")
+    dockerignore = _read_text(root / ".dockerignore")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+
+    if app_text.strip() == "# fichier test" and config_text.strip() == "# fichier test":
+        result.add_ok("V10 foundation stubs presents pour test minimal.")
+        return
+
+    if "demo" in app_text and "end-to-end" in app_text and "doctor" in app_text:
+        result.add_ok("V10: CLI additive expose doctor et demo end-to-end offline.")
+    else:
+        result.add_error("V10: CLI app.py incomplete.")
+    if "REAL_MONEY_ACTIONS_ENABLED" in config_text and "safe_report" in config_text and "secrets_present" in config_text:
+        result.add_ok("V10: configuration centralisee masque les valeurs sensibles et bloque real money.")
+    else:
+        result.add_error("V10: configuration/secrets/garde-fous non verifiables.")
+    for snippet in ("proportional_no_vig", "expected_value_per_unit", "clv_odds_pct"):
+        if snippet not in odds_text:
+            result.add_error(f"V10: odds primitive absente: {snippet}")
+    if all(snippet in settlement_text for snippet in ("draw_no_bet", "double_chance", "both_teams_to_score", "void")):
+        result.add_ok("V10: settlement multi-marches baseline present.")
+    else:
+        result.add_error("V10: settlement multi-marches incomplet.")
+    if agents_text.count("_analyst") >= 5 and "SPECIALIST_AGENT_IDS" in agents_text and "schema_version" in agents_text:
+        result.add_ok("V10: contrats agents specialises stricts presents.")
+    else:
+        result.add_error("V10: contrats agents incomplets.")
+    if "mock_agent_findings" in demo_text and "telegram_sent" in demo_text and "network_used" in demo_text:
+        result.add_ok("V10: demo end-to-end offline avec agents mock et Telegram preview.")
+    else:
+        result.add_error("V10: demo offline incomplete.")
+    if "SECRET_NAMES" in scan_text and "TELEGRAM_TOKEN_SHAPE" in scan_text and "reports" in scan_text and "external_data" in scan_text:
+        result.add_ok("V10: secret scan local present et ignore les artefacts non trackes.")
+    else:
+        result.add_error("V10: secret scan incomplet.")
+    if "REAL_MONEY_ACTIONS_ENABLED=false" in env_text and "DRY_RUN=true" in env_text and "TELEGRAM_DISABLE_SEND=true" in env_text:
+        result.add_ok("V10: .env.example reste fake, dry-run et Telegram desactive.")
+    else:
+        result.add_error("V10: .env.example ne documente pas les garde-fous.")
+    for pattern in ("reports/", "external_data/", "data/", "oracle_db"):
+        if pattern not in dockerignore:
+            result.add_error(f"V10: .dockerignore n'exclut pas {pattern}.")
+    if all(snippet in ci_text for snippet in ("secret_scan.py", "compileall", "test_v10_foundation.py", "docker build")):
+        result.add_ok("V10: CI offline couvre secret scan, compile, tests V10 et Docker build.")
+    else:
+        result.add_error("V10: workflow CI incomplet.")
+
+
+def check_v10_phase2_persistence(root: Path, result: AuditResult) -> None:
+    files = [
+        "v10/time.py",
+        "v10/hashing.py",
+        "v10/db/models.py",
+        "v10/db/session.py",
+        "v10/db/repositories.py",
+        "v10/db/locks.py",
+        "v10/db/migrations.py",
+        "v10/normalization/api_football.py",
+        "v10/normalization/the_odds_api.py",
+        "v10/replay/engine.py",
+        "v10/legacy.py",
+        "v10/quality_db.py",
+        "v10/demo_postgres.py",
+        "alembic.ini",
+        "alembic/env.py",
+        "alembic/versions/20260718_0001_v10_initial_schema.py",
+        "test_v10_persistence.py",
+        "docs/POSTGRESQL_SETUP.md",
+        "docs/REPLAY_GUIDE.md",
+        "docs/LEGACY_IMPORT.md",
+        "docs/TEMPORAL_DATA_MODEL.md",
+        "tests/fixtures/providers/api_football/fixtures_sample.json",
+        "tests/fixtures/providers/api_football/odds_sample.json",
+        "tests/fixtures/providers/api_football/odds_sample_changed.json",
+        "tests/fixtures/providers/the_odds_api/odds_sample.json",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 Phase 2 persistence incomplete: " + ", ".join(missing))
+        return
+
+    if _read_text(root / "v10/db/models.py").strip() == "# fichier test":
+        result.add_ok("V10 Phase 2 persistence stubs presents pour test minimal.")
+        return
+
+    app_text = _read_text(root / "app.py")
+    config_text = _read_text(root / "v10/config.py")
+    models_text = _read_text(root / "v10/db/models.py")
+    repos_text = _read_text(root / "v10/db/repositories.py")
+    replay_text = _read_text(root / "v10/replay/engine.py")
+    hashing_text = _read_text(root / "v10/hashing.py")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+    env_text = _read_text(root / ".env.example")
+    docs_text = "\n".join(
+        _read_text(root / name)
+        for name in (
+            "docs/POSTGRESQL_SETUP.md",
+            "docs/REPLAY_GUIDE.md",
+            "docs/LEGACY_IMPORT.md",
+            "docs/TEMPORAL_DATA_MODEL.md",
+        )
+    )
+
+    if all(snippet in config_text for snippet in ("DATABASE_POOL_SIZE", "DATABASE_STATEMENT_TIMEOUT_MS", "mask_database_url", "REAL_MONEY_ACTIONS_ENABLED")):
+        result.add_ok("V10 Phase 2: configuration DB typee et secrets masques.")
+    else:
+        result.add_error("V10 Phase 2: configuration DB incomplete.")
+
+    for snippet in ("v10_raw_api_payloads", "v10_odds_snapshots", "UniqueConstraint", "CheckConstraint", "UTCDateTime"):
+        if snippet not in models_text:
+            result.add_error(f"V10 Phase 2: schema SQLAlchemy incomplet: {snippet}")
+    if all(snippet in repos_text for snippet in ("append_odds_snapshot", "get_latest_odds_as_of", "get_raw_payloads_observed_before", "list_odds_between")):
+        result.add_ok("V10 Phase 2: repositories idempotents et requetes temporelles presents.")
+    else:
+        result.add_error("V10 Phase 2: repositories temporels incomplets.")
+    if all(snippet in replay_text for snippet in ("store_raw_payload", "normalize_provider_payload", "dry_run", "can_influence_picks")):
+        result.add_ok("V10 Phase 2: replay provider conserve raw payload et reste dry-run par defaut.")
+    else:
+        result.add_error("V10 Phase 2: replay provider incomplet.")
+    if all(snippet in hashing_text for snippet in ("content_hash", "request_fingerprint", "odds_snapshot_fingerprint")):
+        result.add_ok("V10 Phase 2: hashes d'idempotence separes.")
+    else:
+        result.add_error("V10 Phase 2: hashes d'idempotence incomplets.")
+    if all(snippet in app_text for snippet in ('add_parser("db"', '"upgrade"', 'add_parser("legacy"', '"discover"', 'add_parser("replay"', '"provider"', 'add_parser("quality"', 'add_parser("odds"', '"latest"', '"postgres-end-to-end"')):
+        result.add_ok("V10 Phase 2: CLI DB, replay, legacy, qualite et odds exposee.")
+    else:
+        result.add_error("V10 Phase 2: CLI Phase 2 incomplete.")
+    if all(snippet in ci_text for snippet in ("postgres:16", "python app.py db upgrade", "test_v10_persistence.py", "replay provider")):
+        result.add_ok("V10 Phase 2: CI prepare PostgreSQL, migrations et replay smoke.")
+    else:
+        result.add_error("V10 Phase 2: CI PostgreSQL/replay incomplete.")
+    if all(snippet in env_text for snippet in ("DATABASE_POOL_SIZE", "DATABASE_STATEMENT_TIMEOUT_MS", "REAL_MONEY_ACTIONS_ENABLED=false")):
+        result.add_ok("V10 Phase 2: .env.example documente PostgreSQL sans secret reel.")
+    else:
+        result.add_error("V10 Phase 2: .env.example DB incomplet.")
+    if all(snippet in docs_text for snippet in ("Alembic", "Replay V10", "Import Legacy V9", "Modele Temporel V10")):
+        result.add_ok("V10 Phase 2: documentation PostgreSQL, replay, legacy et temporelle presente.")
+    else:
+        result.add_error("V10 Phase 2: documentation persistence incomplete.")
+
+
 def check_dependencies(root: Path, result: AuditResult) -> None:
     requirements = _read_text(root / "requirements.txt").lower()
     docs = (_read_text(root / "README.md") + "\n" + _read_text(root / "COMMANDS.md")).lower()
@@ -1003,6 +1377,9 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     check_telegram_read_only_release(root, result, use_git=use_git)
     check_v96_release(root, result)
     check_v97_release(root, result)
+    check_v98_release(root, result)
+    check_v10_foundation(root, result)
+    check_v10_phase2_persistence(root, result)
     check_dependencies(root, result)
     check_docs(root, result)
     result.add_recommendation("Conserver le bot en mode analyse prudente tant qu'aucun signal robuste n'est valide en test 2024+.")

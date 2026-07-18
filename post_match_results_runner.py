@@ -84,7 +84,12 @@ def run_post_match_results(
         })
     combined_path = out_dir / "results_combined.csv"
     write_csv(all_rows, str(combined_path))
-    match = match_results(ledger, str(combined_path), dry_run=not (apply and not dry_run))
+    match = match_results(
+        ledger,
+        str(combined_path),
+        dry_run=not (apply and not dry_run),
+        apply=apply,
+    )
     summary = {
         "ledger": ledger,
         "output_dir": str(out_dir),
