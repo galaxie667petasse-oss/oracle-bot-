@@ -89,6 +89,24 @@ class V10Settings(BaseSettings):
     openai_model_specialist: str = Field(default="", alias="OPENAI_MODEL_SPECIALIST")
     openai_model_final: str = Field(default="", alias="OPENAI_MODEL_FINAL")
     openai_daily_budget_usd: float = Field(default=0.0, alias="OPENAI_DAILY_BUDGET_USD")
+    llm_enabled: bool = Field(default=False, alias="LLM_ENABLED")
+    llm_shadow_only: bool = Field(default=True, alias="LLM_SHADOW_ONLY")
+    llm_allow_paid_calls: bool = Field(default=False, alias="LLM_ALLOW_PAID_CALLS")
+    openai_scan_budget_usd: float = Field(default=0.0, alias="OPENAI_SCAN_BUDGET_USD")
+    openai_fixture_budget_usd: float = Field(default=0.0, alias="OPENAI_FIXTURE_BUDGET_USD")
+    openai_reasoning_fast: str = Field(default="low", alias="OPENAI_REASONING_FAST")
+    openai_reasoning_specialist: str = Field(default="medium", alias="OPENAI_REASONING_SPECIALIST")
+    openai_reasoning_final: str = Field(default="high", alias="OPENAI_REASONING_FINAL")
+    openai_max_concurrency: int = Field(default=3, alias="OPENAI_MAX_CONCURRENCY")
+    openai_max_agent_rounds: int = Field(default=2, alias="OPENAI_MAX_AGENT_ROUNDS")
+    openai_max_tool_calls_per_agent: int = Field(default=4, alias="OPENAI_MAX_TOOL_CALLS_PER_AGENT")
+    openai_max_calls_per_scan: int = Field(default=30, alias="OPENAI_MAX_CALLS_PER_SCAN")
+    openai_max_candidates_per_scan: int = Field(default=10, alias="OPENAI_MAX_CANDIDATES_PER_SCAN")
+    openai_max_sol_calls_per_scan: int = Field(default=2, alias="OPENAI_MAX_SOL_CALLS_PER_SCAN")
+    openai_max_sol_calls_per_fixture: int = Field(default=1, alias="OPENAI_MAX_SOL_CALLS_PER_FIXTURE")
+    openai_allow_xhigh: bool = Field(default=False, alias="OPENAI_ALLOW_XHIGH")
+    openai_allow_max: bool = Field(default=False, alias="OPENAI_ALLOW_MAX")
+    openai_allow_pro: bool = Field(default=False, alias="OPENAI_ALLOW_PRO")
     openai_max_calls_per_fixture: int = Field(default=0, alias="OPENAI_MAX_CALLS_PER_FIXTURE")
     openai_max_finalists_per_scan: int = Field(default=0, alias="OPENAI_MAX_FINALISTS_PER_SCAN")
     telegram_enabled: bool = Field(default=False, alias="TELEGRAM_ENABLED")
@@ -117,6 +135,10 @@ class V10Settings(BaseSettings):
             raise ValueError("REAL_MONEY_ACTIONS_ENABLED doit rester false: action bookmaker interdite.")
         if self.app_env.lower() in {"production", "prod"} and self.real_money_actions_enabled:
             raise ValueError("Configuration production dangereuse: real money interdit.")
+        if self.llm_allow_paid_calls and not self.llm_enabled:
+            raise ValueError("LLM_ALLOW_PAID_CALLS exige LLM_ENABLED=true.")
+        if self.llm_allow_paid_calls and self.openai_daily_budget_usd <= 0:
+            raise ValueError("LLM_ALLOW_PAID_CALLS exige un budget quotidien positif.")
         return self
 
     def validate_lab_safety(self) -> list[str]:
@@ -151,6 +173,17 @@ class V10Settings(BaseSettings):
             "database_pool_timeout_seconds": self.database_pool_timeout_seconds,
             "database_statement_timeout_ms": self.database_statement_timeout_ms,
             "telegram_enabled": self.telegram_enabled,
+            "llm": {
+                "enabled": self.llm_enabled,
+                "shadow_only": self.llm_shadow_only,
+                "allow_paid_calls": self.llm_allow_paid_calls,
+                "daily_budget_usd": self.openai_daily_budget_usd,
+                "scan_budget_usd": self.openai_scan_budget_usd,
+                "fixture_budget_usd": self.openai_fixture_budget_usd,
+                "allow_xhigh": self.openai_allow_xhigh,
+                "allow_max": self.openai_allow_max,
+                "allow_pro": self.openai_allow_pro,
+            },
             "openai_models_configured": {
                 "fast": bool(self.openai_model_fast),
                 "specialist": bool(self.openai_model_specialist),
@@ -182,6 +215,24 @@ def _settings_data_from_env(env: Mapping[str, str]) -> dict[str, Any]:
         "OPENAI_MODEL_SPECIALIST": str(env.get("OPENAI_MODEL_SPECIALIST", "")).strip(),
         "OPENAI_MODEL_FINAL": str(env.get("OPENAI_MODEL_FINAL", "")).strip(),
         "OPENAI_DAILY_BUDGET_USD": float(str(env.get("OPENAI_DAILY_BUDGET_USD", 0)).strip() or 0),
+        "LLM_ENABLED": _truthy(env.get("LLM_ENABLED"), default=False),
+        "LLM_SHADOW_ONLY": _truthy(env.get("LLM_SHADOW_ONLY"), default=True),
+        "LLM_ALLOW_PAID_CALLS": _truthy(env.get("LLM_ALLOW_PAID_CALLS"), default=False),
+        "OPENAI_SCAN_BUDGET_USD": float(str(env.get("OPENAI_SCAN_BUDGET_USD", 0)).strip() or 0),
+        "OPENAI_FIXTURE_BUDGET_USD": float(str(env.get("OPENAI_FIXTURE_BUDGET_USD", 0)).strip() or 0),
+        "OPENAI_REASONING_FAST": str(env.get("OPENAI_REASONING_FAST", "low")).strip() or "low",
+        "OPENAI_REASONING_SPECIALIST": str(env.get("OPENAI_REASONING_SPECIALIST", "medium")).strip() or "medium",
+        "OPENAI_REASONING_FINAL": str(env.get("OPENAI_REASONING_FINAL", "high")).strip() or "high",
+        "OPENAI_MAX_CONCURRENCY": int(float(str(env.get("OPENAI_MAX_CONCURRENCY", 3)).strip() or 3)),
+        "OPENAI_MAX_AGENT_ROUNDS": int(float(str(env.get("OPENAI_MAX_AGENT_ROUNDS", 2)).strip() or 2)),
+        "OPENAI_MAX_TOOL_CALLS_PER_AGENT": int(float(str(env.get("OPENAI_MAX_TOOL_CALLS_PER_AGENT", 4)).strip() or 4)),
+        "OPENAI_MAX_CALLS_PER_SCAN": int(float(str(env.get("OPENAI_MAX_CALLS_PER_SCAN", 30)).strip() or 30)),
+        "OPENAI_MAX_CANDIDATES_PER_SCAN": int(float(str(env.get("OPENAI_MAX_CANDIDATES_PER_SCAN", 10)).strip() or 10)),
+        "OPENAI_MAX_SOL_CALLS_PER_SCAN": int(float(str(env.get("OPENAI_MAX_SOL_CALLS_PER_SCAN", 2)).strip() or 2)),
+        "OPENAI_MAX_SOL_CALLS_PER_FIXTURE": int(float(str(env.get("OPENAI_MAX_SOL_CALLS_PER_FIXTURE", 1)).strip() or 1)),
+        "OPENAI_ALLOW_XHIGH": _truthy(env.get("OPENAI_ALLOW_XHIGH"), default=False),
+        "OPENAI_ALLOW_MAX": _truthy(env.get("OPENAI_ALLOW_MAX"), default=False),
+        "OPENAI_ALLOW_PRO": _truthy(env.get("OPENAI_ALLOW_PRO"), default=False),
         "OPENAI_MAX_CALLS_PER_FIXTURE": int(float(str(env.get("OPENAI_MAX_CALLS_PER_FIXTURE", 0)).strip() or 0)),
         "OPENAI_MAX_FINALISTS_PER_SCAN": int(float(str(env.get("OPENAI_MAX_FINALISTS_PER_SCAN", 0)).strip() or 0)),
         "TELEGRAM_ENABLED": _truthy(env.get("TELEGRAM_ENABLED"), default=False),

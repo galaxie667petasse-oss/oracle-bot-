@@ -71,6 +71,28 @@ python app.py model train --model dixon_coles_v1 --from 2024-01-01 --to 2024-12-
 python app.py demo statistical-end-to-end --json
 ```
 
+## Incident LLM
+
+Verifier l'etat :
+
+```bash
+python app.py llm doctor
+python app.py llm budget status
+python app.py llm cache status
+python app.py llm prompts validate
+```
+
+Si le budget est epuise, le systeme doit retourner `UNREVIEWED`, `WATCH` ou `NO_BET`, jamais `SHADOW_ACCEPTED` automatiquement.
+
+Si une preuve est rejetee, relancer en mock/replay :
+
+```bash
+python app.py llm analyze --candidate-id cand_shadow_accept --mock --shadow
+python app.py demo llm-shadow-end-to-end --mock --json
+```
+
+Ne jamais activer `LLM_ALLOW_PAID_CALLS=true` en production sans budget, smoke FAST et verification de la disponibilite modele.
+
 ## Fuite temporelle suspectee
 
 Verifier que la commande utilise bien `--as-of` ou une fenetre chronologique. Rejouer le dataset avec un `--to` plus ancien et comparer le fingerprint. Les features doivent venir de `TemporalDatasetBuilder` et non d'une lecture directe de la derniere ligne disponible.

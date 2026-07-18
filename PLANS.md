@@ -42,10 +42,20 @@ Statut : implemente en premiere version offline ; PostgreSQL reel reste a valide
 
 Statut : implemente en premiere version offline ; PostgreSQL reel reste a observer dans CI ou environnement local avec service disponible.
 
+## Phase 4 - LLM shadow orchestration
+
+- Ajouter provider mock, replay et OpenAI Responses dormant.
+- Router deterministic-only -> Luna -> Terra panels -> Sol rare.
+- Regrouper les 12 roles en panels lorsque cela reduit le cout.
+- Valider toutes les preuves par `evidence_id` et `as_of`.
+- Appliquer budget, cache, contradiction engine et gate deterministe.
+- Garder `LLM_ENABLED=false`, `LLM_ALLOW_PAID_CALLS=false` et budgets a zero par defaut.
+
+Statut : implemente en premiere version mock/replay, sans appel payant.
+
 ## Phases suivantes
 
-- Phase 4 : orchestration LLM controlee, provider OpenAI, budget manager, Structured Outputs, agents specialises et juge final, sans modifier librement les probabilites statistiques.
-- Phase 5 : candidate engine historique renforce, correlations et budget LLM.
+- Phase 5 : ingestion prematch fraiche, scheduler Railway, scans shadow automatiques, surveillance des changements et comparaison statistique seul contre statistique + LLM.
 - Phase 6 : ledger signal append-only et decision/veto durcis.
 - Phase 7 : Telegram preview/signaux read-only anti-doublon.
 - Phase 8 : settlement, CLV et evaluation relationnelle complete.

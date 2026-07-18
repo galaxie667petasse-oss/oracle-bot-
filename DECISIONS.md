@@ -65,3 +65,21 @@ Raison : une decision future doit pouvoir etre rejouee avec uniquement les donne
 Decision : `dixon_coles_v1` est disponible mais marque experimental. Il corrige les scores faibles via `tau`, utilise une recherche contrainte de `rho` et ne doit pas etre considere meilleur que Poisson sans validation hors echantillon.
 
 Raison : le modele est utile pour diagnostic et comparaison, mais un petit echantillon peut rendre l'optimisation instable.
+
+## ADR-012 - LLM shadow orchestration fail-closed
+
+Decision : la Phase 4 ajoute Luna/Terra/Sol comme tiers logiques configurables, mais garde `LLM_ENABLED=false`, `LLM_ALLOW_PAID_CALLS=false` et budgets a zero par defaut.
+
+Raison : une cle OpenAI seule ne doit jamais declencher un cout ou une decision.
+
+## ADR-013 - 12 roles logiques, pas 12 appels par defaut
+
+Decision : les roles compatibles sont regroupes en panels Terra. Devil's Advocate reste separe et Sol reste rare.
+
+Raison : le cout est controle sans supprimer l'independance critique la plus importante.
+
+## ADR-014 - Evidence policy et gate deterministe souverain
+
+Decision : chaque affirmation LLM doit referencer une preuve typee valide as_of. Le gate deterministe peut toujours annuler une acceptation Sol.
+
+Raison : un JSON valide mais semantiquement faux doit devenir un hard veto.

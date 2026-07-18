@@ -1490,3 +1490,29 @@ python test_v10_statistics.py
 ```
 
 Regles Phase 3: aucun LLM, aucun Telegram reel, aucun bookmaker, aucune mise. Les probabilites, EV, calibration et scores de marche viennent de Python et restent reproductibles avec les donnees observees avant `as_of`.
+
+## V10 Phase 4 LLM Shadow Orchestration
+
+Diagnostic et commandes offline:
+
+```bash
+python app.py llm doctor
+python app.py llm models
+python app.py llm budget status
+python app.py llm prompts validate
+python app.py llm cache status
+python app.py llm plan --candidate-id cand_shadow_accept
+python app.py llm analyze --candidate-id cand_shadow_accept --mock --shadow
+python app.py llm evaluate --dataset tests/fixtures/llm_eval --mock --ablation
+python app.py llm benchmark-routing --dataset tests/fixtures/llm_eval --mock
+python app.py decision review --candidate-id cand_shadow_accept
+python app.py demo llm-shadow-end-to-end --mock --json
+```
+
+Smoke reel FAST seulement, a ne lancer qu'apres autorisation explicite, flags LLM ouverts et budget positif:
+
+```bash
+python app.py llm smoke --tier fast --allow-paid --max-cost-usd 0.05
+```
+
+Regles Phase 4: aucun appel OpenAI reel par defaut, aucun Telegram reel, aucun bookmaker, aucune mise. Luna filtre le volume, Terra analyse quelques panels, Sol reste rare, et le gate deterministe reste souverain.

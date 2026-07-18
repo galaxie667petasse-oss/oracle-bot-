@@ -28,6 +28,12 @@ jobs:
       DATABASE_URL: postgresql+psycopg://oracle:oracle@localhost:5432/oracle_v10
       API_FOOTBALL_KEY: fake_ci_api_football_key
       OPENAI_API_KEY: fake_ci_openai_key
+      LLM_ENABLED: "false"
+      LLM_SHADOW_ONLY: "true"
+      LLM_ALLOW_PAID_CALLS: "false"
+      OPENAI_DAILY_BUDGET_USD: "0"
+      OPENAI_SCAN_BUDGET_USD: "0"
+      OPENAI_FIXTURE_BUDGET_USD: "0"
       TELEGRAM_BOT_TOKEN: fake_ci_telegram_token
       TELEGRAM_CHAT_ID: fake_ci_chat_id
     steps:
@@ -50,6 +56,7 @@ jobs:
           python test_v10_foundation.py
           python test_v10_persistence.py
           python test_v10_statistics.py
+          python test_v10_llm.py
       - name: Replay smoke
         run: |
           python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --dry-run
@@ -57,6 +64,13 @@ jobs:
       - name: Statistical smoke
         run: |
           python app.py demo statistical-end-to-end --json
+      - name: LLM shadow smoke
+        run: |
+          python app.py llm doctor
+          python app.py llm prompts validate
+          python app.py llm evaluate --dataset tests/fixtures/llm_eval --mock --ablation
+          python app.py llm benchmark-routing --dataset tests/fixtures/llm_eval --mock
+          python app.py demo llm-shadow-end-to-end --mock --json
       - name: Historical tests
         run: |
           set -e

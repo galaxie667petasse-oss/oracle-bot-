@@ -1096,3 +1096,23 @@ python test_v10_statistics.py
 ```
 
 Les migrations Phase 3 ajoutent `model_definitions`, `model_versions`, `feature_snapshots`, `score_distributions`, `statistical_predictions`, `calibration_models` et `evaluation_runs`. Les predictions sont versionnees et rattachees a un `as_of`; aucune decision future ne doit lire une cote ou un resultat observe apres cette heure.
+
+## V10 LLM Shadow Orchestration
+
+La Phase 4 ajoute une orchestration LLM adaptive, optimisee cout et strictement shadow-only. Luna filtre le volume, Terra analyse quelques dossiers serieux en panels, Sol juge rarement les meilleurs finalistes, puis le gate deterministe garde le dernier mot.
+
+Par defaut : `LLM_ENABLED=false`, `LLM_SHADOW_ONLY=true`, `LLM_ALLOW_PAID_CALLS=false`, budgets OpenAI a zero, `TELEGRAM_ENABLED=false`, aucune mise, aucun bookmaker et aucun envoi reel.
+
+Les 12 roles logiques existent, mais ils sont regroupes en panels quand c'est moins couteux. Les LLM ne peuvent pas calculer une probabilite, une cote, une EV, une CLV, Kelly, ROI ou un stake. Ils examinent uniquement des preuves existantes.
+
+Commandes offline :
+
+```bash
+python app.py llm doctor
+python app.py llm prompts validate
+python app.py llm evaluate --dataset tests/fixtures/llm_eval --mock --ablation
+python app.py llm benchmark-routing --dataset tests/fixtures/llm_eval --mock
+python app.py demo llm-shadow-end-to-end --mock --json
+```
+
+Details : `docs/LLM_ARCHITECTURE.md`, `docs/LLM_ROUTING_STRATEGY.md`, `docs/LLM_BUDGETS.md`, `docs/LLM_EVIDENCE_POLICY.md`, `docs/LLM_SECURITY.md`, `docs/LLM_EVALUATION.md` et `docs/LLM_SHADOW_MODE.md`.

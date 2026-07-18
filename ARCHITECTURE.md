@@ -88,3 +88,23 @@ Responsabilites :
 - `v10.statistics.calibration`, `ensemble` et `backtest` separent validation, combinaison et evaluation walk-forward.
 
 Les tables Phase 3 `v10_model_versions`, `v10_feature_snapshots`, `v10_score_distributions`, `v10_statistical_predictions`, `v10_calibration_models` et `v10_evaluation_runs` permettent de versionner les predictions. Le chemin CLI reste additif: `app.py dataset`, `app.py model`, `app.py predict`, `app.py backtest` et `app.py demo statistical-end-to-end`.
+
+## LLM Shadow Orchestration Phase 4
+
+```mermaid
+flowchart TD
+    A["Candidates deterministic filters"] --> B["CandidateEvidencePacket"]
+    B --> C["Luna FAST triage"]
+    C --> D["Terra Quantitative Integrity panel"]
+    C --> E["Terra Match Context panel"]
+    C --> F["Fresh Information skipped without evidence"]
+    D --> G["Devil's Advocate"]
+    E --> G
+    G --> H["Portfolio panel if multiple candidates"]
+    H --> I["Sol FINAL rare judge"]
+    I --> J["ContradictionEngine"]
+    J --> K["gate deterministe"]
+    K --> L["Shadow decision only"]
+```
+
+Luna filtre le volume avec reasoning low. Terra regroupe les roles compatibles en panels. Sol est reserve aux finalistes top K et ne modifie aucun chiffre deterministe. Le gate deterministe bloque toute ineligibilite, cote perimee, EV non positive, preuve invalide ou hard veto. Le mode par defaut reste `LLM_ENABLED=false`, `LLM_ALLOW_PAID_CALLS=false`, budgets a zero.

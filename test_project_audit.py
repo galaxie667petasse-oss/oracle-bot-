@@ -124,6 +124,12 @@ def test_release_candidate_docs_exist_and_have_sections():
         "v10 statistical engine",
         "dixon-coles",
         "statistical-end-to-end",
+        "v10 llm shadow orchestration",
+        "luna",
+        "terra",
+        "sol",
+        "llm_allow_paid_calls",
+        "llm-shadow-end-to-end",
         "railway plus tard",
         "securite",
         "commandes principales",
@@ -155,6 +161,8 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v9.8" in status
     assert "v10 hybrid foundation" in status
     assert "v10 phase 3" in status
+    assert "v10 phase 4" in status
+    assert "llm shadow orchestration" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -230,6 +238,15 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "WALK_FORWARD_BACKTEST.md").exists()
     assert (root / "docs" / "MODEL_VERSIONING.md").exists()
     assert (root / "docs" / "PHASE3_STATISTICAL_LOG.md").exists()
+    assert (root / "docs" / "OPENAI_INTEGRATION.md").exists()
+    assert (root / "docs" / "LLM_ARCHITECTURE.md").exists()
+    assert (root / "docs" / "LLM_ROUTING_STRATEGY.md").exists()
+    assert (root / "docs" / "LLM_BUDGETS.md").exists()
+    assert (root / "docs" / "LLM_EVIDENCE_POLICY.md").exists()
+    assert (root / "docs" / "LLM_SECURITY.md").exists()
+    assert (root / "docs" / "LLM_EVALUATION.md").exists()
+    assert (root / "docs" / "LLM_SHADOW_MODE.md").exists()
+    assert (root / "docs" / "PHASE4_LLM_LOG.md").exists()
     assert (root / "AGENTS.md").exists()
     assert (root / "PLANS.md").exists()
     assert (root / "ARCHITECTURE.md").exists()
@@ -245,10 +262,19 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "test_v10_foundation.py").exists()
     assert (root / "test_v10_persistence.py").exists()
     assert (root / "test_v10_statistics.py").exists()
+    assert (root / "test_v10_llm.py").exists()
     assert (root / "v10" / "statistics" / "elo.py").exists()
     assert (root / "v10" / "statistics" / "poisson.py").exists()
     assert (root / "v10" / "statistics" / "dixon_coles.py").exists()
     assert (root / "v10" / "statistics" / "backtest.py").exists()
+    assert (root / "v10" / "llm" / "orchestrator.py").exists()
+    assert (root / "v10" / "llm" / "providers" / "mock.py").exists()
+    assert (root / "v10" / "llm" / "providers" / "openai_responses.py").exists()
+    assert (root / "v10" / "llm" / "evidence" / "semantic_validator.py").exists()
+    assert (root / "v10" / "llm" / "budgets" / "manager.py").exists()
+    assert (root / "v10" / "llm" / "judge" / "gate.py").exists()
+    assert (root / "prompts" / "shared" / "safety_v1.md").exists()
+    assert (root / "prompts" / "final_judge" / "sol_shadow_judge_v1.md").exists()
     assert (root / "tests" / "fixtures" / "providers" / "api_football" / "fixtures_sample.json").exists()
     assert (root / "tests" / "fixtures" / "providers" / "api_football" / "odds_sample.json").exists()
     assert (root / "tests" / "fixtures" / "providers" / "api_football" / "odds_sample_changed.json").exists()

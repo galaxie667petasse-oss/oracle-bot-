@@ -182,6 +182,45 @@ ESSENTIAL_FILES = [
     "docs/WALK_FORWARD_BACKTEST.md",
     "docs/MODEL_VERSIONING.md",
     "docs/PHASE3_STATISTICAL_LOG.md",
+    "v10/llm/__init__.py",
+    "v10/llm/config.py",
+    "v10/llm/contracts.py",
+    "v10/llm/registry.py",
+    "v10/llm/routing.py",
+    "v10/llm/orchestrator.py",
+    "v10/llm/providers/mock.py",
+    "v10/llm/providers/replay.py",
+    "v10/llm/providers/openai_responses.py",
+    "v10/llm/budgets/manager.py",
+    "v10/llm/budgets/pricing.py",
+    "v10/llm/cache/keys.py",
+    "v10/llm/cache/repository.py",
+    "v10/llm/evidence/models.py",
+    "v10/llm/evidence/packet_builder.py",
+    "v10/llm/evidence/semantic_validator.py",
+    "v10/llm/tools/registry.py",
+    "v10/llm/agents/panels.py",
+    "v10/llm/contradictions/engine.py",
+    "v10/llm/judge/gate.py",
+    "v10/llm/evaluation/runner.py",
+    "v10/llm/demo.py",
+    "alembic/versions/20260719_0003_v10_llm_shadow_schema.py",
+    "prompts/shared/safety_v1.md",
+    "prompts/panels/quantitative_integrity_v1.md",
+    "prompts/panels/match_context_v1.md",
+    "prompts/panels/fresh_information_v1.md",
+    "prompts/agents/devils_advocate_v1.md",
+    "prompts/final_judge/sol_shadow_judge_v1.md",
+    "tests/fixtures/llm_eval/cases.json",
+    "docs/OPENAI_INTEGRATION.md",
+    "docs/LLM_ARCHITECTURE.md",
+    "docs/LLM_ROUTING_STRATEGY.md",
+    "docs/LLM_BUDGETS.md",
+    "docs/LLM_EVIDENCE_POLICY.md",
+    "docs/LLM_SECURITY.md",
+    "docs/LLM_EVALUATION.md",
+    "docs/LLM_SHADOW_MODE.md",
+    "docs/PHASE4_LLM_LOG.md",
     "tests/fixtures/providers/api_football/fixtures_sample.json",
     "tests/fixtures/providers/api_football/odds_sample.json",
     "tests/fixtures/providers/api_football/odds_sample_changed.json",
@@ -393,6 +432,7 @@ MAIN_TESTS = [
     "test_v10_foundation.py",
     "test_v10_persistence.py",
     "test_v10_statistics.py",
+    "test_v10_llm.py",
 ]
 
 IMPORT_MODULES = [
@@ -458,6 +498,23 @@ IMPORT_MODULES = [
     "v10.statistics.training",
     "v10.statistics.backtest",
     "v10.statistics.demo",
+    "v10.llm.config",
+    "v10.llm.contracts",
+    "v10.llm.registry",
+    "v10.llm.routing",
+    "v10.llm.orchestrator",
+    "v10.llm.providers.mock",
+    "v10.llm.providers.replay",
+    "v10.llm.providers.openai_responses",
+    "v10.llm.budgets.manager",
+    "v10.llm.cache.keys",
+    "v10.llm.evidence.packet_builder",
+    "v10.llm.evidence.semantic_validator",
+    "v10.llm.tools.registry",
+    "v10.llm.contradictions.engine",
+    "v10.llm.judge.gate",
+    "v10.llm.evaluation.runner",
+    "v10.llm.demo",
     "odds_source_config",
     "odds_normalizer",
     "odds_snapshot_store",
@@ -1433,6 +1490,114 @@ def check_v10_phase3_statistics(root: Path, result: AuditResult) -> None:
         result.add_error("V10 Phase 3: documentation statistique incomplete.")
 
 
+def check_v10_phase4_llm(root: Path, result: AuditResult) -> None:
+    files = [
+        "v10/llm/config.py",
+        "v10/llm/contracts.py",
+        "v10/llm/registry.py",
+        "v10/llm/routing.py",
+        "v10/llm/orchestrator.py",
+        "v10/llm/providers/mock.py",
+        "v10/llm/providers/replay.py",
+        "v10/llm/providers/openai_responses.py",
+        "v10/llm/budgets/manager.py",
+        "v10/llm/budgets/pricing.py",
+        "v10/llm/cache/keys.py",
+        "v10/llm/cache/repository.py",
+        "v10/llm/evidence/packet_builder.py",
+        "v10/llm/evidence/semantic_validator.py",
+        "v10/llm/tools/registry.py",
+        "v10/llm/agents/panels.py",
+        "v10/llm/contradictions/engine.py",
+        "v10/llm/judge/gate.py",
+        "v10/llm/evaluation/runner.py",
+        "v10/llm/demo.py",
+        "alembic/versions/20260719_0003_v10_llm_shadow_schema.py",
+        "test_v10_llm.py",
+        "docs/OPENAI_INTEGRATION.md",
+        "docs/LLM_ARCHITECTURE.md",
+        "docs/LLM_ROUTING_STRATEGY.md",
+        "docs/LLM_BUDGETS.md",
+        "docs/LLM_EVIDENCE_POLICY.md",
+        "docs/LLM_SECURITY.md",
+        "docs/LLM_EVALUATION.md",
+        "docs/LLM_SHADOW_MODE.md",
+        "docs/PHASE4_LLM_LOG.md",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 Phase 4 LLM incomplete: " + ", ".join(missing))
+        return
+
+    config_text = _read_text(root / "v10/config.py") + "\n" + _read_text(root / "v10/llm/config.py")
+    models_text = _read_text(root / "v10/db/models.py")
+    openai_text = _read_text(root / "v10/llm/providers/openai_responses.py")
+    routing_text = "\n".join(
+        (
+            _read_text(root / "v10/llm/routing.py"),
+            _read_text(root / "v10/llm/registry.py"),
+            _read_text(root / "v10/llm/config.py"),
+        )
+    )
+    evidence_text = _read_text(root / "v10/llm/evidence/semantic_validator.py") + "\n" + _read_text(root / "v10/llm/evidence/registry.py")
+    orchestrator_text = _read_text(root / "v10/llm/orchestrator.py")
+    app_text = _read_text(root / "app.py")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+    docs_text = "\n".join(
+        _read_text(root / name)
+        for name in (
+            "docs/LLM_ARCHITECTURE.md",
+            "docs/LLM_ROUTING_STRATEGY.md",
+            "docs/LLM_BUDGETS.md",
+            "docs/LLM_EVIDENCE_POLICY.md",
+            "docs/LLM_SECURITY.md",
+            "docs/LLM_EVALUATION.md",
+            "docs/LLM_SHADOW_MODE.md",
+        )
+    )
+
+    if "fichier test" in config_text and "LLMRuntimeConfig" not in config_text:
+        result.add_ok("V10 Phase 4 LLM stubs presents pour test minimal.")
+        return
+
+    if all(snippet in config_text for snippet in ("llm_enabled", "llm_allow_paid_calls", "openai_scan_budget_usd", "openai_allow_pro")):
+        result.add_ok("V10 Phase 4: configuration LLM fail-closed et budgets documentes.")
+    else:
+        result.add_error("V10 Phase 4: configuration LLM incomplete.")
+    if all(snippet in models_text for snippet in ("v10_llm_runs", "v10_llm_usage_records", "v10_agent_findings", "v10_final_judge_reviews", "v10_shadow_decisions", "v10_llm_cache_entries", "v10_model_pricing_versions")):
+        result.add_ok("V10 Phase 4: schema DB LLM runs/usage/cache/decisions present.")
+    else:
+        result.add_error("V10 Phase 4: schema DB LLM incomplet.")
+    if all(snippet in openai_text for snippet in ("AsyncOpenAI", "responses.create", "can_call_paid", "allow_paid")):
+        result.add_ok("V10 Phase 4: provider OpenAI Responses bloque sans flags payants.")
+    else:
+        result.add_error("V10 Phase 4: provider OpenAI fail-closed incomplet.")
+    if all(snippet in routing_text for snippet in ("gpt-5.6-luna", "quantitative_integrity", "run_devils_advocate", "run_sol")):
+        result.add_ok("V10 Phase 4: routage Luna/Terra/Sol adaptatif present.")
+    else:
+        result.add_error("V10 Phase 4: routage adaptatif incomplet.")
+    if all(snippet in evidence_text for snippet in ("evidence_not_found", "evidence_future_observed_at", "agent_has_no_authorized_fresh_evidence", "judge_ignored_hard_veto")):
+        result.add_ok("V10 Phase 4: validation semantique des preuves active.")
+    else:
+        result.add_error("V10 Phase 4: validation semantique des preuves incomplete.")
+    if all(snippet in orchestrator_text for snippet in ("BudgetManager", "InMemoryLLMCache", "ContradictionEngine", "DeterministicDecisionGate", "telegram_sent")):
+        result.add_ok("V10 Phase 4: orchestrateur mock/cache/budget/gate present.")
+    else:
+        result.add_error("V10 Phase 4: orchestrateur LLM incomplet.")
+    if all(snippet in app_text for snippet in ('add_parser("llm"', 'benchmark-routing', 'llm-shadow-end-to-end', '--allow-paid', 'add_parser("decision"')):
+        result.add_ok("V10 Phase 4: CLI LLM, evaluation, demo et review exposee.")
+    else:
+        result.add_error("V10 Phase 4: CLI LLM incomplete.")
+    if all(snippet in ci_text for snippet in ("test_v10_llm.py", "llm-shadow-end-to-end", "LLM_ALLOW_PAID_CALLS", "postgres:16")):
+        result.add_ok("V10 Phase 4: CI couvre LLM mock sans appel payant.")
+    else:
+        result.add_error("V10 Phase 4: CI LLM incomplete.")
+    if all(snippet in docs_text for snippet in ("Luna", "Terra", "Sol", "shadow", "budget", "preuve", "gate deterministe")):
+        result.add_ok("V10 Phase 4: documentation LLM routing/budgets/evidence/shadow presente.")
+    else:
+        result.add_error("V10 Phase 4: documentation LLM incomplete.")
+
+
 def check_dependencies(root: Path, result: AuditResult) -> None:
     requirements = _read_text(root / "requirements.txt").lower()
     docs = (_read_text(root / "README.md") + "\n" + _read_text(root / "COMMANDS.md")).lower()
@@ -1499,6 +1664,7 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     check_v10_foundation(root, result)
     check_v10_phase2_persistence(root, result)
     check_v10_phase3_statistics(root, result)
+    check_v10_phase4_llm(root, result)
     check_dependencies(root, result)
     check_docs(root, result)
     result.add_recommendation("Conserver le bot en mode analyse prudente tant qu'aucun signal robuste n'est valide en test 2024+.")

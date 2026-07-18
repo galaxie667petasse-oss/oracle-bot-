@@ -30,6 +30,19 @@ V9.x contient deja calibration, statistical validation et CLV. V10 foundation aj
 
 La premiere evaluation V10 statistique compare des probabilites, pas des slogans de performance. Les fonctions `v10.statistics.metrics` couvrent log loss multiclass, Brier multiclass, Brier/log loss binaires et ECE/MCE par bins.
 
+## Evaluation LLM Phase 4
+
+L'evaluation LLM mesure la conformite et le cout, pas un ROI.
+
+Configurations : A aucun LLM, B Luna uniquement, C Terra panels, D cascade complete, E agents separes comme benchmark couteux uniquement.
+
+```bash
+python app.py llm evaluate --dataset tests/fixtures/llm_eval --mock --ablation
+python app.py llm benchmark-routing --dataset tests/fixtures/llm_eval --mock
+```
+
+Metriques : schema valide, preuves valides, hallucinations, hard veto respecte, appels, cout estime, latence, decisions monotones. Aucun appel OpenAI reel n'est necessaire.
+
 Splits supportes :
 
 - holdout chronologique simple dans `train_model`;

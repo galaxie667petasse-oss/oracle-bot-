@@ -66,3 +66,19 @@ Schema : `football_features_v1`.
 Champs principaux : matchs joues, points par match, buts pour/contre, goal difference, forme 5/10, splits domicile/exterieur, jours de repos, matchs sur 7/14/30 jours, Elo pre-match, H2H limite, mois, indicators de missingness et `data_completeness`.
 
 Regle temporelle : aucune feature ne peut utiliser le resultat du match cible, une cote observee apres `as_of`, ou un resultat futur. Une prediction doit etre reproductible avec son `model_version`, son `feature_snapshot` et son `prediction_fingerprint`.
+
+## Tables Phase 4 LLM Shadow
+
+- `v10_llm_providers` : providers LLM logiques.
+- `v10_llm_model_configs` : modeles FAST/SPECIALIST/FINAL et reasoning associe.
+- `v10_prompt_templates` / `v10_prompt_versions` : prompts versionnes.
+- `v10_llm_runs` : appels ou replays, modele demande/utilise, packet hash, output hash, latence et statut.
+- `v10_llm_tool_calls` : appels d'outils read-only bornes.
+- `v10_llm_usage_records` : tokens, cout estime, cache et retries.
+- `v10_agent_findings` : findings structures avec `evidence_ids`.
+- `v10_contradiction_reports` : contradictions et hard vetoes detectes par code.
+- `v10_final_judge_reviews` : revue Sol sans probabilite, cote, EV ou stake.
+- `v10_shadow_decisions` : decision finale shadow apres gate deterministe.
+- `v10_budget_reservations` : reservations et reconciliations budget.
+- `v10_llm_cache_entries` : cache metier par packet hash.
+- `v10_model_pricing_versions` : tarifs versionnes et modifiables.

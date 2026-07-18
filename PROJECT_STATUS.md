@@ -450,3 +450,18 @@ Statut: premiere version offline en place localement.
 Limites restantes: Dixon-Coles reste experimental, la baseline ML n'est pas encore activee, PostgreSQL reel est configure en CI mais non observe depuis cette session, et les predictions relationnelles completes depuis fixtures V10 importees restent a durcir.
 
 Conclusion: V10 peut produire des probabilites football reproductibles sans LLM, mais aucun ROI, aucune rentabilite et aucun signal reel ne sont revendiques.
+
+## V10 Phase 4 LLM Shadow Orchestration
+
+Etat : implementation additive shadow-only.
+
+- `v10/llm` ajoute provider mock, replay et OpenAI Responses dormant.
+- `ComplexityRouter` applique la cascade deterministic-only -> Luna -> Terra panels -> Devil's Advocate -> Sol rare -> gate deterministe.
+- Les 12 roles logiques existent, mais les panels evitent 12 appels par candidat.
+- Budget manager, cache metier, evidence registry, validation semantique, contradiction engine et final gate sont en place.
+- Alembic `20260719_0003` ajoute les tables LLM runs, usage, tool calls, findings, contradiction reports, final judge reviews, shadow decisions, budget reservations, cache et pricing versions.
+- CLI : `app.py llm doctor`, `llm models`, `llm budget status`, `llm prompts validate`, `llm analyze --mock`, `llm evaluate --mock --ablation`, `llm benchmark-routing`, `decision review`, `demo llm-shadow-end-to-end`.
+
+Limites restantes : SDK OpenAI non installe localement pendant l'implementation, disponibilite runtime des slugs Luna/Terra/Sol non confirmee, tarifs placeholders, aucun appel payant effectue, aucun signal reel active.
+
+Conclusion: la couche LLM peut analyser des preuves en mock/replay, mais le code deterministe reste souverain et `STATISTICAL_MODEL_VALIDATED_FOR_SIGNALS=false` demeure prudent.

@@ -408,3 +408,216 @@ class EvaluationRun(TimestampMixin, Base):
     metrics_json: Mapped[dict[str, Any]] = mapped_column("metrics", JSONB_TYPE, default=dict, nullable=False)
     artifact_paths_json: Mapped[list[str]] = mapped_column("artifact_paths", JSONB_TYPE, default=list, nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+
+
+class LLMProviderModel(TimestampMixin, Base):
+    __tablename__ = "v10_llm_providers"
+    __table_args__ = (UniqueConstraint("provider_key", name="uq_v10_llm_provider_key"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    provider_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    provider_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB_TYPE, default=dict, nullable=False)
+
+
+class LLMModelConfig(TimestampMixin, Base):
+    __tablename__ = "v10_llm_model_configs"
+    __table_args__ = (UniqueConstraint("logical_tier", "model_name", "reasoning_effort", name="uq_v10_llm_model_config"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    provider_id: Mapped[str | None] = mapped_column(ForeignKey("v10_llm_providers.id"))
+    logical_tier: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    reasoning_effort: Mapped[str] = mapped_column(String(40), nullable=False)
+    mode: Mapped[str] = mapped_column(String(40), default="standard", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB_TYPE, default=dict, nullable=False)
+
+
+class PromptTemplate(TimestampMixin, Base):
+    __tablename__ = "v10_prompt_templates"
+    __table_args__ = (UniqueConstraint("prompt_key", name="uq_v10_prompt_template_key"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    prompt_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    role: Mapped[str] = mapped_column(String(80), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class PromptVersion(TimestampMixin, Base):
+    __tablename__ = "v10_prompt_versions"
+    __table_args__ = (UniqueConstraint("prompt_template_id", "version", name="uq_v10_prompt_version"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    prompt_template_id: Mapped[str] = mapped_column(ForeignKey("v10_prompt_templates.id"), nullable=False)
+    version: Mapped[str] = mapped_column(String(80), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    template_text: Mapped[str] = mapped_column(Text, nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(40), default="1.0", nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="DRAFT", nullable=False)
+
+
+class LLMRun(Base):
+    __tablename__ = "v10_llm_runs"
+    __table_args__ = (
+        Index("ix_v10_llm_run_candidate", "candidate_id", "started_at"),
+        Index("ix_v10_llm_run_status", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    candidate_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    fixture_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    panel_or_agent: Mapped[str] = mapped_column(String(120), nullable=False)
+    requested_model: Mapped[str] = mapped_column(String(160), nullable=False)
+    used_model: Mapped[str | None] = mapped_column(String(160))
+    reasoning_effort: Mapped[str] = mapped_column(String(40), nullable=False)
+    prompt_version_id: Mapped[str | None] = mapped_column(ForeignKey("v10_prompt_versions.id"))
+    packet_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    output_hash: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    retries: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    cache_status: Mapped[str] = mapped_column(String(40), default="miss", nullable=False)
+    error_message: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    request_json: Mapped[dict[str, Any]] = mapped_column("request", JSONB_TYPE, default=dict, nullable=False)
+    response_json: Mapped[dict[str, Any]] = mapped_column("response", JSONB_TYPE, default=dict, nullable=False)
+
+
+class LLMToolCall(Base):
+    __tablename__ = "v10_llm_tool_calls"
+    __table_args__ = (Index("ix_v10_llm_tool_call_run", "llm_run_id", "tool_name"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    llm_run_id: Mapped[str] = mapped_column(ForeignKey("v10_llm_runs.id"), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    arguments_json: Mapped[dict[str, Any]] = mapped_column("arguments", JSONB_TYPE, default=dict, nullable=False)
+    result_hash: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class LLMUsageRecord(Base):
+    __tablename__ = "v10_llm_usage_records"
+    __table_args__ = (Index("ix_v10_llm_usage_scan", "scan_id", "model_name"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    llm_run_id: Mapped[str | None] = mapped_column(ForeignKey("v10_llm_runs.id"))
+    scan_id: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    candidate_id: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    model_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    cached_input_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    estimated_cost_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=Decimal("0"), nullable=False)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class AgentFindingRecord(Base):
+    __tablename__ = "v10_agent_findings"
+    __table_args__ = (Index("ix_v10_agent_finding_candidate", "candidate_id", "agent_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    llm_run_id: Mapped[str | None] = mapped_column(ForeignKey("v10_llm_runs.id"))
+    candidate_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    fixture_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    agent_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    verdict: Mapped[str] = mapped_column(String(60), nullable=False)
+    veto: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    veto_code: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    evidence_ids_json: Mapped[list[str]] = mapped_column("evidence_ids", JSONB_TYPE, default=list, nullable=False)
+    finding_json: Mapped[dict[str, Any]] = mapped_column("finding", JSONB_TYPE, default=dict, nullable=False)
+    semantic_status: Mapped[str] = mapped_column(String(40), default="PENDING", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class ContradictionReportRecord(Base):
+    __tablename__ = "v10_contradiction_reports"
+    __table_args__ = (Index("ix_v10_contradiction_candidate", "candidate_id", "severity"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    candidate_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    fixture_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    severity: Mapped[str] = mapped_column(String(40), nullable=False)
+    hard_veto: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    contradictions_json: Mapped[list[dict[str, Any]]] = mapped_column("contradictions", JSONB_TYPE, default=list, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class FinalJudgeReviewRecord(Base):
+    __tablename__ = "v10_final_judge_reviews"
+    __table_args__ = (Index("ix_v10_final_judge_candidate", "candidate_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    llm_run_id: Mapped[str | None] = mapped_column(ForeignKey("v10_llm_runs.id"))
+    candidate_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    fixture_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    recommendation: Mapped[str] = mapped_column(String(60), nullable=False)
+    review_json: Mapped[dict[str, Any]] = mapped_column("review", JSONB_TYPE, default=dict, nullable=False)
+    semantic_status: Mapped[str] = mapped_column(String(40), default="PENDING", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class ShadowDecisionRecord(Base):
+    __tablename__ = "v10_shadow_decisions"
+    __table_args__ = (UniqueConstraint("candidate_id", "decision_as_of", "packet_hash", name="uq_v10_shadow_decision_candidate_as_of"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    candidate_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    fixture_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    decision_as_of: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    packet_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    final_status: Mapped[str] = mapped_column(String(60), nullable=False)
+    gate_reasons_json: Mapped[list[str]] = mapped_column("gate_reasons", JSONB_TYPE, default=list, nullable=False)
+    llm_review_id: Mapped[str | None] = mapped_column(ForeignKey("v10_final_judge_reviews.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class BudgetReservation(Base):
+    __tablename__ = "v10_budget_reservations"
+    __table_args__ = (Index("ix_v10_budget_scope", "scope_key", "status"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    scope_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    reserved_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    actual_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=Decimal("0"), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="RESERVED", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+    reconciled_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class LLMCacheEntry(Base):
+    __tablename__ = "v10_llm_cache_entries"
+    __table_args__ = (UniqueConstraint("cache_key", name="uq_v10_llm_cache_key"), Index("ix_v10_llm_cache_expires", "expires_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    packet_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    response_json: Mapped[dict[str, Any]] = mapped_column("response", JSONB_TYPE, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class ModelPricingVersion(TimestampMixin, Base):
+    __tablename__ = "v10_model_pricing_versions"
+    __table_args__ = (UniqueConstraint("provider_key", "model_name", "pricing_version", name="uq_v10_model_pricing_version"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    provider_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    pricing_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    input_per_million_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    output_per_million_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    cached_input_per_million_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=Decimal("0"), nullable=False)
+    source_url: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

@@ -71,7 +71,7 @@ def test_migrations_upgrade_downgrade_upgrade():
         settings = make_settings(tmp)
         assert upgrade_head(settings)["up_to_date"] is True
         status = migration_status(settings)
-        assert status["current_revision"] == "20260718_0002"
+        assert status["current_revision"] == "20260719_0003"
         assert downgrade_base(settings)["current_revision"] is None
         assert upgrade_head(settings)["up_to_date"] is True
 

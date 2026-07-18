@@ -1,6 +1,8 @@
 import argparse
+import asyncio
 import json
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 from v10.config import V10Settings, load_settings
@@ -18,6 +20,18 @@ from v10.statistics.backtest import walk_forward_from_csv
 from v10.statistics.demo import run_statistical_demo
 from v10.statistics.training import build_dataset_from_csv, train_from_csv
 from v10.time import parse_utc, utc_now
+from v10.llm.budgets.manager import BudgetManager
+from v10.llm.config import LLMRuntimeConfig
+from v10.llm.evaluation.dataset import synthetic_candidate
+from v10.llm.evaluation.runner import run_mock_evaluation
+from v10.llm.demo import run_llm_shadow_demo
+from v10.llm.evidence.packet_builder import CandidateEvidencePacketBuilder
+from v10.llm.orchestrator import LLMOrchestrator
+from v10.llm.providers.mock import MockLLMProvider
+from v10.llm.providers.openai_responses import OpenAIResponsesProvider
+from v10.llm.providers.replay import ReplayLLMProvider
+from v10.llm.registry import LLMModelRegistry
+from v10.llm.routing import ComplexityRouter
 from sqlalchemy import select
 
 
@@ -352,6 +366,117 @@ def _cmd_backtest(args) -> int:
         return 1
 
 
+def _llm_config() -> LLMRuntimeConfig:
+    return LLMRuntimeConfig.from_settings(_load_settings_or_error())
+
+
+def _candidate_from_id(candidate_id: str) -> dict:
+    case_id = candidate_id.replace("cand_", "") if candidate_id.startswith("cand_") else "valid"
+    candidate = synthetic_candidate(case_id if case_id in {"deterministic_reject", "hard_veto", "insufficient", "shadow_accept", "stale_odds", "negative_ev"} else "valid")
+    candidate["candidate_id"] = candidate_id
+    return candidate
+
+
+def _cmd_llm(args) -> int:
+    try:
+        config = _llm_config()
+        registry = LLMModelRegistry(config)
+        if args.llm_command == "doctor":
+            report = config.safe_report()
+            report["openai_sdk_installed"] = _openai_sdk_version()
+            report["paid_call_possible_without_allow_paid"] = config.can_call_paid(False)
+            _print_json(report)
+            return 0
+        if args.llm_command == "models":
+            _print_json(registry.availability_report())
+            return 0
+        if args.llm_command == "budget" and args.budget_command == "status":
+            manager = BudgetManager(config.daily_budget_usd, config.scan_budget_usd, config.fixture_budget_usd)
+            _print_json(manager.status())
+            return 0
+        if args.llm_command == "prompts" and args.prompts_command == "validate":
+            prompt_root = Path("prompts")
+            files = sorted(str(path) for path in prompt_root.rglob("*.md")) if prompt_root.exists() else []
+            _print_json({"prompt_files": files, "valid": bool(files), "lab_only": True, "can_influence_picks": False})
+            return 0
+        if args.llm_command == "cache" and args.cache_command == "status":
+            from v10.llm.cache.repository import InMemoryLLMCache
+
+            _print_json(InMemoryLLMCache().status())
+            return 0
+        if args.llm_command == "plan":
+            packet = CandidateEvidencePacketBuilder().build(_candidate_from_id(args.candidate_id), utc_now())
+            plan = ComplexityRouter().plan(packet, portfolio_candidate_count=2, top_finalist=True)
+            _print_json({"candidate_id": args.candidate_id, "packet_hash": packet.packet_hash, "plan": plan.__dict__, "paid_calls": False})
+            return 0
+        if args.llm_command == "analyze":
+            if args.replay:
+                provider = ReplayLLMProvider(args.replay)
+            elif args.mock or not args.allow_paid:
+                provider = MockLLMProvider(scenario=args.mock_scenario)
+            else:
+                provider = OpenAIResponsesProvider(config, api_key=_load_settings_or_error().openai_api_key)
+            budget = BudgetManager(
+                Decimal(str(args.max_cost_usd)) if args.allow_paid else Decimal("0"),
+                Decimal(str(args.max_cost_usd)) if args.allow_paid else Decimal("0"),
+                Decimal(str(args.max_cost_usd)) if args.allow_paid else Decimal("0"),
+            )
+            orchestrator = LLMOrchestrator(config, provider, budget=budget)
+            result = asyncio.run(orchestrator.analyze_candidate(_candidate_from_id(args.candidate_id), utc_now(), allow_paid=args.allow_paid, portfolio_candidate_count=2, top_finalist=True))
+            result["shadow"] = bool(args.shadow)
+            result["paid_calls_allowed_cli"] = bool(args.allow_paid)
+            _print_json(result)
+            return 0
+        if args.llm_command == "evaluate":
+            report = asyncio.run(run_mock_evaluation())
+            if args.ablation:
+                from v10.llm.evaluation.ablation import ABLATION_CONFIGS
+
+                report["ablation_configs"] = ABLATION_CONFIGS
+            _print_json(report)
+            return 0
+        if args.llm_command == "benchmark-routing":
+            cases = ["cand_valid", "cand_negative_ev", "cand_stale_odds", "cand_shadow_accept", "cand_insufficient"]
+            plans = []
+            for candidate_id in cases:
+                packet = CandidateEvidencePacketBuilder().build(_candidate_from_id(candidate_id), utc_now())
+                plans.append({"candidate_id": candidate_id, "plan": ComplexityRouter().plan(packet, portfolio_candidate_count=2, top_finalist=True).__dict__})
+            _print_json({"plans": plans, "paid_calls": False, "lab_only": True, "can_influence_picks": False})
+            return 0
+        if args.llm_command == "smoke":
+            if not args.allow_paid:
+                _print_json({"status": "BLOCKED", "reason": "--allow-paid requis", "paid_call_executed": False})
+                return 0
+            if not config.can_call_paid(True):
+                _print_json({"status": "BLOCKED", "reason": "LLM flags et budget positifs requis", "paid_call_executed": False})
+                return 0
+            _print_json({"status": "READY_BUT_NOT_EXECUTED_BY_DEFAULT", "tier": args.tier, "paid_call_executed": False})
+            return 0
+        raise RuntimeError("Commande llm inconnue.")
+    except Exception as exc:
+        print(f"Erreur llm: {exc}")
+        return 1
+
+
+def _cmd_decision(args) -> int:
+    if args.decision_command == "review":
+        packet = CandidateEvidencePacketBuilder().build(_candidate_from_id(args.candidate_id), utc_now())
+        plan = ComplexityRouter().plan(packet, portfolio_candidate_count=1, top_finalist=True)
+        _print_json({"candidate_id": args.candidate_id, "packet_hash": packet.packet_hash, "plan": plan.__dict__, "review_status": "PLANNED_ONLY", "paid_calls": False})
+        return 0
+    print("Commande decision inconnue.")
+    return 1
+
+
+def _openai_sdk_version() -> str:
+    try:
+        import openai  # type: ignore
+
+        return str(getattr(openai, "__version__", "unknown"))
+    except Exception:
+        return "not_installed"
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="CLI locale additive Oracle V10.")
     sub = parser.add_subparsers(dest="command")
@@ -463,6 +588,46 @@ def parse_args(argv=None):
     backtest_run.add_argument("--dry-run", action="store_true")
     backtest_run.add_argument("--apply", action="store_true")
 
+    llm = sub.add_parser("llm")
+    llm_sub = llm.add_subparsers(dest="llm_command")
+    llm_sub.add_parser("doctor")
+    llm_sub.add_parser("models")
+    llm_budget = llm_sub.add_parser("budget")
+    llm_budget_sub = llm_budget.add_subparsers(dest="budget_command")
+    llm_budget_sub.add_parser("status")
+    llm_prompts = llm_sub.add_parser("prompts")
+    llm_prompts_sub = llm_prompts.add_subparsers(dest="prompts_command")
+    llm_prompts_sub.add_parser("validate")
+    llm_cache = llm_sub.add_parser("cache")
+    llm_cache_sub = llm_cache.add_subparsers(dest="cache_command")
+    llm_cache_sub.add_parser("status")
+    llm_plan = llm_sub.add_parser("plan")
+    llm_plan.add_argument("--candidate-id", required=True)
+    llm_analyze = llm_sub.add_parser("analyze")
+    llm_analyze.add_argument("--candidate-id", required=True)
+    llm_analyze.add_argument("--mock", action="store_true")
+    llm_analyze.add_argument("--mock-scenario", default="valid")
+    llm_analyze.add_argument("--replay", default="")
+    llm_analyze.add_argument("--shadow", action="store_true")
+    llm_analyze.add_argument("--allow-paid", action="store_true")
+    llm_analyze.add_argument("--max-cost-usd", type=float, default=0.0)
+    llm_eval = llm_sub.add_parser("evaluate")
+    llm_eval.add_argument("--dataset", default="tests/fixtures/llm_eval")
+    llm_eval.add_argument("--mock", action="store_true")
+    llm_eval.add_argument("--ablation", action="store_true")
+    llm_bench = llm_sub.add_parser("benchmark-routing")
+    llm_bench.add_argument("--dataset", default="tests/fixtures/llm_eval")
+    llm_bench.add_argument("--mock", action="store_true")
+    llm_smoke = llm_sub.add_parser("smoke")
+    llm_smoke.add_argument("--tier", default="fast")
+    llm_smoke.add_argument("--allow-paid", action="store_true")
+    llm_smoke.add_argument("--max-cost-usd", type=float, default=0.0)
+
+    decision = sub.add_parser("decision")
+    decision_sub = decision.add_subparsers(dest="decision_command")
+    decision_review = decision_sub.add_parser("review")
+    decision_review.add_argument("--candidate-id", required=True)
+
     demo = sub.add_parser("demo")
     demo_sub = demo.add_subparsers(dest="demo_command")
     e2e = demo_sub.add_parser("end-to-end")
@@ -472,6 +637,9 @@ def parse_args(argv=None):
     pg.add_argument("--database-url", default="")
     stats = demo_sub.add_parser("statistical-end-to-end")
     stats.add_argument("--json", action="store_true")
+    llm_demo = demo_sub.add_parser("llm-shadow-end-to-end")
+    llm_demo.add_argument("--mock", action="store_true")
+    llm_demo.add_argument("--json", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -500,6 +668,10 @@ def main(argv=None) -> int:
             return _cmd_predict(args)
         if args.command == "backtest" and args.backtest_command == "run":
             return _cmd_backtest(args)
+        if args.command == "llm":
+            return _cmd_llm(args)
+        if args.command == "decision":
+            return _cmd_decision(args)
         if args.command == "demo" and args.demo_command == "end-to-end":
             payload = build_demo_payload()
             if args.json:
@@ -521,7 +693,11 @@ def main(argv=None) -> int:
             else:
                 _print_json(report)
             return 0
-        print("Commande inconnue. Utiliser: app doctor | app db status | app replay provider | app demo end-to-end | app demo statistical-end-to-end")
+        if args.command == "demo" and args.demo_command == "llm-shadow-end-to-end":
+            report = asyncio.run(run_llm_shadow_demo())
+            _print_json(report)
+            return 0
+        print("Commande inconnue. Utiliser: app doctor | app db status | app replay provider | app demo end-to-end | app demo statistical-end-to-end | app demo llm-shadow-end-to-end")
         return 1
     except Exception as exc:
         print(f"Erreur: {exc}")
