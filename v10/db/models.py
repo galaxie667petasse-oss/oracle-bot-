@@ -261,3 +261,150 @@ class AdvisoryLock(Base):
     lock_key: Mapped[str] = mapped_column(String(160), primary_key=True)
     owner: Mapped[str] = mapped_column(String(160), nullable=False)
     acquired_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False, default=utc_now)
+
+
+class ModelDefinition(TimestampMixin, Base):
+    __tablename__ = "v10_model_definitions"
+    __table_args__ = (UniqueConstraint("model_key", name="uq_v10_model_definition_key"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    model_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    model_family: Mapped[str] = mapped_column(String(80), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    code_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    feature_schema_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    hyperparameter_schema_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class ModelVersion(TimestampMixin, Base):
+    __tablename__ = "v10_model_versions"
+    __table_args__ = (
+        UniqueConstraint("model_definition_id", "version", name="uq_v10_model_version_definition_version"),
+        Index("ix_v10_model_version_status", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    model_definition_id: Mapped[str] = mapped_column(ForeignKey("v10_model_definitions.id"), nullable=False)
+    version: Mapped[str] = mapped_column(String(80), nullable=False)
+    training_start: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    training_end: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    competitions_json: Mapped[list[str]] = mapped_column("competitions", JSONB_TYPE, default=list, nullable=False)
+    markets_json: Mapped[list[str]] = mapped_column("markets", JSONB_TYPE, default=list, nullable=False)
+    hyperparameters_json: Mapped[dict[str, Any]] = mapped_column("hyperparameters", JSONB_TYPE, default=dict, nullable=False)
+    feature_schema_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    dataset_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    match_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    training_metrics_json: Mapped[dict[str, Any]] = mapped_column("training_metrics", JSONB_TYPE, default=dict, nullable=False)
+    validation_metrics_json: Mapped[dict[str, Any]] = mapped_column("validation_metrics", JSONB_TYPE, default=dict, nullable=False)
+    artifact_json: Mapped[dict[str, Any]] = mapped_column("artifact", JSONB_TYPE, default=dict, nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="DRAFT", nullable=False)
+    activated_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+    definition = relationship("ModelDefinition")
+
+
+class FeatureSnapshot(TimestampMixin, Base):
+    __tablename__ = "v10_feature_snapshots"
+    __table_args__ = (
+        UniqueConstraint("fixture_external_id", "as_of", "feature_schema_version", "source_fingerprint", name="uq_v10_feature_snapshot_external_as_of"),
+        Index("ix_v10_feature_snapshot_as_of", "fixture_id", "as_of"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    fixture_id: Mapped[str | None] = mapped_column(ForeignKey("v10_fixtures.id"))
+    fixture_external_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    as_of: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    feature_schema_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    data_cutoff: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    source_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    data_completeness: Mapped[Decimal] = mapped_column(Numeric(8, 6), nullable=False)
+    feature_values_json: Mapped[dict[str, Any]] = mapped_column("feature_values", JSONB_TYPE, default=dict, nullable=False)
+    missing_indicators_json: Mapped[dict[str, Any]] = mapped_column("missing_indicators", JSONB_TYPE, default=dict, nullable=False)
+    warnings_json: Mapped[list[str]] = mapped_column("warnings", JSONB_TYPE, default=list, nullable=False)
+
+
+class ScoreDistribution(Base):
+    __tablename__ = "v10_score_distributions"
+    __table_args__ = (
+        UniqueConstraint("fixture_external_id", "model_version_id", "feature_snapshot_id", name="uq_v10_score_distribution_prediction"),
+        Index("ix_v10_score_distribution_fixture", "fixture_id", "generated_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    fixture_id: Mapped[str | None] = mapped_column(ForeignKey("v10_fixtures.id"))
+    fixture_external_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    model_version_id: Mapped[str] = mapped_column(ForeignKey("v10_model_versions.id"), nullable=False)
+    feature_snapshot_id: Mapped[str | None] = mapped_column(ForeignKey("v10_feature_snapshots.id"))
+    max_goals_home: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_goals_away: Mapped[int] = mapped_column(Integer, nullable=False)
+    matrix_json: Mapped[list[list[float]]] = mapped_column("matrix", JSONB_TYPE, default=list, nullable=False)
+    tail_mass: Mapped[Decimal] = mapped_column(Numeric(12, 8), nullable=False)
+    expected_home_goals: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    expected_away_goals: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class StatisticalPrediction(Base):
+    __tablename__ = "v10_statistical_predictions"
+    __table_args__ = (
+        UniqueConstraint("prediction_fingerprint", name="uq_v10_statistical_prediction_fingerprint"),
+        Index("ix_v10_stat_prediction_fixture_market", "fixture_id", "market_key", "selection_key", "prediction_time"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    fixture_id: Mapped[str | None] = mapped_column(ForeignKey("v10_fixtures.id"))
+    fixture_external_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    model_version_id: Mapped[str] = mapped_column(ForeignKey("v10_model_versions.id"), nullable=False)
+    feature_snapshot_id: Mapped[str | None] = mapped_column(ForeignKey("v10_feature_snapshots.id"))
+    prediction_time: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    market_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    selection_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    raw_probability: Mapped[Decimal] = mapped_column(Numeric(12, 8), nullable=False)
+    calibrated_probability: Mapped[Decimal | None] = mapped_column(Numeric(12, 8))
+    lower_bound: Mapped[Decimal | None] = mapped_column(Numeric(12, 8))
+    upper_bound: Mapped[Decimal | None] = mapped_column(Numeric(12, 8))
+    uncertainty_method: Mapped[str] = mapped_column(String(120), default="heuristic", nullable=False)
+    model_diagnostics_json: Mapped[dict[str, Any]] = mapped_column("model_diagnostics", JSONB_TYPE, default=dict, nullable=False)
+    prediction_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class CalibrationModel(TimestampMixin, Base):
+    __tablename__ = "v10_calibration_models"
+    __table_args__ = (Index("ix_v10_calibration_lookup", "source_model_version_id", "market_key", "selection_key", "status"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    source_model_version_id: Mapped[str] = mapped_column(ForeignKey("v10_model_versions.id"), nullable=False)
+    market_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    selection_key: Mapped[str | None] = mapped_column(String(80))
+    method: Mapped[str] = mapped_column(String(80), nullable=False)
+    training_start: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    training_end: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    sample_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    parameters_json: Mapped[dict[str, Any]] = mapped_column("parameters", JSONB_TYPE, default=dict, nullable=False)
+    metrics_before_json: Mapped[dict[str, Any]] = mapped_column("metrics_before", JSONB_TYPE, default=dict, nullable=False)
+    metrics_after_json: Mapped[dict[str, Any]] = mapped_column("metrics_after", JSONB_TYPE, default=dict, nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="DRAFT", nullable=False)
+
+
+class EvaluationRun(TimestampMixin, Base):
+    __tablename__ = "v10_evaluation_runs"
+    __table_args__ = (Index("ix_v10_evaluation_run_type_status", "evaluation_type", "status"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    evaluation_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    model_version_ids_json: Mapped[list[str]] = mapped_column("model_version_ids", JSONB_TYPE, default=list, nullable=False)
+    period_start: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    period_end: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    competitions_json: Mapped[list[str]] = mapped_column("competitions", JSONB_TYPE, default=list, nullable=False)
+    markets_json: Mapped[list[str]] = mapped_column("markets", JSONB_TYPE, default=list, nullable=False)
+    configuration_json: Mapped[dict[str, Any]] = mapped_column("configuration", JSONB_TYPE, default=dict, nullable=False)
+    dataset_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    status: Mapped[str] = mapped_column(String(40), default="DRAFT", nullable=False)
+    metrics_json: Mapped[dict[str, Any]] = mapped_column("metrics", JSONB_TYPE, default=dict, nullable=False)
+    artifact_paths_json: Mapped[list[str]] = mapped_column("artifact_paths", JSONB_TYPE, default=list, nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="", nullable=False)

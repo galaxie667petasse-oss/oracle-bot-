@@ -26,3 +26,22 @@
 
 V9.x contient deja calibration, statistical validation et CLV. V10 foundation ajoute les primitives deterministes a tester avant le backtest walk-forward complet.
 
+## Phase 3
+
+La premiere evaluation V10 statistique compare des probabilites, pas des slogans de performance. Les fonctions `v10.statistics.metrics` couvrent log loss multiclass, Brier multiclass, Brier/log loss binaires et ECE/MCE par bins.
+
+Splits supportes :
+
+- holdout chronologique simple dans `train_model`;
+- walk-forward minimal dans `walk_forward_backtest`;
+- validation separee pour calibration et ensemble.
+
+Modeles compares :
+
+- Elo multiclass;
+- Poisson independant;
+- Dixon-Coles experimental;
+- ensemble sans prior marche;
+- baseline marche via no-vig quand les cotes `as_of` sont disponibles.
+
+Une amelioration observee sur sample faible reste un diagnostic. Elle ne valide aucun signal, aucun ROI et aucune publication.

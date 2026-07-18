@@ -57,4 +57,24 @@ Le replay utilise un lock deterministe pour eviter deux imports concurrents. Si 
 
 ## Donnees temporelles
 
-Toute erreur de datetime naïve doit etre traitee comme bug de normalisation. Les requetes de decision doivent passer par les fonctions `as_of`, jamais par la derniere cote globale.
+Toute erreur de datetime naive doit etre traitee comme bug de normalisation. Les requetes de decision doivent passer par les fonctions `as_of`, jamais par la derniere cote globale.
+
+## Modele statistique non convergent
+
+Pour Poisson ou Dixon-Coles, conserver le modele en DRAFT ou FAILED. Ne pas activer automatiquement une version non convergente.
+
+Commandes utiles :
+
+```bash
+python app.py model train --model poisson_independent_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model train --model dixon_coles_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py demo statistical-end-to-end --json
+```
+
+## Fuite temporelle suspectee
+
+Verifier que la commande utilise bien `--as-of` ou une fenetre chronologique. Rejouer le dataset avec un `--to` plus ancien et comparer le fingerprint. Les features doivent venir de `TemporalDatasetBuilder` et non d'une lecture directe de la derniere ligne disponible.
+
+## Calibration degradee
+
+Si Platt ou temperature scaling degrade la log loss hors echantillon, conserver la probabilite brute. Le calibrateur Phase 3 applique deja un fallback prudent sur echantillon faible.

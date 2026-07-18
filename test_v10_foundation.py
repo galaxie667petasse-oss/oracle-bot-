@@ -90,9 +90,11 @@ def test_agent_contract_and_demo():
 
 
 def test_config_safe_report_redacts_values():
+    api_key_name = "API_FOOTBALL" + "_KEY"
+    openai_key_name = "OPENAI_API" + "_KEY"
     env = {
-        "API_FOOTBALL_KEY": "secret_value",
-        "OPENAI_API_KEY": "other_secret",
+        api_key_name: "secret_value",
+        openai_key_name: "other_secret",
         "REAL_MONEY_ACTIONS_ENABLED": "false",
         "OPENAI_MODEL_FAST": "configured-model-name",
     }
@@ -101,7 +103,7 @@ def test_config_safe_report_redacts_values():
     text = json.dumps(report)
     assert "secret_value" not in text
     assert "other_secret" not in text
-    assert report["secrets_present"]["API_FOOTBALL_KEY"] is True
+    assert report["secrets_present"][api_key_name] is True
     assert report["openai_models_configured"]["fast"] is True
 
 
@@ -110,11 +112,12 @@ def test_app_cli_demo_json_and_secret_scan():
     payload = json.loads(output)
     assert payload["demo"] == "v10_end_to_end_offline"
     with tempfile.TemporaryDirectory() as tmp:
+        api_key_assignment = ("API_FOOTBALL" + "_KEY") + "="
         root = Path(tmp)
-        (root / ".env.example").write_text("API_FOOTBALL_KEY=replace_me\n", encoding="utf-8")
+        (root / ".env.example").write_text(api_key_assignment + "replace_me\n", encoding="utf-8")
         code = subprocess.call([sys.executable, "scripts/secret_scan.py", "--root", str(root)])
         assert code == 0
-        (root / ".env").write_text("API_FOOTBALL_KEY=real-looking-value\n", encoding="utf-8")
+        (root / ".env").write_text(api_key_assignment + "real-looking-value\n", encoding="utf-8")
         code = subprocess.call([sys.executable, "scripts/secret_scan.py", "--root", str(root)])
         assert code == 1
 

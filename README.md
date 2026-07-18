@@ -1080,3 +1080,19 @@ Fichiers V10 principaux:
 - `v10/final_judge.py` : juge de demo qui peut refuser mais n'invente rien.
 
 La cible V10 complete reste progressive: PostgreSQL normalise, replay providers, modeles Elo/Poisson/Dixon-Coles/ML, calibration, agents LLM stricts, backtest walk-forward et deploiement Railway documente.
+
+## V10 Statistical Engine
+
+La Phase 3 ajoute un moteur statistique V10 entierement deterministic-only sous `v10/statistics/`. Il construit des datasets temporels depuis `data/MATCHES.csv`, genere des features `football_features_v1` avec contexte `TemporalContext`, entraine des baselines Elo, Poisson independant, Dixon-Coles experimental, calibration et ensemble, puis derive les marches 1X2, double chance, draw no bet, over/under et BTTS depuis une distribution de scores.
+
+Les nouvelles commandes restent dry-run par defaut et ne font aucun appel OpenAI, Telegram ou bookmaker:
+
+```bash
+python app.py dataset build --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model train --model elo_multiclass_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py backtest run --from 2024-01-01 --to 2024-12-31 --markets 1x2,ou25,btts --dry-run
+python app.py demo statistical-end-to-end --json
+python test_v10_statistics.py
+```
+
+Les migrations Phase 3 ajoutent `model_definitions`, `model_versions`, `feature_snapshots`, `score_distributions`, `statistical_predictions`, `calibration_models` et `evaluation_runs`. Les predictions sont versionnees et rattachees a un `as_of`; aucune decision future ne doit lire une cote ou un resultat observe apres cette heure.

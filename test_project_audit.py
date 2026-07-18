@@ -121,6 +121,9 @@ def test_release_candidate_docs_exist_and_have_sections():
         "completed cycle",
         "v10 hybrid foundation",
         "v10 persistence",
+        "v10 statistical engine",
+        "dixon-coles",
+        "statistical-end-to-end",
         "railway plus tard",
         "securite",
         "commandes principales",
@@ -151,6 +154,7 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert "v9.7" in status
     assert "v9.8" in status
     assert "v10 hybrid foundation" in status
+    assert "v10 phase 3" in status
     assert "aucun signal robuste active" in status
     assert (root / "docs" / "closing_odds_forensics.md").exists()
     assert (root / "docs" / "shadow_mode_workflow.md").exists()
@@ -217,6 +221,15 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "docs" / "REPLAY_GUIDE.md").exists()
     assert (root / "docs" / "LEGACY_IMPORT.md").exists()
     assert (root / "docs" / "TEMPORAL_DATA_MODEL.md").exists()
+    assert (root / "docs" / "PHASE3_DATA_AVAILABILITY.md").exists()
+    assert (root / "docs" / "STATISTICAL_MODELS.md").exists()
+    assert (root / "docs" / "FEATURE_ENGINEERING.md").exists()
+    assert (root / "docs" / "ELO_MODEL.md").exists()
+    assert (root / "docs" / "POISSON_DIXON_COLES.md").exists()
+    assert (root / "docs" / "CALIBRATION.md").exists()
+    assert (root / "docs" / "WALK_FORWARD_BACKTEST.md").exists()
+    assert (root / "docs" / "MODEL_VERSIONING.md").exists()
+    assert (root / "docs" / "PHASE3_STATISTICAL_LOG.md").exists()
     assert (root / "AGENTS.md").exists()
     assert (root / "PLANS.md").exists()
     assert (root / "ARCHITECTURE.md").exists()
@@ -231,6 +244,11 @@ def test_release_candidate_docs_exist_and_have_sections():
     assert (root / "scripts" / "secret_scan.py").exists()
     assert (root / "test_v10_foundation.py").exists()
     assert (root / "test_v10_persistence.py").exists()
+    assert (root / "test_v10_statistics.py").exists()
+    assert (root / "v10" / "statistics" / "elo.py").exists()
+    assert (root / "v10" / "statistics" / "poisson.py").exists()
+    assert (root / "v10" / "statistics" / "dixon_coles.py").exists()
+    assert (root / "v10" / "statistics" / "backtest.py").exists()
     assert (root / "tests" / "fixtures" / "providers" / "api_football" / "fixtures_sample.json").exists()
     assert (root / "tests" / "fixtures" / "providers" / "api_football" / "odds_sample.json").exists()
     assert (root / "tests" / "fixtures" / "providers" / "api_football" / "odds_sample_changed.json").exists()

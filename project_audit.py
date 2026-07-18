@@ -137,9 +137,26 @@ ESSENTIAL_FILES = [
     "v10/quality_db.py",
     "v10/legacy.py",
     "v10/demo_postgres.py",
+    "v10/db/stat_repositories.py",
+    "v10/statistics/__init__.py",
+    "v10/statistics/types.py",
+    "v10/statistics/dataset.py",
+    "v10/statistics/features.py",
+    "v10/statistics/elo.py",
+    "v10/statistics/poisson.py",
+    "v10/statistics/dixon_coles.py",
+    "v10/statistics/markets.py",
+    "v10/statistics/metrics.py",
+    "v10/statistics/calibration.py",
+    "v10/statistics/ensemble.py",
+    "v10/statistics/market.py",
+    "v10/statistics/training.py",
+    "v10/statistics/backtest.py",
+    "v10/statistics/demo.py",
     "alembic.ini",
     "alembic/env.py",
     "alembic/versions/20260718_0001_v10_initial_schema.py",
+    "alembic/versions/20260718_0002_v10_statistical_schema.py",
     "scripts/secret_scan.py",
     "AGENTS.md",
     "PLANS.md",
@@ -156,6 +173,15 @@ ESSENTIAL_FILES = [
     "docs/REPLAY_GUIDE.md",
     "docs/LEGACY_IMPORT.md",
     "docs/TEMPORAL_DATA_MODEL.md",
+    "docs/PHASE3_DATA_AVAILABILITY.md",
+    "docs/STATISTICAL_MODELS.md",
+    "docs/FEATURE_ENGINEERING.md",
+    "docs/ELO_MODEL.md",
+    "docs/POISSON_DIXON_COLES.md",
+    "docs/CALIBRATION.md",
+    "docs/WALK_FORWARD_BACKTEST.md",
+    "docs/MODEL_VERSIONING.md",
+    "docs/PHASE3_STATISTICAL_LOG.md",
     "tests/fixtures/providers/api_football/fixtures_sample.json",
     "tests/fixtures/providers/api_football/odds_sample.json",
     "tests/fixtures/providers/api_football/odds_sample_changed.json",
@@ -366,6 +392,7 @@ MAIN_TESTS = [
     "test_statistical_validation.py",
     "test_v10_foundation.py",
     "test_v10_persistence.py",
+    "test_v10_statistics.py",
 ]
 
 IMPORT_MODULES = [
@@ -416,6 +443,21 @@ IMPORT_MODULES = [
     "v10.agents",
     "v10.final_judge",
     "v10.demo",
+    "v10.statistics",
+    "v10.statistics.types",
+    "v10.statistics.dataset",
+    "v10.statistics.features",
+    "v10.statistics.elo",
+    "v10.statistics.poisson",
+    "v10.statistics.dixon_coles",
+    "v10.statistics.markets",
+    "v10.statistics.metrics",
+    "v10.statistics.calibration",
+    "v10.statistics.ensemble",
+    "v10.statistics.market",
+    "v10.statistics.training",
+    "v10.statistics.backtest",
+    "v10.statistics.demo",
     "odds_source_config",
     "odds_normalizer",
     "odds_snapshot_store",
@@ -1315,6 +1357,82 @@ def check_v10_phase2_persistence(root: Path, result: AuditResult) -> None:
         result.add_error("V10 Phase 2: documentation persistence incomplete.")
 
 
+def check_v10_phase3_statistics(root: Path, result: AuditResult) -> None:
+    files = [
+        "v10/db/stat_repositories.py",
+        "v10/statistics/types.py",
+        "v10/statistics/dataset.py",
+        "v10/statistics/features.py",
+        "v10/statistics/elo.py",
+        "v10/statistics/poisson.py",
+        "v10/statistics/dixon_coles.py",
+        "v10/statistics/markets.py",
+        "v10/statistics/metrics.py",
+        "v10/statistics/calibration.py",
+        "v10/statistics/ensemble.py",
+        "v10/statistics/market.py",
+        "v10/statistics/training.py",
+        "v10/statistics/backtest.py",
+        "v10/statistics/demo.py",
+        "alembic/versions/20260718_0002_v10_statistical_schema.py",
+        "test_v10_statistics.py",
+        "docs/PHASE3_DATA_AVAILABILITY.md",
+        "docs/STATISTICAL_MODELS.md",
+        "docs/FEATURE_ENGINEERING.md",
+        "docs/ELO_MODEL.md",
+        "docs/POISSON_DIXON_COLES.md",
+        "docs/CALIBRATION.md",
+        "docs/WALK_FORWARD_BACKTEST.md",
+        "docs/MODEL_VERSIONING.md",
+        "docs/PHASE3_STATISTICAL_LOG.md",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 Phase 3 statistics incomplete: " + ", ".join(missing))
+        return
+
+    stats_text = _read_text(root / "v10/statistics/training.py")
+    models_text = _read_text(root / "v10/db/models.py")
+    app_text = _read_text(root / "app.py")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+    docs_text = "\n".join(
+        _read_text(root / name)
+        for name in (
+            "docs/STATISTICAL_MODELS.md",
+            "docs/FEATURE_ENGINEERING.md",
+            "docs/ELO_MODEL.md",
+            "docs/POISSON_DIXON_COLES.md",
+            "docs/CALIBRATION.md",
+            "docs/WALK_FORWARD_BACKTEST.md",
+            "docs/MODEL_VERSIONING.md",
+        )
+    )
+
+    if stats_text.strip() == "# fichier test":
+        result.add_ok("V10 Phase 3 statistics stubs presents pour test minimal.")
+        return
+
+    for snippet in ("elo_multiclass_v1", "poisson_independent_v1", "dixon_coles_v1", "ensemble_v1"):
+        if snippet not in stats_text:
+            result.add_error(f"V10 Phase 3: modele absent du training pipeline: {snippet}")
+    if all(snippet in models_text for snippet in ("v10_model_definitions", "v10_model_versions", "v10_feature_snapshots", "v10_statistical_predictions", "v10_score_distributions", "v10_calibration_models", "v10_evaluation_runs")):
+        result.add_ok("V10 Phase 3: schema statistique versionne present.")
+    else:
+        result.add_error("V10 Phase 3: schema statistique incomplet.")
+    if all(snippet in app_text for snippet in ('add_parser("dataset"', 'add_parser("model"', 'add_parser("predict"', 'add_parser("backtest"', '"statistical-end-to-end"')):
+        result.add_ok("V10 Phase 3: CLI dataset/model/predict/backtest/demo exposee.")
+    else:
+        result.add_error("V10 Phase 3: CLI statistique incomplete.")
+    if all(snippet in ci_text for snippet in ("test_v10_statistics.py", "statistical-end-to-end", "postgres:16")):
+        result.add_ok("V10 Phase 3: CI couvre tests statistiques, demo offline et PostgreSQL configure.")
+    else:
+        result.add_error("V10 Phase 3: CI statistique/PostgreSQL incomplete.")
+    if all(snippet in docs_text for snippet in ("TemporalContext", "Elo", "Poisson", "Dixon-Coles", "Calibration", "walk-forward", "model_versions")):
+        result.add_ok("V10 Phase 3: documentation modeles, features, calibration et backtest presente.")
+    else:
+        result.add_error("V10 Phase 3: documentation statistique incomplete.")
+
+
 def check_dependencies(root: Path, result: AuditResult) -> None:
     requirements = _read_text(root / "requirements.txt").lower()
     docs = (_read_text(root / "README.md") + "\n" + _read_text(root / "COMMANDS.md")).lower()
@@ -1380,6 +1498,7 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     check_v98_release(root, result)
     check_v10_foundation(root, result)
     check_v10_phase2_persistence(root, result)
+    check_v10_phase3_statistics(root, result)
     check_dependencies(root, result)
     check_docs(root, result)
     result.add_recommendation("Conserver le bot en mode analyse prudente tant qu'aucun signal robuste n'est valide en test 2024+.")

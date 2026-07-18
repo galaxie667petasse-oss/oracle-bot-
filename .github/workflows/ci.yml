@@ -49,10 +49,14 @@ jobs:
         run: |
           python test_v10_foundation.py
           python test_v10_persistence.py
+          python test_v10_statistics.py
       - name: Replay smoke
         run: |
           python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --dry-run
           python app.py demo postgres-end-to-end --json --database-url "$DATABASE_URL"
+      - name: Statistical smoke
+        run: |
+          python app.py demo statistical-end-to-end --json
       - name: Historical tests
         run: |
           set -e

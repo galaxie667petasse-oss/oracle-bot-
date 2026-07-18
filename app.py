@@ -5,14 +5,18 @@ from pathlib import Path
 
 from v10.config import V10Settings, load_settings
 from v10.db.migrations import db_doctor, downgrade_base, migration_status, upgrade_head
-from v10.db.models import Provider
+from v10.db.models import EvaluationRun, ModelVersion, Provider
 from v10.db.repositories import FixtureRepository, OddsSnapshotRepository
+from v10.db.stat_repositories import ModelRegistryRepository
 from v10.db.session import create_engine_from_settings, create_session_factory, session_scope
 from v10.demo import build_demo_payload, print_demo_summary
 from v10.demo_postgres import print_persistence_demo, run_persistence_demo
 from v10.legacy import discover_legacy_sources, legacy_import_source
 from v10.quality_db import fixture_quality_from_db
 from v10.replay.engine import replay_provider_file, replay_run
+from v10.statistics.backtest import walk_forward_from_csv
+from v10.statistics.demo import run_statistical_demo
+from v10.statistics.training import build_dataset_from_csv, train_from_csv
 from v10.time import parse_utc, utc_now
 from sqlalchemy import select
 
@@ -208,6 +212,146 @@ def _cmd_odds(args) -> int:
         return 1
 
 
+def _cmd_dataset(args) -> int:
+    try:
+        if args.dataset_command != "build":
+            raise RuntimeError("Commande dataset inconnue.")
+        rows, report = build_dataset_from_csv(args.source, start=args.from_date, end=args.to_date, limit=args.limit)
+        report["dry_run"] = not bool(args.apply and not args.dry_run)
+        report["sample_rows"] = [row.to_dict() for row in rows[: args.preview_rows]]
+        if args.apply and not args.dry_run:
+            settings = _db_settings()
+            with session_scope(_session_factory(settings)) as session:
+                run = EvaluationRun(
+                    evaluation_type="dataset_build",
+                    model_version_ids_json=[],
+                    period_start=parse_utc(args.from_date) if args.from_date else None,
+                    period_end=parse_utc(args.to_date) if args.to_date else None,
+                    competitions_json=report.get("competitions", []),
+                    markets_json=[],
+                    configuration_json={"source": args.source, "limit": args.limit},
+                    dataset_fingerprint=report["dataset_fingerprint"],
+                    started_at=utc_now(),
+                    finished_at=utc_now(),
+                    status="COMPLETED",
+                    metrics_json={"rows_included": report["rows_included"], "rows_excluded": report["rows_excluded"]},
+                    artifact_paths_json=[],
+                    notes="Dataset build metadata only; features are reconstructible from source fingerprint.",
+                )
+                session.add(run)
+                session.flush()
+                report["evaluation_run_id"] = run.id
+        _print_json(report)
+        return 0
+    except Exception as exc:
+        print(f"Erreur dataset: {exc}")
+        return 1
+
+
+def _cmd_model(args) -> int:
+    try:
+        if args.model_command == "train":
+            apply = bool(args.apply and not args.dry_run)
+            report = train_from_csv(args.model, path=args.source, start=args.from_date, end=args.to_date, limit=args.limit)
+            report["applied"] = False
+            if apply:
+                settings = _db_settings()
+                with session_scope(_session_factory(settings)) as session:
+                    version = ModelRegistryRepository(session).create_version(
+                        model_key=args.model,
+                        dataset_fingerprint=report["dataset"]["dataset_fingerprint"],
+                        match_count=report["match_count"],
+                        training_metrics={"training_count": report["training_count"]},
+                        validation_metrics=report["metrics"],
+                        artifact=report["artifact"],
+                        competitions=report["dataset"].get("competitions", []),
+                        status="DRAFT",
+                    )
+                    report["model_version_id"] = version.id
+                    report["applied"] = True
+            _print_json(report)
+            return 0
+        if args.model_command == "activate":
+            if not args.apply:
+                _print_json({"model_version_id": args.model_version_id, "applied": False, "message": "--apply requis pour activer"})
+                return 0
+            settings = _db_settings()
+            with session_scope(_session_factory(settings)) as session:
+                row = ModelRegistryRepository(session).activate(args.model_version_id)
+                _print_json({"model_version_id": row.id, "status": row.status, "applied": True})
+            return 0
+        if args.model_command == "reproduce":
+            settings = _db_settings()
+            with session_scope(_session_factory(settings)) as session:
+                row = session.get(ModelVersion, args.model_version_id)
+                if row is None:
+                    raise RuntimeError("model version introuvable")
+                _print_json(
+                    {
+                        "model_version_id": row.id,
+                        "dataset_fingerprint": row.dataset_fingerprint,
+                        "status": "NOT_RETRAINED_LOCALLY",
+                        "message": "Reproduction complete necessite la meme source historique et sera stricte en phase suivante.",
+                        "lab_only": True,
+                        "can_influence_picks": False,
+                    }
+                )
+            return 0
+        raise RuntimeError("Commande model inconnue.")
+    except Exception as exc:
+        print(f"Erreur model: {exc}")
+        return 1
+
+
+def _cmd_predict(args) -> int:
+    report = {
+        "fixture_id": args.fixture_id,
+        "as_of": args.as_of,
+        "dry_run": True,
+        "status": "REQUIRES_ACTIVE_MODEL_AND_FIXTURE_DB",
+        "message": "La prediction fixture DB sera activee apres entrainement/persistence de modeles actifs; la demo statistique couvre l'inference offline.",
+        "lab_only": True,
+        "can_influence_picks": False,
+    }
+    _print_json(report)
+    return 0
+
+
+def _cmd_backtest(args) -> int:
+    try:
+        report = walk_forward_from_csv(args.source, start=args.from_date, end=args.to_date, limit=args.limit)
+        report["markets_requested"] = args.markets.split(",") if args.markets else []
+        report["applied"] = False
+        if args.apply and not args.dry_run:
+            settings = _db_settings()
+            with session_scope(_session_factory(settings)) as session:
+                run = EvaluationRun(
+                    evaluation_type="walk_forward_backtest",
+                    model_version_ids_json=[],
+                    period_start=parse_utc(args.from_date) if args.from_date else None,
+                    period_end=parse_utc(args.to_date) if args.to_date else None,
+                    competitions_json=report.get("dataset", {}).get("competitions", []),
+                    markets_json=report["markets_requested"],
+                    configuration_json={"source": args.source, "limit": args.limit},
+                    dataset_fingerprint=report.get("dataset", {}).get("dataset_fingerprint", ""),
+                    started_at=utc_now(),
+                    finished_at=utc_now(),
+                    status="COMPLETED",
+                    metrics_json=report.get("metrics", {}),
+                    artifact_paths_json=[],
+                    notes="Deterministic V10 walk-forward dry/paper evaluation.",
+                )
+                session.add(run)
+                session.flush()
+                report["evaluation_run_id"] = run.id
+                report["applied"] = True
+        _print_json(report)
+        return 0
+    except Exception as exc:
+        print(f"Erreur backtest: {exc}")
+        return 1
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="CLI locale additive Oracle V10.")
     sub = parser.add_subparsers(dest="command")
@@ -273,6 +417,52 @@ def parse_args(argv=None):
     history.add_argument("--from-time", default="1970-01-01T00:00:00+00:00")
     history.add_argument("--to-time", default="")
 
+    dataset = sub.add_parser("dataset")
+    dataset_sub = dataset.add_subparsers(dest="dataset_command")
+    dataset_build = dataset_sub.add_parser("build")
+    dataset_build.add_argument("--from", dest="from_date", default="")
+    dataset_build.add_argument("--to", dest="to_date", default="")
+    dataset_build.add_argument("--source", default="data/MATCHES.csv")
+    dataset_build.add_argument("--limit", type=int, default=None)
+    dataset_build.add_argument("--preview-rows", type=int, default=2)
+    dataset_build.add_argument("--dry-run", action="store_true")
+    dataset_build.add_argument("--apply", action="store_true")
+
+    model = sub.add_parser("model")
+    model_sub = model.add_subparsers(dest="model_command")
+    model_train = model_sub.add_parser("train")
+    model_train.add_argument("--model", required=True)
+    model_train.add_argument("--from", dest="from_date", default="")
+    model_train.add_argument("--to", dest="to_date", default="")
+    model_train.add_argument("--source", default="data/MATCHES.csv")
+    model_train.add_argument("--limit", type=int, default=500)
+    model_train.add_argument("--dry-run", action="store_true")
+    model_train.add_argument("--apply", action="store_true")
+    model_activate = model_sub.add_parser("activate")
+    model_activate.add_argument("--model-version-id", required=True)
+    model_activate.add_argument("--apply", action="store_true")
+    model_reproduce = model_sub.add_parser("reproduce")
+    model_reproduce.add_argument("--model-version-id", required=True)
+
+    predict = sub.add_parser("predict")
+    predict_sub = predict.add_subparsers(dest="predict_command")
+    predict_fixture = predict_sub.add_parser("fixture")
+    predict_fixture.add_argument("--fixture-id", required=True)
+    predict_fixture.add_argument("--as-of", required=True)
+    predict_fixture.add_argument("--dry-run", action="store_true")
+    predict_fixture.add_argument("--apply", action="store_true")
+
+    backtest = sub.add_parser("backtest")
+    backtest_sub = backtest.add_subparsers(dest="backtest_command")
+    backtest_run = backtest_sub.add_parser("run")
+    backtest_run.add_argument("--from", dest="from_date", default="")
+    backtest_run.add_argument("--to", dest="to_date", default="")
+    backtest_run.add_argument("--markets", default="1x2,ou25,btts")
+    backtest_run.add_argument("--source", default="data/MATCHES.csv")
+    backtest_run.add_argument("--limit", type=int, default=240)
+    backtest_run.add_argument("--dry-run", action="store_true")
+    backtest_run.add_argument("--apply", action="store_true")
+
     demo = sub.add_parser("demo")
     demo_sub = demo.add_subparsers(dest="demo_command")
     e2e = demo_sub.add_parser("end-to-end")
@@ -280,6 +470,8 @@ def parse_args(argv=None):
     pg = demo_sub.add_parser("postgres-end-to-end")
     pg.add_argument("--json", action="store_true")
     pg.add_argument("--database-url", default="")
+    stats = demo_sub.add_parser("statistical-end-to-end")
+    stats.add_argument("--json", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -300,6 +492,14 @@ def main(argv=None) -> int:
             return _cmd_quality(args)
         if args.command == "odds":
             return _cmd_odds(args)
+        if args.command == "dataset" and args.dataset_command == "build":
+            return _cmd_dataset(args)
+        if args.command == "model":
+            return _cmd_model(args)
+        if args.command == "predict" and args.predict_command == "fixture":
+            return _cmd_predict(args)
+        if args.command == "backtest" and args.backtest_command == "run":
+            return _cmd_backtest(args)
         if args.command == "demo" and args.demo_command == "end-to-end":
             payload = build_demo_payload()
             if args.json:
@@ -314,7 +514,14 @@ def main(argv=None) -> int:
             else:
                 print_persistence_demo(report)
             return 0
-        print("Commande inconnue. Utiliser: app doctor | app db status | app replay provider | app demo end-to-end")
+        if args.command == "demo" and args.demo_command == "statistical-end-to-end":
+            report = run_statistical_demo()
+            if args.json:
+                _print_json(report)
+            else:
+                _print_json(report)
+            return 0
+        print("Commande inconnue. Utiliser: app doctor | app db status | app replay provider | app demo end-to-end | app demo statistical-end-to-end")
         return 1
     except Exception as exc:
         print(f"Erreur: {exc}")

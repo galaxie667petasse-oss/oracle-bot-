@@ -32,13 +32,22 @@ Statut : implemente en premiere version.
 
 Statut : implemente en premiere version offline ; PostgreSQL reel reste a valider dans un environnement disposant du service.
 
+## Phase 3 - Moteur statistique football
+
+- Auditer les donnees historiques locales sans charger les gros dumps.
+- Ajouter le schema statistique: model definitions, model versions, feature snapshots, score distributions, predictions, calibration models et evaluation runs.
+- Construire un dataset temporel avec features `football_features_v1`, labels et fingerprint.
+- Ajouter Elo, Poisson independant, Dixon-Coles experimental, derivation des marches, calibration, ensemble et walk-forward minimal.
+- Exposer `dataset`, `model`, `predict`, `backtest` et `demo statistical-end-to-end` dans `app.py`.
+
+Statut : implemente en premiere version offline ; PostgreSQL reel reste a observer dans CI ou environnement local avec service disponible.
+
 ## Phases suivantes
 
-- Phase 4 : Elo, Poisson, Dixon-Coles si donnees suffisantes, calibration et incertitude.
-- Phase 5 : candidate engine historique, correlation et budget LLM.
-- Phase 6 : agents LLM stricts avec mocks, schemas et prompts versionnes.
-- Phase 7 : juge final, veto, ledger signal append-only.
-- Phase 8 : Telegram preview/signaux read-only anti-doublon.
-- Phase 9 : settlement, CLV et evaluation.
-- Phase 10 : backtesting walk-forward et ablation agents.
-- Phase 11 : Docker/Railway/CI production avec health checks.
+- Phase 4 : orchestration LLM controlee, provider OpenAI, budget manager, Structured Outputs, agents specialises et juge final, sans modifier librement les probabilites statistiques.
+- Phase 5 : candidate engine historique renforce, correlations et budget LLM.
+- Phase 6 : ledger signal append-only et decision/veto durcis.
+- Phase 7 : Telegram preview/signaux read-only anti-doublon.
+- Phase 8 : settlement, CLV et evaluation relationnelle complete.
+- Phase 9 : backtesting walk-forward et ablation agents.
+- Phase 10 : Docker/Railway/CI production avec health checks.

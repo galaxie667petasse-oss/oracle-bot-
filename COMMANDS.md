@@ -1459,3 +1459,34 @@ python app.py demo postgres-end-to-end --json
 ```
 
 Regles Phase 2: `--apply` est obligatoire pour persister un replay/import; les snapshots de cotes ne sont pas ecrases; SQLite sert seulement au smoke test offline; PostgreSQL reste la cible Railway.
+
+## V10 Phase 3 Moteur statistique
+
+Dataset temporel:
+
+```bash
+python app.py dataset build --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py dataset build --from 2024-01-01 --to 2024-12-31 --apply
+```
+
+Entrainement versionne:
+
+```bash
+python app.py model train --model elo_multiclass_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model train --model poisson_independent_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model train --model dixon_coles_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model train --model ensemble_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model activate --model-version-id <uuid> --apply
+python app.py model reproduce --model-version-id <uuid>
+```
+
+Prediction, backtest et demo:
+
+```bash
+python app.py predict fixture --fixture-id <uuid> --as-of 2026-06-01T10:00:00+00:00 --dry-run
+python app.py backtest run --from 2024-01-01 --to 2024-12-31 --markets 1x2,ou25,btts --dry-run
+python app.py demo statistical-end-to-end --json
+python test_v10_statistics.py
+```
+
+Regles Phase 3: aucun LLM, aucun Telegram reel, aucun bookmaker, aucune mise. Les probabilites, EV, calibration et scores de marche viennent de Python et restent reproductibles avec les donnees observees avant `as_of`.

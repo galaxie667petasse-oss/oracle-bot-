@@ -58,3 +58,33 @@ Responsabilites :
 - `v10.replay.engine` stocke le raw payload puis reconstruit les entites canoniques.
 - `v10.normalization` mappe API-Football et The Odds API depuis des payloads locaux.
 - `v10.quality_db` reconstruit un rapport de qualite depuis la base.
+
+## Statistical Engine Phase 3
+
+```mermaid
+flowchart TD
+    A["Historical fixtures and results"] --> B["TemporalDatasetBuilder"]
+    B --> C["football_features_v1 snapshots"]
+    C --> D["Elo models"]
+    C --> E["Poisson independent model"]
+    C --> F["Dixon-Coles experimental model"]
+    D --> G["Market probabilities"]
+    E --> H["Score distribution"]
+    F --> H
+    H --> G
+    G --> I["Calibration"]
+    I --> J["Ensemble"]
+    J --> K["Market comparison and EV"]
+    K --> L["Candidates dry-run / paper-only"]
+```
+
+Responsabilites :
+
+- `v10.statistics.types` definit `TemporalContext`, fixtures historiques, rows dataset, distributions et predictions.
+- `v10.statistics.dataset` construit les lignes d'apprentissage en ordre chronologique et exclut les donnees futures.
+- `v10.statistics.features` genere forme, repos, H2H limite, Elo pre-match et missingness.
+- `v10.statistics.elo`, `poisson` et `dixon_coles` produisent des probabilites sans LLM.
+- `v10.statistics.markets` derive 1X2, double chance, draw no bet, totals et BTTS depuis la matrice de scores.
+- `v10.statistics.calibration`, `ensemble` et `backtest` separent validation, combinaison et evaluation walk-forward.
+
+Les tables Phase 3 `v10_model_versions`, `v10_feature_snapshots`, `v10_score_distributions`, `v10_statistical_predictions`, `v10_calibration_models` et `v10_evaluation_runs` permettent de versionner les predictions. Le chemin CLI reste additif: `app.py dataset`, `app.py model`, `app.py predict`, `app.py backtest` et `app.py demo statistical-end-to-end`.

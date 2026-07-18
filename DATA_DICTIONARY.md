@@ -48,3 +48,21 @@ Les futures phases devront encore couvrir `feature_snapshots`, `statistical_pred
 ## Politique JSONB
 
 JSONB est reserve aux payloads bruts, metadata provider, parametres rares et champs derives non encore modelises. Les entites interrogees frequemment restent relationnelles : fixtures, teams, competitions, bookmakers, markets et odds.
+
+## Tables Phase 3 Statistiques
+
+- `v10_model_definitions` : definition stable d'une famille de modele (`elo_multiclass_v1`, `poisson_independent_v1`, `dixon_coles_v1`, `ensemble_v1`).
+- `v10_model_versions` : version immutable d'un modele avec periode d'entrainement, hyperparametres, fingerprint dataset, metriques et statut DRAFT/VALIDATED/ACTIVE/RETIRED/FAILED.
+- `v10_feature_snapshots` : features `football_features_v1` pour une fixture et un `as_of`, avec `data_cutoff`, completude, warnings et hash source.
+- `v10_score_distributions` : matrice compacte de scores, esperances de buts et masse de queue.
+- `v10_statistical_predictions` : probabilites par marche/selection, probabilite brute, probabilite calibree, bornes et diagnostics.
+- `v10_calibration_models` : calibrateurs Platt, isotonic ou temperature scaling avec fenetre d'entrainement et metriques avant/apres.
+- `v10_evaluation_runs` : datasets, entrainements, backtests et demos persistables avec configuration, fingerprint, metriques et notes.
+
+## Features Phase 3
+
+Schema : `football_features_v1`.
+
+Champs principaux : matchs joues, points par match, buts pour/contre, goal difference, forme 5/10, splits domicile/exterieur, jours de repos, matchs sur 7/14/30 jours, Elo pre-match, H2H limite, mois, indicators de missingness et `data_completeness`.
+
+Regle temporelle : aucune feature ne peut utiliser le resultat du match cible, une cote observee apres `as_of`, ou un resultat futur. Une prediction doit etre reproductible avec son `model_version`, son `feature_snapshot` et son `prediction_fingerprint`.

@@ -47,3 +47,21 @@ Raison : la future decision doit pouvoir etre rejouee sans fuite de cote observe
 Decision : autoriser SQLite pour migrations et demo locales, mais documenter que PostgreSQL reste la cible production.
 
 Raison : l'environnement local peut ne pas avoir PostgreSQL ; SQLite valide la logique deterministe mais pas les garanties concurrentes production.
+
+## ADR-009 - Moteur statistique sans LLM
+
+Decision : les probabilites V10 sont produites par `v10/statistics` avec Elo, Poisson, Dixon-Coles experimental, calibration et ensemble. Les agents LLM futurs ne pourront pas recalculer ou ajuster librement ces probabilites.
+
+Raison : les faits numeriques doivent rester reproductibles, testables et auditables.
+
+## ADR-010 - Features temporelles explicites
+
+Decision : tout dataset ou prediction statistique doit recevoir un `TemporalContext` ou un `as_of` explicite. Le builder traite l'historique avant la periode cible pour calculer les features, puis ne produit des lignes que dans la fenetre demandee.
+
+Raison : une decision future doit pouvoir etre rejouee avec uniquement les donnees observees avant son heure de decision.
+
+## ADR-011 - Dixon-Coles experimental
+
+Decision : `dixon_coles_v1` est disponible mais marque experimental. Il corrige les scores faibles via `tau`, utilise une recherche contrainte de `rho` et ne doit pas etre considere meilleur que Poisson sans validation hors echantillon.
+
+Raison : le modele est utile pour diagnostic et comparaison, mais un petit echantillon peut rendre l'optimisation instable.

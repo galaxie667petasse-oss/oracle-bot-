@@ -435,3 +435,18 @@ Statut: premiere couche relationnelle additive en place localement.
 Limites restantes: PostgreSQL reel n'a pas encore ete valide localement si aucun service n'est disponible; les modeles statistiques V10 reels, feature snapshots, predictions calibrables et backtest walk-forward restent Phase 3/4.
 
 Conclusion: une future decision peut maintenant etre rejouee a partir des donnees observees avant son heure de decision, mais aucune performance de pronostic n'est revendiquee.
+
+## V10 Phase 3 Statistical Engine, Features, Elo, Poisson, Dixon-Coles et Calibration
+
+Statut: premiere version offline en place localement.
+
+- `v10/statistics/` ajoute les contrats temporels, le dataset builder, les features `football_features_v1`, les marches derives, les metriques, la calibration, l'ensemble et un walk-forward minimal.
+- Les modeles disponibles sont `elo_basic_v1`, `elo_multiclass_v1`, `poisson_independent_v1`, `dixon_coles_v1` experimental et `ensemble_v1`.
+- `v10/db/models.py` expose maintenant les tables de versioning statistique: definitions, versions, feature snapshots, score distributions, predictions, calibrateurs et evaluation runs.
+- `app.py` expose `dataset build`, `model train`, `model activate`, `model reproduce`, `predict fixture`, `backtest run` et `demo statistical-end-to-end`.
+- Le dataset local inspecte contient `data/MATCHES.csv` avec environ 230k matchs 2000-2025, scores finaux quasi complets et cotes 1X2 majoritairement disponibles. Les gros JSON `oracle_db*` restent non importes automatiquement.
+- Les tests Phase 3 valident Elo, Poisson, Dixon-Coles, derivation des marches, temporalite, calibration, ensemble, migration statistique et demo offline.
+
+Limites restantes: Dixon-Coles reste experimental, la baseline ML n'est pas encore activee, PostgreSQL reel est configure en CI mais non observe depuis cette session, et les predictions relationnelles completes depuis fixtures V10 importees restent a durcir.
+
+Conclusion: V10 peut produire des probabilites football reproductibles sans LLM, mais aucun ROI, aucune rentabilite et aucun signal reel ne sont revendiques.
