@@ -100,3 +100,27 @@ Verifier que la commande utilise bien `--as-of` ou une fenetre chronologique. Re
 ## Calibration degradee
 
 Si Platt ou temperature scaling degrade la log loss hors echantillon, conserver la probabilite brute. Le calibrateur Phase 3 applique deja un fallback prudent sur echantillon faible.
+## Phase 5 - Operations shadow
+
+Preflight:
+
+```powershell
+python app.py config validate
+python app.py db status
+python app.py scheduler tick --dry-run
+python app.py providers health
+python app.py providers quotas
+```
+
+Si le scheduler est silencieux:
+
+```powershell
+python app.py scheduler status
+python app.py scheduler due
+python app.py scheduler recover-leases --dry-run
+python app.py scheduler recover-leases --apply
+```
+
+Si un provider est degrade, reduire les appels facultatifs. Les resultats, finalistes et near-close ont priorite.
+
+Si le budget LLM est epuise, la decision reste `WATCH` ou `UNREVIEWED`, jamais acceptation automatique.

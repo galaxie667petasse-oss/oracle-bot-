@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import json
 import sys
+from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -33,10 +34,19 @@ from v10.llm.providers.replay import ReplayLLMProvider
 from v10.llm.registry import LLMModelRegistry
 from v10.llm.routing import ComplexityRouter
 from sqlalchemy import select
+from v10.operations.backtest_compare import compare_backtest_from_csv
+from v10.operations.contracts import JobStatus
+from v10.operations.experiments import DEFAULT_EXPERIMENT_KEY, ShadowExperimentRepository, dry_run_experiment_status
+from v10.operations.jobs import ScheduledJobRepository, job_to_dict
+from v10.operations.pipeline import PrematchShadowScanService, operational_shadow_demo_payload
+from v10.operations.providers import MockPrematchProvider
+from v10.operations.quota import ProviderQuotaManager
+from v10.operations.scheduler import SchedulerDispatcher
+from v10.operations.timeline import generate_prematch_jobs
 
 
 def _print_json(data) -> None:
-    print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
+    print(json.dumps(data, ensure_ascii=True, indent=2, default=str))
 
 
 def _load_settings_or_error() -> V10Settings:
@@ -333,6 +343,42 @@ def _cmd_predict(args) -> int:
 
 def _cmd_backtest(args) -> int:
     try:
+        if args.backtest_command == "compare":
+            report = compare_backtest_from_csv(
+                args.source,
+                start=args.from_date,
+                end=args.to_date,
+                limit=args.limit,
+                include_market_baseline=args.include_market_baseline,
+            )
+            report["markets_requested"] = args.markets.split(",") if args.markets else []
+            report["walk_forward"] = bool(args.walk_forward)
+            report["report_path"] = args.report
+            report["applied"] = bool(args.apply and not args.dry_run)
+            if report["applied"]:
+                settings = _db_settings()
+                with session_scope(_session_factory(settings)) as session:
+                    run = EvaluationRun(
+                        evaluation_type="phase5_backtest_compare",
+                        model_version_ids_json=[],
+                        period_start=parse_utc(args.from_date) if args.from_date else None,
+                        period_end=parse_utc(args.to_date) if args.to_date else None,
+                        competitions_json=report.get("dataset", {}).get("competitions", []),
+                        markets_json=report["markets_requested"],
+                        configuration_json={"source": args.source, "limit": args.limit, "include_market_baseline": args.include_market_baseline},
+                        dataset_fingerprint=report.get("dataset", {}).get("dataset_fingerprint", ""),
+                        started_at=utc_now(),
+                        finished_at=utc_now(),
+                        status="COMPLETED",
+                        metrics_json=report.get("metrics", {}),
+                        artifact_paths_json=[],
+                        notes="Phase 5 compare baseline marche vs modeles statistiques. No profit claim.",
+                    )
+                    session.add(run)
+                    session.flush()
+                    report["evaluation_run_id"] = run.id
+            _print_json(report)
+            return 0
         report = walk_forward_from_csv(args.source, start=args.from_date, end=args.to_date, limit=args.limit)
         report["markets_requested"] = args.markets.split(",") if args.markets else []
         report["applied"] = False
@@ -361,6 +407,143 @@ def _cmd_backtest(args) -> int:
                 report["applied"] = True
         _print_json(report)
         return 0
+    except Exception as exc:
+        print(f"Erreur backtest: {exc}")
+        return 1
+
+
+def _cmd_scheduler(args) -> int:
+    try:
+        if args.scheduler_command == "tick":
+            if args.dry_run and not _load_settings_or_error().database_url:
+                _print_json({"status": "DRY_RUN", "database_configured": False, "jobs_due": 0, "message": "DATABASE_URL absent; aucun claim effectue.", "paper_only": True})
+                return 0
+            settings = _db_settings()
+            dispatcher = SchedulerDispatcher(_session_factory(settings))
+            report = dispatcher.tick(args.max_runtime_seconds, args.max_jobs, settings.scheduler_shutdown_margin_seconds, dry_run=args.dry_run)
+            _print_json(report)
+            return 0
+        if args.scheduler_command in {"status", "due", "recover-leases"}:
+            settings = _db_settings()
+            with session_scope(_session_factory(settings)) as session:
+                repo = ScheduledJobRepository(session)
+                if args.scheduler_command == "status":
+                    jobs = repo.list_jobs(limit=200)
+                    counts: dict[str, int] = {}
+                    for job in jobs:
+                        counts[job.status] = counts.get(job.status, 0) + 1
+                    _print_json({"jobs_by_status": counts, "sample": [job_to_dict(job) for job in jobs[:10]], "paper_only": True})
+                elif args.scheduler_command == "due":
+                    jobs = repo.list_due(utc_now(), limit=args.limit)
+                    _print_json({"due": [job_to_dict(job) for job in jobs], "count": len(jobs), "paper_only": True})
+                else:
+                    _print_json(repo.recover_expired_leases(dry_run=args.dry_run))
+            return 0
+        raise RuntimeError("Commande scheduler inconnue.")
+    except Exception as exc:
+        print(f"Erreur scheduler: {exc}")
+        return 1
+
+
+def _cmd_jobs(args) -> int:
+    try:
+        settings = _db_settings()
+        with session_scope(_session_factory(settings)) as session:
+            repo = ScheduledJobRepository(session)
+            if args.jobs_command == "list":
+                rows = repo.list_jobs(status=args.status or None, limit=args.limit)
+                _print_json({"jobs": [job_to_dict(row) for row in rows], "count": len(rows)})
+            elif args.jobs_command == "inspect":
+                row = repo.get(args.job_id)
+                _print_json({"found": bool(row), "job": job_to_dict(row) if row else None})
+            elif args.jobs_command == "retry":
+                _print_json(repo.retry(args.job_id, dry_run=args.dry_run or not args.apply))
+            elif args.jobs_command == "cancel":
+                _print_json(repo.cancel(args.job_id, dry_run=args.dry_run or not args.apply))
+            else:
+                raise RuntimeError("Commande jobs inconnue.")
+        return 0
+    except Exception as exc:
+        print(f"Erreur jobs: {exc}")
+        return 1
+
+
+def _cmd_fixtures(args) -> int:
+    try:
+        if args.fixtures_command == "discover":
+            start = utc_now()
+            fixtures = MockPrematchProvider(base_time=start).discover_fixtures(start, start + timedelta(days=args.days))
+            _print_json({"fixtures": fixtures, "dry_run": True, "provider": "mock_provider", "network_called": False})
+            return 0
+        if args.fixtures_command == "schedule":
+            event_time = parse_utc(args.event_time) if args.event_time else utc_now() + timedelta(days=1)
+            specs = generate_prematch_jobs(args.fixture_id, event_time)
+            if args.apply and not args.dry_run:
+                settings = _db_settings()
+                with session_scope(_session_factory(settings)) as session:
+                    report = ScheduledJobRepository(session).enqueue_many(specs)
+            else:
+                report = {"inserted": 0, "ignored": 0, "dry_run": True, "jobs": [spec.to_dict() for spec in specs]}
+            _print_json(report)
+            return 0
+        raise RuntimeError("Commande fixtures inconnue.")
+    except Exception as exc:
+        print(f"Erreur fixtures: {exc}")
+        return 1
+
+
+def _cmd_scan(args) -> int:
+    try:
+        if args.scan_command == "prematch":
+            report = asyncio.run(PrematchShadowScanService().run_mock_scan(fixture_id=args.fixture_id, as_of=parse_utc(args.as_of) if args.as_of else utc_now(), mock_scenario="valid" if args.mock_llm else "insufficient"))
+            _print_json(report)
+            return 0
+        if args.scan_command == "due":
+            report = asyncio.run(PrematchShadowScanService().run_mock_scan(fixture_id="fixture_due_mock", as_of=utc_now(), mock_scenario="valid" if args.mock_llm else "insufficient"))
+            report["source"] = "mock_due_scan"
+            _print_json(report)
+            return 0
+        raise RuntimeError("Commande scan inconnue.")
+    except Exception as exc:
+        print(f"Erreur scan: {exc}")
+        return 1
+
+
+def _cmd_providers(args) -> int:
+    try:
+        if args.providers_command == "health":
+            _print_json({"providers": [{"provider": "api_football", "status": "not_called", "network_called": False}, {"provider": "the_odds_api", "status": "not_called", "network_called": False}], "paper_only": True})
+            return 0
+        if args.providers_command == "quotas":
+            decision = ProviderQuotaManager().allow_request(None, "fixtures_under_24_hours")
+            _print_json({"quotas": [], "decision": decision.__dict__, "limits_invented": False})
+            return 0
+        raise RuntimeError("Commande providers inconnue.")
+    except Exception as exc:
+        print(f"Erreur providers: {exc}")
+        return 1
+
+
+def _cmd_experiments(args) -> int:
+    try:
+        key = args.key or DEFAULT_EXPERIMENT_KEY
+        if args.experiments_command == "create":
+            if args.apply and not args.dry_run:
+                settings = _db_settings()
+                with session_scope(_session_factory(settings)) as session:
+                    experiment, created = ShadowExperimentRepository(session).get_or_create(key, apply=True)
+                    _print_json({"experiment_id": experiment.id if experiment else None, "created": created, "applied": True})
+            else:
+                _print_json(dry_run_experiment_status(key))
+            return 0
+        settings = _db_settings()
+        with session_scope(_session_factory(settings)) as session:
+            report = ShadowExperimentRepository(session).report(key)
+        _print_json(report)
+        return 0
+    except Exception as exc:
+        print(f"Erreur experiments: {exc}")
+        return 1
     except Exception as exc:
         print(f"Erreur backtest: {exc}")
         return 1
@@ -587,6 +770,84 @@ def parse_args(argv=None):
     backtest_run.add_argument("--limit", type=int, default=240)
     backtest_run.add_argument("--dry-run", action="store_true")
     backtest_run.add_argument("--apply", action="store_true")
+    backtest_compare = backtest_sub.add_parser("compare")
+    backtest_compare.add_argument("--from", dest="from_date", default="")
+    backtest_compare.add_argument("--to", dest="to_date", default="")
+    backtest_compare.add_argument("--markets", default="1x2,ou25,btts")
+    backtest_compare.add_argument("--source", default="data/MATCHES.csv")
+    backtest_compare.add_argument("--limit", type=int, default=5000)
+    backtest_compare.add_argument("--walk-forward", action="store_true")
+    backtest_compare.add_argument("--include-market-baseline", action="store_true")
+    backtest_compare.add_argument("--report", default="")
+    backtest_compare.add_argument("--dry-run", action="store_true")
+    backtest_compare.add_argument("--apply", action="store_true")
+
+    scheduler = sub.add_parser("scheduler")
+    scheduler_sub = scheduler.add_subparsers(dest="scheduler_command")
+    scheduler_tick = scheduler_sub.add_parser("tick")
+    scheduler_tick.add_argument("--max-runtime-seconds", type=int, default=240)
+    scheduler_tick.add_argument("--max-jobs", type=int, default=50)
+    scheduler_tick.add_argument("--dry-run", action="store_true")
+    scheduler_sub.add_parser("status")
+    scheduler_due = scheduler_sub.add_parser("due")
+    scheduler_due.add_argument("--limit", type=int, default=50)
+    scheduler_recover = scheduler_sub.add_parser("recover-leases")
+    scheduler_recover.add_argument("--dry-run", action="store_true")
+    scheduler_recover.add_argument("--apply", action="store_true")
+
+    jobs = sub.add_parser("jobs")
+    jobs_sub = jobs.add_subparsers(dest="jobs_command")
+    jobs_list = jobs_sub.add_parser("list")
+    jobs_list.add_argument("--status", default="")
+    jobs_list.add_argument("--limit", type=int, default=100)
+    jobs_inspect = jobs_sub.add_parser("inspect")
+    jobs_inspect.add_argument("--job-id", required=True)
+    jobs_retry = jobs_sub.add_parser("retry")
+    jobs_retry.add_argument("--job-id", required=True)
+    jobs_retry.add_argument("--dry-run", action="store_true")
+    jobs_retry.add_argument("--apply", action="store_true")
+    jobs_cancel = jobs_sub.add_parser("cancel")
+    jobs_cancel.add_argument("--job-id", required=True)
+    jobs_cancel.add_argument("--dry-run", action="store_true")
+    jobs_cancel.add_argument("--apply", action="store_true")
+
+    fixtures = sub.add_parser("fixtures")
+    fixtures_sub = fixtures.add_subparsers(dest="fixtures_command")
+    fixtures_discover = fixtures_sub.add_parser("discover")
+    fixtures_discover.add_argument("--days", type=int, default=3)
+    fixtures_discover.add_argument("--dry-run", action="store_true")
+    fixtures_schedule = fixtures_sub.add_parser("schedule")
+    fixtures_schedule.add_argument("--fixture-id", required=True)
+    fixtures_schedule.add_argument("--event-time", default="")
+    fixtures_schedule.add_argument("--dry-run", action="store_true")
+    fixtures_schedule.add_argument("--apply", action="store_true")
+
+    scan = sub.add_parser("scan")
+    scan_sub = scan.add_subparsers(dest="scan_command")
+    scan_prematch = scan_sub.add_parser("prematch")
+    scan_prematch.add_argument("--fixture-id", required=True)
+    scan_prematch.add_argument("--as-of", default="")
+    scan_prematch.add_argument("--mock-llm", action="store_true")
+    scan_prematch.add_argument("--dry-run", action="store_true")
+    scan_due = scan_sub.add_parser("due")
+    scan_due.add_argument("--mock-llm", action="store_true")
+    scan_due.add_argument("--dry-run", action="store_true")
+
+    providers = sub.add_parser("providers")
+    providers_sub = providers.add_subparsers(dest="providers_command")
+    providers_sub.add_parser("health")
+    providers_sub.add_parser("quotas")
+
+    experiments = sub.add_parser("experiments")
+    experiments_sub = experiments.add_subparsers(dest="experiments_command")
+    experiments_create = experiments_sub.add_parser("create")
+    experiments_create.add_argument("--key", default=DEFAULT_EXPERIMENT_KEY)
+    experiments_create.add_argument("--dry-run", action="store_true")
+    experiments_create.add_argument("--apply", action="store_true")
+    experiments_status = experiments_sub.add_parser("status")
+    experiments_status.add_argument("--key", default=DEFAULT_EXPERIMENT_KEY)
+    experiments_report = experiments_sub.add_parser("report")
+    experiments_report.add_argument("--key", default=DEFAULT_EXPERIMENT_KEY)
 
     llm = sub.add_parser("llm")
     llm_sub = llm.add_subparsers(dest="llm_command")
@@ -640,6 +901,9 @@ def parse_args(argv=None):
     llm_demo = demo_sub.add_parser("llm-shadow-end-to-end")
     llm_demo.add_argument("--mock", action="store_true")
     llm_demo.add_argument("--json", action="store_true")
+    operational_demo = demo_sub.add_parser("operational-shadow-end-to-end")
+    operational_demo.add_argument("--mock", action="store_true")
+    operational_demo.add_argument("--json", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -666,8 +930,20 @@ def main(argv=None) -> int:
             return _cmd_model(args)
         if args.command == "predict" and args.predict_command == "fixture":
             return _cmd_predict(args)
-        if args.command == "backtest" and args.backtest_command == "run":
+        if args.command == "backtest" and args.backtest_command in {"run", "compare"}:
             return _cmd_backtest(args)
+        if args.command == "scheduler":
+            return _cmd_scheduler(args)
+        if args.command == "jobs":
+            return _cmd_jobs(args)
+        if args.command == "fixtures":
+            return _cmd_fixtures(args)
+        if args.command == "scan":
+            return _cmd_scan(args)
+        if args.command == "providers":
+            return _cmd_providers(args)
+        if args.command == "experiments":
+            return _cmd_experiments(args)
         if args.command == "llm":
             return _cmd_llm(args)
         if args.command == "decision":
@@ -697,7 +973,11 @@ def main(argv=None) -> int:
             report = asyncio.run(run_llm_shadow_demo())
             _print_json(report)
             return 0
-        print("Commande inconnue. Utiliser: app doctor | app db status | app replay provider | app demo end-to-end | app demo statistical-end-to-end | app demo llm-shadow-end-to-end")
+        if args.command == "demo" and args.demo_command == "operational-shadow-end-to-end":
+            report = asyncio.run(operational_shadow_demo_payload())
+            _print_json(report)
+            return 0
+        print("Commande inconnue. Utiliser: app doctor | app db status | app scheduler tick | app replay provider | app demo operational-shadow-end-to-end")
         return 1
     except Exception as exc:
         print(f"Erreur: {exc}")

@@ -61,3 +61,16 @@ Statut : implemente en premiere version mock/replay, sans appel payant.
 - Phase 8 : settlement, CLV et evaluation relationnelle complete.
 - Phase 9 : backtesting walk-forward et ablation agents.
 - Phase 10 : Docker/Railway/CI production avec health checks.
+## Phase 5 - Completee localement
+
+- Migration operationnelle `20260719_0004`.
+- Scheduler dispatcher borne, jobs idempotents, leases et recovery.
+- Timeline prematch T-72/T-24/T-6/T-90/T-30/T-10/near-close/results.
+- Provider mocks, quotas, cache provider, freshness policy.
+- Material changes et non-relance LLM inutile.
+- Experience `statistical_vs_llm_shadow_v1`.
+- FastAPI read-only et dashboard minimal.
+- Backtest compare avec baseline marche 1X2.
+- Demo offline `operational-shadow-end-to-end`.
+
+Prochaine phase proposee: deploiement staging Railway, ajout controle des cles providers, premier scan shadow reel sans LLM payant, puis smoke OpenAI Luna plafonne.

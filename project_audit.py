@@ -221,6 +221,39 @@ ESSENTIAL_FILES = [
     "docs/LLM_EVALUATION.md",
     "docs/LLM_SHADOW_MODE.md",
     "docs/PHASE4_LLM_LOG.md",
+    "v10/api.py",
+    "v10/operations/__init__.py",
+    "v10/operations/contracts.py",
+    "v10/operations/timeline.py",
+    "v10/operations/jobs.py",
+    "v10/operations/scheduler.py",
+    "v10/operations/providers.py",
+    "v10/operations/quota.py",
+    "v10/operations/provider_cache.py",
+    "v10/operations/freshness.py",
+    "v10/operations/material_changes.py",
+    "v10/operations/closing.py",
+    "v10/operations/experiments.py",
+    "v10/operations/pipeline.py",
+    "v10/operations/backtest_compare.py",
+    "v10/llm/providers/batch.py",
+    "alembic/versions/20260719_0004_v10_operational_shadow_pipeline.py",
+    "test_v10_operations.py",
+    "docs/PHASE5_PREFLIGHT.md",
+    "docs/OPENAI_PRICING_SNAPSHOT.md",
+    "docs/OPERATIONAL_PIPELINE.md",
+    "docs/SCHEDULER.md",
+    "docs/RAILWAY_DEPLOYMENT.md",
+    "docs/PROVIDER_QUOTAS.md",
+    "docs/FRESHNESS_POLICY.md",
+    "docs/MATERIAL_CHANGES.md",
+    "docs/SHADOW_EXPERIMENT.md",
+    "docs/STATISTICAL_VS_LLM.md",
+    "docs/NEAR_CLOSE_AND_CLV.md",
+    "docs/OPERATIONAL_MONITORING.md",
+    "docs/PHASE5_OPERATIONAL_LOG.md",
+    ".env.shadow.example",
+    "railway.toml",
     "tests/fixtures/providers/api_football/fixtures_sample.json",
     "tests/fixtures/providers/api_football/odds_sample.json",
     "tests/fixtures/providers/api_football/odds_sample_changed.json",
@@ -433,6 +466,7 @@ MAIN_TESTS = [
     "test_v10_persistence.py",
     "test_v10_statistics.py",
     "test_v10_llm.py",
+    "test_v10_operations.py",
 ]
 
 IMPORT_MODULES = [
@@ -478,6 +512,20 @@ IMPORT_MODULES = [
     "v10.odds",
     "v10.risk",
     "v10.settlement",
+    "v10.api",
+    "v10.operations.contracts",
+    "v10.operations.timeline",
+    "v10.operations.jobs",
+    "v10.operations.scheduler",
+    "v10.operations.providers",
+    "v10.operations.quota",
+    "v10.operations.provider_cache",
+    "v10.operations.freshness",
+    "v10.operations.material_changes",
+    "v10.operations.closing",
+    "v10.operations.experiments",
+    "v10.operations.pipeline",
+    "v10.operations.backtest_compare",
     "v10.data_quality",
     "v10.candidates",
     "v10.agents",
@@ -1598,6 +1646,108 @@ def check_v10_phase4_llm(root: Path, result: AuditResult) -> None:
         result.add_error("V10 Phase 4: documentation LLM incomplete.")
 
 
+def check_v10_phase5_operations(root: Path, result: AuditResult) -> None:
+    files = [
+        "v10/api.py",
+        "v10/operations/contracts.py",
+        "v10/operations/timeline.py",
+        "v10/operations/jobs.py",
+        "v10/operations/scheduler.py",
+        "v10/operations/providers.py",
+        "v10/operations/quota.py",
+        "v10/operations/provider_cache.py",
+        "v10/operations/freshness.py",
+        "v10/operations/material_changes.py",
+        "v10/operations/closing.py",
+        "v10/operations/experiments.py",
+        "v10/operations/pipeline.py",
+        "v10/operations/backtest_compare.py",
+        "v10/llm/providers/batch.py",
+        "alembic/versions/20260719_0004_v10_operational_shadow_pipeline.py",
+        "test_v10_operations.py",
+        "docs/OPERATIONAL_PIPELINE.md",
+        "docs/SCHEDULER.md",
+        "docs/RAILWAY_DEPLOYMENT.md",
+        "docs/SHADOW_EXPERIMENT.md",
+        "docs/NEAR_CLOSE_AND_CLV.md",
+        "docs/PHASE5_OPERATIONAL_LOG.md",
+        ".env.shadow.example",
+        "railway.toml",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 Phase 5 operations incomplete: " + ", ".join(missing))
+        return
+
+    config_text = _read_text(root / "v10/config.py")
+    models_text = _read_text(root / "v10/db/models.py")
+    scheduler_text = _read_text(root / "v10/operations/scheduler.py")
+    jobs_text = _read_text(root / "v10/operations/jobs.py")
+    pipeline_text = _read_text(root / "v10/operations/pipeline.py")
+    api_text = _read_text(root / "v10/api.py")
+    app_text = _read_text(root / "app.py")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+    env_text = _read_text(root / ".env.example") + "\n" + _read_text(root / ".env.shadow.example")
+    docs_text = "\n".join(
+        _read_text(root / name)
+        for name in (
+            "docs/OPERATIONAL_PIPELINE.md",
+            "docs/SCHEDULER.md",
+            "docs/FRESHNESS_POLICY.md",
+            "docs/MATERIAL_CHANGES.md",
+            "docs/SHADOW_EXPERIMENT.md",
+            "docs/STATISTICAL_VS_LLM.md",
+            "docs/NEAR_CLOSE_AND_CLV.md",
+            "docs/OPENAI_PRICING_SNAPSHOT.md",
+        )
+    )
+
+    if "fichier test" in scheduler_text and "SchedulerDispatcher" not in scheduler_text:
+        result.add_ok("V10 Phase 5 operations stubs presents pour test minimal.")
+        return
+
+    if all(snippet in config_text for snippet in ("SCHEDULER_MAX_RUNTIME_SECONDS", "TELEGRAM_DISABLE_SEND", "STATISTICAL_MODEL_VALIDATED_FOR_SIGNALS", "RAILWAY_ALLOW_DEPLOY")):
+        result.add_ok("V10 Phase 5: configuration operationnelle fail-closed presente.")
+    else:
+        result.add_error("V10 Phase 5: configuration operationnelle incomplete.")
+    if all(snippet in models_text for snippet in ("v10_scheduled_jobs", "v10_job_attempts", "v10_scheduler_runs", "v10_provider_quota_usage", "v10_material_change_events", "v10_shadow_experiments", "v10_shadow_experiment_decisions", "v10_shadow_experiment_outcomes", "v10_operational_alerts")):
+        result.add_ok("V10 Phase 5: schema operationnel et experience shadow presents.")
+    else:
+        result.add_error("V10 Phase 5: schema operationnel incomplet.")
+    if all(snippet in jobs_text for snippet in ("idempotency_key", "lease_expires_at", "recover_expired_leases", "with_for_update(skip_locked=True)")):
+        result.add_ok("V10 Phase 5: jobs idempotents, leases et SKIP LOCKED PostgreSQL presents.")
+    else:
+        result.add_error("V10 Phase 5: jobs/leases incomplets.")
+    if all(snippet in scheduler_text for snippet in ("SchedulerDispatcher", "shutdown_margin_seconds", "max_runtime_seconds", "default_noop_handler")):
+        result.add_ok("V10 Phase 5: scheduler borne et compatible cron court.")
+    else:
+        result.add_error("V10 Phase 5: scheduler incomplet.")
+    if all(snippet in pipeline_text for snippet in ("PrematchShadowScanService", "deterministic_only", "deterministic_plus_llm", "select_near_close", "paid_calls")):
+        result.add_ok("V10 Phase 5: pipeline shadow A/B, near-close et LLM mock presents.")
+    else:
+        result.add_error("V10 Phase 5: pipeline shadow incomplet.")
+    if all(snippet in api_text for snippet in ("/health/live", "/health/ready", "/api/v10/jobs", "INTERNAL_API_TOKEN", "paid_openai_calls_total")):
+        result.add_ok("V10 Phase 5: FastAPI read-only et health endpoints presents.")
+    else:
+        result.add_error("V10 Phase 5: API read-only incomplete.")
+    if all(snippet in app_text for snippet in ('add_parser("scheduler"', 'add_parser("scan"', 'add_parser("experiments"', 'operational-shadow-end-to-end', 'backtest_compare')):
+        result.add_ok("V10 Phase 5: CLI operationnelle exposee.")
+    else:
+        result.add_error("V10 Phase 5: CLI operationnelle incomplete.")
+    if all(snippet in ci_text for snippet in ("test_v10_operations.py", "operational-shadow-end-to-end", "postgres:16", "docker build")):
+        result.add_ok("V10 Phase 5: CI prepare tests operations, PostgreSQL et Docker build.")
+    else:
+        result.add_error("V10 Phase 5: CI operationnelle incomplete.")
+    if all(snippet in env_text for snippet in ("REAL_MONEY_ACTIONS_ENABLED=false", "LLM_ALLOW_PAID_CALLS=false", "TELEGRAM_DISABLE_SEND=true", "RAILWAY_ALLOW_DEPLOY=false", "OPENAI_BATCH_ENABLED=false")):
+        result.add_ok("V10 Phase 5: env examples conservent les securites.")
+    else:
+        result.add_error("V10 Phase 5: env examples dangereux ou incomplets.")
+    if all(snippet in docs_text for snippet in ("SchedulerDispatcher", "prematch_freshness_v1", "statistical_vs_llm_shadow_v1", "EXACT_OR_VERY_NEAR", "OpenAI")):
+        result.add_ok("V10 Phase 5: documentation operations/scheduler/freshness/experience/pricing presente.")
+    else:
+        result.add_error("V10 Phase 5: documentation operationnelle incomplete.")
+
+
 def check_dependencies(root: Path, result: AuditResult) -> None:
     requirements = _read_text(root / "requirements.txt").lower()
     docs = (_read_text(root / "README.md") + "\n" + _read_text(root / "COMMANDS.md")).lower()
@@ -1665,6 +1815,7 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     check_v10_phase2_persistence(root, result)
     check_v10_phase3_statistics(root, result)
     check_v10_phase4_llm(root, result)
+    check_v10_phase5_operations(root, result)
     check_dependencies(root, result)
     check_docs(root, result)
     result.add_recommendation("Conserver le bot en mode analyse prudente tant qu'aucun signal robuste n'est valide en test 2024+.")

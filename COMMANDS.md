@@ -1516,3 +1516,27 @@ python app.py llm smoke --tier fast --allow-paid --max-cost-usd 0.05
 ```
 
 Regles Phase 4: aucun appel OpenAI reel par defaut, aucun Telegram reel, aucun bookmaker, aucune mise. Luna filtre le volume, Terra analyse quelques panels, Sol reste rare, et le gate deterministe reste souverain.
+## V10 Phase 5 - Operations shadow
+
+```powershell
+python app.py scheduler tick --dry-run
+python app.py scheduler tick --max-runtime-seconds 240 --max-jobs 50
+python app.py scheduler status
+python app.py scheduler due
+python app.py scheduler recover-leases --dry-run
+python app.py jobs list
+python app.py jobs inspect --job-id <uuid>
+python app.py jobs retry --job-id <uuid> --dry-run
+python app.py jobs cancel --job-id <uuid> --dry-run
+python app.py fixtures discover --days 3 --dry-run
+python app.py fixtures schedule --fixture-id <uuid> --dry-run
+python app.py scan prematch --fixture-id <uuid> --mock-llm --dry-run
+python app.py scan due --mock-llm --dry-run
+python app.py providers health
+python app.py providers quotas
+python app.py experiments create --key statistical_vs_llm_shadow_v1 --dry-run
+python app.py experiments status --key statistical_vs_llm_shadow_v1
+python app.py experiments report --key statistical_vs_llm_shadow_v1
+python app.py backtest compare --from 2021-01-01 --to 2025-06-01 --include-market-baseline --dry-run
+python app.py demo operational-shadow-end-to-end --mock --json
+```

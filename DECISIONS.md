@@ -83,3 +83,24 @@ Raison : le cout est controle sans supprimer l'independance critique la plus imp
 Decision : chaque affirmation LLM doit referencer une preuve typee valide as_of. Le gate deterministe peut toujours annuler une acceptation Sol.
 
 Raison : un JSON valide mais semantiquement faux doit devenir un hard veto.
+## ADR - Phase 5 Scheduler court Railway
+
+Decision: utiliser un cron Railway toutes les cinq minutes qui lance `python app.py scheduler tick --max-runtime-seconds 240 --max-jobs 50`.
+
+Raisons:
+
+- cout faible;
+- pas de scheduler permanent duplique;
+- PostgreSQL suffit pour file, leases et idempotence;
+- le processus quitte proprement.
+
+Consequences:
+
+- un worker continu pourra etre ajoute plus tard si les mesures le justifient;
+- Redis reste hors scope Phase 5.
+
+## ADR - Experience shadow statistique vs LLM
+
+Decision: conserver deux bras immuables pour chaque candidat eligible au meme `as_of`.
+
+Le bras LLM peut veto ou recommander WATCH, mais ne modifie jamais les probabilites, cotes, EV, CLV ou settlement.

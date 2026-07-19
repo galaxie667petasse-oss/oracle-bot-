@@ -35,3 +35,12 @@ Defaults securises :
 - `OPENAI_ALLOW_PRO=false`
 
 Le provider OpenAI est isole derriere une interface et refuse l'appel si les flags ne sont pas simultanement ouverts. Les outils LLM sont read-only et ne peuvent pas acceder au shell, a Telegram, aux secrets, a un bookmaker ou a SQL libre.
+## Phase 5 - Surface operationnelle
+
+- `REAL_MONEY_ACTIONS_ENABLED=false` par defaut et valide par configuration.
+- `TELEGRAM_DISABLE_SEND=true` par defaut; aucun envoi en tests.
+- `LLM_ENABLED=false`, `LLM_ALLOW_PAID_CALLS=false`, budgets zero par defaut.
+- Les endpoints detailles FastAPI sont read-only et proteges par `INTERNAL_API_TOKEN` hors local.
+- Aucun endpoint n'expose de secret, header Authorization, payload complet inutile ou chaine de pensee.
+- `RAILWAY_ALLOW_DEPLOY=false`; Codex prepare mais ne deploie pas.
+- Le scheduler ne fournit ni shell, ni SQL libre, ni navigateur, ni action bookmaker.

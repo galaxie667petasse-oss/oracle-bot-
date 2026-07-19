@@ -204,7 +204,7 @@ def test_migration_head_includes_llm_schema():
     with tempfile.TemporaryDirectory() as tmp:
         settings = V10Settings(DATABASE_URL=f"sqlite:///{Path(tmp, 'llm.sqlite').as_posix()}")
         assert upgrade_head(settings)["up_to_date"] is True
-        assert migration_status(settings)["current_revision"] == "20260719_0003"
+        assert migration_status(settings)["current_revision"] == "20260719_0004"
         assert downgrade_base(settings)["current_revision"] is None
 
 

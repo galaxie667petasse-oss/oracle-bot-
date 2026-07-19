@@ -621,3 +621,272 @@ class ModelPricingVersion(TimestampMixin, Base):
     cached_input_per_million_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=Decimal("0"), nullable=False)
     source_url: Mapped[str] = mapped_column(String(500), default="", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class ScheduledJob(TimestampMixin, Base):
+    __tablename__ = "v10_scheduled_jobs"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_v10_scheduled_job_idempotency"),
+        Index("ix_v10_scheduled_job_due", "status", "due_at", "priority"),
+        Index("ix_v10_scheduled_job_fixture", "fixture_id", "job_type"),
+        Index("ix_v10_scheduled_job_lease", "lease_expires_at", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    job_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    fixture_id: Mapped[str | None] = mapped_column(ForeignKey("v10_fixtures.id"))
+    candidate_id: Mapped[str | None] = mapped_column(String(120))
+    provider_key: Mapped[str | None] = mapped_column(String(80))
+    priority: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+    due_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    not_before: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    status: Mapped[str] = mapped_column(String(40), default="PENDING", nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column("payload", JSONB_TYPE, default=dict, nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    lease_owner: Mapped[str | None] = mapped_column(String(160))
+    lease_acquired_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    lease_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_error_code: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    last_error_summary: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+
+
+class JobAttempt(Base):
+    __tablename__ = "v10_job_attempts"
+    __table_args__ = (
+        UniqueConstraint("job_id", "attempt_number", name="uq_v10_job_attempt_number"),
+        Index("ix_v10_job_attempt_job", "job_id", "started_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    job_id: Mapped[str] = mapped_column(ForeignKey("v10_scheduled_jobs.id"), nullable=False)
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    worker_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    result_summary_json: Mapped[dict[str, Any]] = mapped_column("result_summary", JSONB_TYPE, default=dict, nullable=False)
+    exception_class: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    retry_reason: Mapped[str] = mapped_column(String(300), default="", nullable=False)
+    metrics_json: Mapped[dict[str, Any]] = mapped_column("metrics", JSONB_TYPE, default=dict, nullable=False)
+
+
+class SchedulerRun(Base):
+    __tablename__ = "v10_scheduler_runs"
+    __table_args__ = (Index("ix_v10_scheduler_run_started", "started_at", "status"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    deadline_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    status: Mapped[str] = mapped_column(String(40), default="RUNNING", nullable=False)
+    jobs_claimed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    jobs_completed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    jobs_retried: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    jobs_failed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    exit_reason: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    code_version: Mapped[str] = mapped_column(String(80), default="", nullable=False)
+
+
+class ScanRun(Base):
+    __tablename__ = "v10_scan_runs"
+    __table_args__ = (Index("ix_v10_scan_run_decision", "decision_time", "status"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    scope: Mapped[str] = mapped_column(String(120), nullable=False)
+    decision_time: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    fixtures_considered: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    fixtures_filtered: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    candidates_generated: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    candidates_reviewed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    shadow_accepted: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    watches: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    rejected: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_provider_calls: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_llm_calls: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=Decimal("0"), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    summary_json: Mapped[dict[str, Any]] = mapped_column("summary", JSONB_TYPE, default=dict, nullable=False)
+
+
+class ScanTarget(TimestampMixin, Base):
+    __tablename__ = "v10_scan_targets"
+    __table_args__ = (
+        UniqueConstraint("fixture_id", name="uq_v10_scan_target_fixture"),
+        Index("ix_v10_scan_target_next_due", "next_due_time", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    fixture_id: Mapped[str] = mapped_column(ForeignKey("v10_fixtures.id"), nullable=False)
+    next_action: Mapped[str] = mapped_column(String(80), nullable=False)
+    next_due_time: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    phase: Mapped[str] = mapped_column(String(40), nullable=False)
+    last_fixture_refresh: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_odds_refresh: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_context_refresh: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_prediction: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_candidate_generation: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_llm_review: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_near_close_capture: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_result_refresh: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    status: Mapped[str] = mapped_column(String(40), default="ACTIVE", nullable=False)
+
+
+class ProviderQuotaUsage(Base):
+    __tablename__ = "v10_provider_quota_usage"
+    __table_args__ = (Index("ix_v10_provider_quota_observed", "provider_key", "observed_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    provider_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    request_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    quota_headers_json: Mapped[dict[str, Any]] = mapped_column("quota_headers", JSONB_TYPE, default=dict, nullable=False)
+    calls: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    failures: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    reset_time: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    estimated_remaining_quota: Mapped[int | None] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(String(120), default="provider_headers", nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class ProviderHealth(Base):
+    __tablename__ = "v10_provider_health"
+    __table_args__ = (Index("ix_v10_provider_health_lookup", "provider_key", "endpoint_class", "observed_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    provider_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    endpoint_class: Mapped[str] = mapped_column(String(120), nullable=False)
+    health_status: Mapped[str] = mapped_column(String(40), nullable=False)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    failure_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_success_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_error_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    circuit_status: Mapped[str] = mapped_column(String(40), default="CLOSED", nullable=False)
+    degraded_reason: Mapped[str] = mapped_column(String(300), default="", nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class ProviderCacheEntry(Base):
+    __tablename__ = "v10_provider_cache_entries"
+    __table_args__ = (
+        UniqueConstraint("cache_key", name="uq_v10_provider_cache_key"),
+        Index("ix_v10_provider_cache_expiry", "provider_key", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    endpoint: Mapped[str] = mapped_column(String(160), nullable=False)
+    fixture_id: Mapped[str | None] = mapped_column(String(120))
+    parameters_json: Mapped[dict[str, Any]] = mapped_column("parameters", JSONB_TYPE, default=dict, nullable=False)
+    response_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_json: Mapped[dict[str, Any]] = mapped_column("response", JSONB_TYPE, default=dict, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    stale_while_revalidate: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class MaterialChangeEvent(Base):
+    __tablename__ = "v10_material_change_events"
+    __table_args__ = (Index("ix_v10_material_change_fixture", "fixture_id", "detected_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    fixture_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    candidate_id: Mapped[str | None] = mapped_column(String(120))
+    event_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    old_fingerprint: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    new_fingerprint: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    severity: Mapped[str] = mapped_column(String(40), default="INFO", nullable=False)
+    material: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    detected_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+    evidence_ids_json: Mapped[list[str]] = mapped_column("evidence_ids", JSONB_TYPE, default=list, nullable=False)
+    caused_rescan: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    caused_llm_rerun: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    rules_json: Mapped[list[str]] = mapped_column("rules", JSONB_TYPE, default=list, nullable=False)
+
+
+class ShadowExperiment(TimestampMixin, Base):
+    __tablename__ = "v10_shadow_experiments"
+    __table_args__ = (UniqueConstraint("experiment_key", "version", name="uq_v10_shadow_experiment_key_version"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    experiment_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    version: Mapped[str] = mapped_column(String(80), nullable=False)
+    cohort_rules_json: Mapped[dict[str, Any]] = mapped_column("cohort_rules", JSONB_TYPE, default=dict, nullable=False)
+    starts_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    ends_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    status: Mapped[str] = mapped_column(String(40), default="DRAFT", nullable=False)
+    statistical_model_versions_json: Mapped[list[str]] = mapped_column("statistical_model_versions", JSONB_TYPE, default=list, nullable=False)
+    prompt_versions_json: Mapped[list[str]] = mapped_column("prompt_versions", JSONB_TYPE, default=list, nullable=False)
+    gate_version: Mapped[str] = mapped_column(String(80), default="deterministic_gate_v1", nullable=False)
+    preregistered_metrics_json: Mapped[list[str]] = mapped_column("preregistered_metrics", JSONB_TYPE, default=list, nullable=False)
+
+
+class ShadowExperimentDecision(Base):
+    __tablename__ = "v10_shadow_experiment_decisions"
+    __table_args__ = (
+        UniqueConstraint("experiment_id", "candidate_id", "arm", "decision_hash", name="uq_v10_shadow_experiment_decision_immutable"),
+        Index("ix_v10_shadow_experiment_decision_candidate", "candidate_id", "decision_time"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    experiment_id: Mapped[str] = mapped_column(ForeignKey("v10_shadow_experiments.id"), nullable=False)
+    candidate_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    fixture_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    arm: Mapped[str] = mapped_column(String(40), nullable=False)
+    decision: Mapped[str] = mapped_column(String(80), nullable=False)
+    decision_time: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    model_versions_json: Mapped[list[str]] = mapped_column("model_versions", JSONB_TYPE, default=list, nullable=False)
+    prompt_versions_json: Mapped[list[str]] = mapped_column("prompt_versions", JSONB_TYPE, default=list, nullable=False)
+    evidence_packet_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    outcome_hidden: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    decision_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    decision_json: Mapped[dict[str, Any]] = mapped_column("decision_payload", JSONB_TYPE, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class ShadowExperimentOutcome(Base):
+    __tablename__ = "v10_shadow_experiment_outcomes"
+    __table_args__ = (UniqueConstraint("experiment_decision_id", "revealed_at", name="uq_v10_shadow_outcome_decision_reveal"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    experiment_decision_id: Mapped[str] = mapped_column(ForeignKey("v10_shadow_experiment_decisions.id"), nullable=False)
+    fixture_result_json: Mapped[dict[str, Any]] = mapped_column("fixture_result", JSONB_TYPE, default=dict, nullable=False)
+    settlement_json: Mapped[dict[str, Any]] = mapped_column("settlement", JSONB_TYPE, default=dict, nullable=False)
+    closing_line_json: Mapped[dict[str, Any]] = mapped_column("closing_line", JSONB_TYPE, default=dict, nullable=False)
+    clv_json: Mapped[dict[str, Any]] = mapped_column("clv", JSONB_TYPE, default=dict, nullable=False)
+    paper_return_units: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=Decimal("0"), nullable=False)
+    brier_contribution: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    log_loss_contribution: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    revealed_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+
+
+class OperationalAlert(Base):
+    __tablename__ = "v10_operational_alerts"
+    __table_args__ = (Index("ix_v10_operational_alerts_status", "severity", "acknowledged", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    severity: Mapped[str] = mapped_column(String(40), nullable=False)
+    source: Mapped[str] = mapped_column(String(120), nullable=False)
+    code: Mapped[str] = mapped_column(String(120), nullable=False)
+    message: Mapped[str] = mapped_column(String(500), nullable=False)
+    scan_id: Mapped[str | None] = mapped_column(String(120))
+    job_id: Mapped[str | None] = mapped_column(String(120))
+    provider_key: Mapped[str | None] = mapped_column(String(80))
+    acknowledged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+
+
+class ServiceHeartbeat(Base):
+    __tablename__ = "v10_service_heartbeats"
+    __table_args__ = (UniqueConstraint("service_key", "instance_id", name="uq_v10_service_heartbeat_instance"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    service_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    instance_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    heartbeat_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="OK", nullable=False)
+    details_json: Mapped[dict[str, Any]] = mapped_column("details", JSONB_TYPE, default=dict, nullable=False)

@@ -465,3 +465,17 @@ Etat : implementation additive shadow-only.
 Limites restantes : SDK OpenAI non installe localement pendant l'implementation, disponibilite runtime des slugs Luna/Terra/Sol non confirmee, tarifs placeholders, aucun appel payant effectue, aucun signal reel active.
 
 Conclusion: la couche LLM peut analyser des preuves en mock/replay, mais le code deterministe reste souverain et `STATISTICAL_MODEL_VALIDATED_FOR_SIGNALS=false` demeure prudent.
+## V10 Phase 5 - Operations shadow
+
+Statut: couche operationnelle locale ajoutee, non deployee.
+
+- Scheduler court compatible cron Railway.
+- File jobs PostgreSQL avec idempotence, leases et retries.
+- Timeline prematch T-72/T-24/T-6/T-90/T-30/T-10.
+- Providers abstraits et mocks offline.
+- Freshness policy, material change detector, provider quotas/cache.
+- Experience `statistical_vs_llm_shadow_v1` avec deux bras immuables.
+- FastAPI read-only et dashboard minimal.
+- Near-close, settlement et CLV en paper-only.
+
+Securite: aucun pari reel, aucun Telegram reel, aucun appel OpenAI reel, aucun deploiement Railway. `STATISTICAL_MODEL_VALIDATED_FOR_SIGNALS=false`.

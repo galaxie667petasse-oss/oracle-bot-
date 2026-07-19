@@ -158,7 +158,7 @@ def test_statistical_migration_tables():
     with tempfile.TemporaryDirectory() as tmp:
         settings = V10Settings(DATABASE_URL=f"sqlite:///{Path(tmp, 'stats.sqlite').as_posix()}")
         up = upgrade_head(settings)
-        assert up["current_revision"] == "20260719_0003"
+        assert up["current_revision"] == "20260719_0004"
         from v10.db.session import create_engine_from_settings
 
         engine = create_engine_from_settings(settings)

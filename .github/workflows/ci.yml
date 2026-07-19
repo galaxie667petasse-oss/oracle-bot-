@@ -57,6 +57,7 @@ jobs:
           python test_v10_persistence.py
           python test_v10_statistics.py
           python test_v10_llm.py
+          python test_v10_operations.py
       - name: Replay smoke
         run: |
           python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --dry-run
@@ -71,6 +72,13 @@ jobs:
           python app.py llm evaluate --dataset tests/fixtures/llm_eval --mock --ablation
           python app.py llm benchmark-routing --dataset tests/fixtures/llm_eval --mock
           python app.py demo llm-shadow-end-to-end --mock --json
+      - name: Operational shadow smoke
+        run: |
+          python app.py scheduler tick --dry-run
+          python app.py fixtures discover --days 3 --dry-run
+          python app.py providers health
+          python app.py providers quotas
+          python app.py demo operational-shadow-end-to-end --mock --json
       - name: Historical tests
         run: |
           set -e

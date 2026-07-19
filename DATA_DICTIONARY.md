@@ -82,3 +82,21 @@ Regle temporelle : aucune feature ne peut utiliser le resultat du match cible, u
 - `v10_budget_reservations` : reservations et reconciliations budget.
 - `v10_llm_cache_entries` : cache metier par packet hash.
 - `v10_model_pricing_versions` : tarifs versionnes et modifiables.
+## V10 Operational Tables
+
+- `v10_scheduled_jobs`: file due jobs avec `job_type`, `due_at`, `status`, `idempotency_key`, `lease_owner`, `lease_expires_at`.
+- `v10_job_attempts`: historique de chaque tentative, duree, statut, erreur et metriques.
+- `v10_scheduler_runs`: tick dispatcher borne, heartbeat et raison de sortie.
+- `v10_scan_runs`: funnel de scan prematch shadow.
+- `v10_scan_targets`: prochaine action par fixture.
+- `v10_provider_quota_usage`: headers de quota reellement observes, sans secret.
+- `v10_provider_health`: latence, statut degrade et circuit provider.
+- `v10_provider_cache_entries`: cache provider separe du cache LLM.
+- `v10_material_change_events`: detection de changements materiels et decision de rescan/LLM rerun.
+- `v10_shadow_experiments`: preregistration de l'experience shadow.
+- `v10_shadow_experiment_decisions`: decisions append-only des bras `deterministic_only` et `deterministic_plus_llm`.
+- `v10_shadow_experiment_outcomes`: outcome revele apres match seulement.
+- `v10_operational_alerts`: alertes en base, aucun envoi.
+- `v10_service_heartbeats`: heartbeat web/scheduler/settlement.
+
+Toutes les dates sont timezone-aware UTC via `UTCDateTime`.

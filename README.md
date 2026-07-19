@@ -1116,3 +1116,20 @@ python app.py demo llm-shadow-end-to-end --mock --json
 ```
 
 Details : `docs/LLM_ARCHITECTURE.md`, `docs/LLM_ROUTING_STRATEGY.md`, `docs/LLM_BUDGETS.md`, `docs/LLM_EVIDENCE_POLICY.md`, `docs/LLM_SECURITY.md`, `docs/LLM_EVALUATION.md` et `docs/LLM_SHADOW_MODE.md`.
+## V10 Phase 5 - Pipeline prematch shadow
+
+La couche operationnelle V10 ajoute un scheduler court compatible Railway, une file `v10_scheduled_jobs`, des snapshots prematch, une experience `statistical_vs_llm_shadow_v1`, une API FastAPI read-only et une demonstration offline complete.
+
+Commandes principales:
+
+```powershell
+python app.py scheduler tick --dry-run
+python app.py fixtures discover --days 3 --dry-run
+python app.py scan prematch --fixture-id <uuid> --mock-llm --dry-run
+python app.py backtest compare --from 2021-01-01 --to 2025-06-01 --include-market-baseline --dry-run
+python app.py demo operational-shadow-end-to-end --mock --json
+```
+
+Securites conservees: `DRY_RUN=true`, `PAPER_BETTING_ENABLED=true`, `REAL_MONEY_ACTIONS_ENABLED=false`, `LLM_ENABLED=false`, `LLM_ALLOW_PAID_CALLS=false`, `TELEGRAM_ENABLED=false`, `TELEGRAM_DISABLE_SEND=true`, `STATISTICAL_MODEL_VALIDATED_FOR_SIGNALS=false`.
+
+Voir `docs/OPERATIONAL_PIPELINE.md`, `docs/SCHEDULER.md`, `docs/RAILWAY_DEPLOYMENT.md`, `docs/SHADOW_EXPERIMENT.md` et `docs/NEAR_CLOSE_AND_CLV.md`.

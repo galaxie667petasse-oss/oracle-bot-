@@ -58,3 +58,19 @@ Modeles compares :
 - baseline marche via no-vig quand les cotes `as_of` sont disponibles.
 
 Une amelioration observee sur sample faible reste un diagnostic. Elle ne valide aucun signal, aucun ROI et aucune publication.
+## Phase 5 - Evaluation operationnelle
+
+La commande `python app.py backtest compare --include-market-baseline --dry-run` compare sur une cohorte partagee:
+
+- uniforme 1X2;
+- frequence historique;
+- marche no-vig lorsque les cotes 1X2 existent;
+- Elo;
+- Poisson;
+- Dixon-Coles;
+- ensemble;
+- ensemble avec prior marche.
+
+Les resultats restent insuffisants pour activer des signaux: `STATISTICAL_MODEL_VALIDATED_FOR_SIGNALS=false`.
+
+L'experience `statistical_vs_llm_shadow_v1` mesure la difference entre decisions statistiques seules et statistiques + LLM sur la meme cohorte, en paper-only.

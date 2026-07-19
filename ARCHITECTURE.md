@@ -108,3 +108,21 @@ flowchart TD
 ```
 
 Luna filtre le volume avec reasoning low. Terra regroupe les roles compatibles en panels. Sol est reserve aux finalistes top K et ne modifie aucun chiffre deterministe. Le gate deterministe bloque toute ineligibilite, cote perimee, EV non positive, preuve invalide ou hard veto. Le mode par defaut reste `LLM_ENABLED=false`, `LLM_ALLOW_PAID_CALLS=false`, budgets a zero.
+## V10 Phase 5 - Operations
+
+```mermaid
+flowchart TD
+  A["Railway cron tick"] --> B["SchedulerDispatcher"]
+  B --> C["PostgreSQL due jobs"]
+  C --> D["Provider adapters and replay"]
+  D --> E["Temporal snapshots"]
+  E --> F["Statistical predictions"]
+  F --> G["Candidate engine"]
+  G --> H["Deterministic gate"]
+  H --> I["Shadow experiment: deterministic"]
+  H --> J["Shadow experiment: deterministic + LLM"]
+  J --> K["Near-close, settlement, CLV"]
+  K --> L["Read-only API and dashboard"]
+```
+
+Le web service `v10.api:app` est read-only. Le scheduler est un processus court, appele toutes les cinq minutes, qui quitte apres son tick. Aucun worker permanent ni Redis n'est requis dans cette phase.
