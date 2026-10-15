@@ -46,7 +46,7 @@ Toutes les décisions restent `ABSTAIN`, `can_influence_picks=false`. Les valeur
 ## Dépendances et validation
 
 - Socle : `requirements.txt`, CI Python 3.12, FastAPI, SQLAlchemy, Alembic, Pydantic, httpx ; dépendances V10 conservées.
-- Extension optionnelle : `requirements-v11.txt`, penaltyblog 1.6.2 ; version réellement installée et testée, pas une API simulée. La version est conservée dans les diagnostics.
+- Extension optionnelle : `requirements-v11.txt`, penaltyblog 1.6.2 ; version réellement installée et testée, pas une API simulée. La version est conservée dans les diagnostics. `requirements-v11-windows-py312.lock.txt` enregistre les versions exactes de l'environnement Python 3.12 isolé validé.
 - Tests V11 : `tests/test_v11.py` ; tests numériques, temporels, cache/quota, rejet des sorties invalides, restauration, API et bibliothèque réelle.
 - Tests V10 : cinq `test_v10_*.py`, plus 122 scripts `test_*.py` historiques.
 - Contrôles : `scripts/secret_scan.py`, `project_audit.py`, `compileall`, `git diff --check`.
