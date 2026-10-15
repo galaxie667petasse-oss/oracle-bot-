@@ -133,6 +133,7 @@ def chronological_evaluation(matches: list[HistoryMatch], train_min: int = 80, t
         folds.append({"decision_at": decision_at.isoformat(), "training_count": len(train),
                       "training_result_cutoff": max(m.result_observed_at for m in train).isoformat(),
                       "calibration_count": len(calibration), "test_ids": [m.match_id for m in test],
+                      "calibration_status": "fit_on_calibration_only" if len(labels) >= 30 and len(set(labels)) == 3 else "uncalibrated_insufficient_samples_or_classes",
                       "temperatures": {model.model_key: t for model, t in fitted}})
         start = end
     metrics = {}

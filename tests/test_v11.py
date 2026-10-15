@@ -164,6 +164,21 @@ def test_chronological_calibration_and_same_time_grouping():
     assert all(datetime.fromisoformat(f["training_result_cutoff"])<datetime.fromisoformat(f["decision_at"]) for f in r["folds"])
     assert r["roi"] is None and r["clv"] is None and not r["can_influence_picks"]
     assert temperature({"home":.5,"draw":.3,"away":.2},1)==pytest.approx({"home":.5,"draw":.3,"away":.2})
+    quotes={row["match_id"]:[Quote(source="synthetic",bookmaker="test",market="match_winner",selection=s,odds=o,
+                                  observed_at=datetime.fromisoformat(row["decision_at"]),
+                                  provider_updated_at=datetime.fromisoformat(row["decision_at"]))
+                             for s,o in (("home",2.1),("draw",3.3),("away",3.5))] for row in r["observations"]}
+    market_report=chronological_evaluation(matches,train_min=40,test_size=13,calibration_size=30,archived_quotes=quotes)
+    assert market_report["paired_market_comparisons"]
+    assert all(p["count"]==market_report["prediction_count"] for p in market_report["paired_market_comparisons"])
+    # Changing a first-fold test result cannot change that fold's forecasts.
+    first_ids=set(r["folds"][0]["test_ids"])
+    target=next(m for m in matches if m.match_id in first_ids)
+    changed=[m.model_copy(update={"home_goals":8,"away_goals":0}) if m.match_id==target.match_id else m for m in matches]
+    altered=chronological_evaluation(changed,train_min=40,test_size=13,calibration_size=30)
+    before={row["match_id"]:row["predictions"] for row in r["observations"] if row["match_id"] in first_ids}
+    after={row["match_id"]:row["predictions"] for row in altered["observations"] if row["match_id"] in first_ids}
+    assert before==after
 
 
 def test_cache_quota_no_network_and_secret_redaction(tmp_path):
