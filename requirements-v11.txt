@@ -1,0 +1,2 @@
+# Optional research models, isolated from the preserved V10 dependency set.
+penaltyblog==1.6.2
