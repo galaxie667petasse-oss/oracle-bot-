@@ -179,7 +179,15 @@ def test_cli_replay_dry_run_and_persistence_demo():
         text=True,
     )
     assert json.loads(dry)["dry_run"] is True
-    demo = subprocess.check_output([sys.executable, "app.py", "demo", "postgres-end-to-end", "--json"], text=True)
+    # Exercise the SQLite fallback regardless of the CI PostgreSQL setting.
+    # The separate CI replay smoke test exercises explicit PostgreSQL.
+    sqlite_demo_env = dict(os.environ)
+    sqlite_demo_env["DATABASE_URL"] = ""
+    demo = subprocess.check_output(
+        [sys.executable, "app.py", "demo", "postgres-end-to-end", "--json"],
+        text=True,
+        env=sqlite_demo_env,
+    )
     payload = json.loads(demo)
     assert payload["postgres_tested"] is False
     assert payload["sqlite_used"] is True
