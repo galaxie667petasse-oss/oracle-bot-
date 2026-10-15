@@ -16,7 +16,7 @@ SECRET_NAMES = {
     "GITHUB_TOKEN",
 }
 
-SKIP_DIRS = {".git", "__pycache__", "reports", "external_data", "data", "variable", ".venv", "venv"}
+SKIP_DIRS = {".git", "__pycache__", "reports", "external_data", "data", "variable", ".venv", ".venv312", "venv"}
 SKIP_FILE_PREFIXES = ("oracle_db", "oracle_export_backup")
 SKIP_FILE_SUFFIXES = (".pyc",)
 ALLOWED_PLACEHOLDERS = {
