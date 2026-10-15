@@ -1,5 +1,7 @@
 # Utilisation locale ORACLE V11
 
+État actuel et preuves : [mission 2](V11_MISSION2.md). Configuration sécurisée des API et hébergement : [guide privé](V11_PRIVATE_SETUP.md).
+
 ## Installation
 
 Depuis le checkout V11, avec Python 3.12 :
@@ -12,7 +14,7 @@ python -m venv .venv312
 
 Ne pas mélanger l'environnement avec l'ancien checkout. `requirements-v11.txt` est optionnel pour V10 ; les modèles V11 penaltyblog en ont besoin.
 
-Pour reproduire les versions exactes validées sous Windows/Python 3.12, installer `requirements-v11-windows-py312.lock.txt` à la place des deux fichiers de requirements. Ce snapshot ne constitue pas une validation de plateforme Linux.
+Installer `requirements-v11-py312.lock.txt` pour les versions exactes désormais validées sous Windows et sous Linux en CI. Le fichier `requirements-v11-windows-py312.lock.txt` antérieur est conservé.
 
 ## Import et analyse
 
@@ -93,17 +95,19 @@ Les fichiers de résultats sont les enveloppes de collecte API-Football pour des
 
 ```powershell
 python -m v11 record-result --prediction-id HASH --home 2 --away 1 --source NOM_SOURCE
+python -m v11 apply-results --file variable/resultats-apres-match.json --mapping MAPPING_FIXTURES.json
 python -m v11 paper-report --model poisson_independent_v1 --min-ev 0.05
 python -m v11 paper-report --model poisson_independent_v1 --min-ev 0.05 --closing-snapshot CLOTURE.json
 python -m v11 evaluate SNAPSHOT.json --competition ID_COMPETITION --penaltyblog
+python -m v11 evaluate SNAPSHOT.json --competition ID_COMPETITION --quotes-file ARCHIVE_COTES.json --penaltyblog
 python -m v11 backup variable/oracle-v11-copie-neuve.sqlite3
 ```
 
-`record-result` ajoute un événement, y compris une correction ultérieure explicitement sourcée. Le dernier événement est utilisé pour la simulation ; tous restent visibles. La simulation choisit la première analyse par fixture et au plus un 1N2 selon la politique fixée ; elle ne transforme jamais une abstention en pari réel. Fenêtre maximale affichée et calculée : les 500 dernières analyses. Ne pas comparer des politiques optimisées sur le même test.
+`record-result` ajoute un événement, y compris une correction ultérieure explicitement sourcée. `apply-results` lit une collecte API-Football après match et un mapping `{"fixtures":{"ID_FIXTURE_ORACLE":"api_football:ID_FOURNISSEUR"},"teams":{}}` ; il exige noms et kickoff cohérents avec les prédictions scellées et n'infère pas le score réglementaire depuis AET/PEN. Un lot rejoué est idempotent. Le dernier événement est utilisé pour la simulation ; tous restent visibles. La simulation choisit la première analyse par fixture et au plus un 1N2 selon la politique fixée ; elle ne transforme jamais une abstention en pari réel. Fenêtre maximale affichée et calculée : les 500 dernières analyses. Ne pas comparer des politiques optimisées sur le même test.
 
 La CLV utilise strictement même source, bookmaker, marché, sélection et ligne ; observation postérieure à la décision mais antérieure au kickoff, timestamp fournisseur proche de la clôture. Elle est définie comme `cote_analyse / cote_cloture - 1`. Pas de CLV calculée à partir d'une cote publiée après kickoff. Les remboursements sont exclus du dénominateur du ROI. Pas d'intervalle bootstrap avant dix jours distincts.
 
-L'évaluation chronologique est par compétition, avec embargo, timestamps de disponibilité des résultats, entraînement/calibration/test séparés, température choisie uniquement sur calibration, fixtures simultanées groupées et test non recouvrant. Baseline marché seulement si trois cotes contemporaines horodatées d'un même bookmaker sont disponibles via l'API Python `archived_quotes`. La CLI actuelle n'importe pas ce mapping d'archives de cotes. Les deltas modèle/marché portent sur les mêmes matchs. Pas d'ensemble automatique.
+L'évaluation chronologique est par compétition, avec embargo, timestamps de disponibilité des résultats, entraînement/calibration/test séparés, température choisie uniquement sur calibration, fixtures simultanées groupées et test non recouvrant. Baseline marché seulement si trois cotes contemporaines horodatées d'un même bookmaker sont disponibles via l'API Python `archived_quotes` ou `--quotes-file`. Les fixtures de l'archive de cotes doivent avoir les mêmes identifiants que les matchs historiques ; aucune jointure implicite n'est faite. Les deltas modèle/marché portent sur les mêmes matchs. Pas d'ensemble automatique.
 
 `data/Matches.csv` historique ne contient pas les timestamps de disponibilité : ne pas convertir la date du match en preuve d'observation. Le script `scripts/v11_archive_smoke.py` lit cette archive sans la modifier, teste les six modèles et marque explicitement l'absence de preuve temporelle. Ce script ne produit pas de backtest de stratégie.
 
@@ -112,15 +116,15 @@ L'évaluation chronologique est par compétition, avec embargo, timestamps de di
 Définir `INTERNAL_API_TOKEN` par un mécanisme de secrets, puis :
 
 ```powershell
-python -m uvicorn v10.api:app --host 127.0.0.1 --port 8000
+python -m uvicorn v11.api:app --host 127.0.0.1 --port 8000
 ```
 
-Ouvrir `/v11`. La page publique ne contient aucune donnée ; chaque endpoint `/api/v11/*` exige le jeton, y compris en environnement local. La clé du navigateur reste en mémoire de page, sans stockage persistant. L'import est possible par la CLI ou `POST /api/v11/snapshots` authentifié ; aucun upload n'est proposé dans l'interface actuelle. Le bouton d'analyse utilise uniquement le snapshot local ; il ne contacte aucun bookmaker ni LLM.
+Ouvrir `/v11`. La page publique ne contient aucune donnée ; chaque endpoint `/api/v11/*` exige le jeton, y compris en environnement local. La clé du navigateur reste en mémoire de page, sans stockage persistant. L'import est possible par la CLI ou `POST /api/v11/snapshots` authentifié ; aucun upload n'est proposé dans l'interface actuelle. La case penaltyblog est activée par défaut et conserve les trois baselines V10. Le bouton d'analyse utilise uniquement le snapshot local ; il ne contacte aucun bookmaker ni LLM. `v10.api:app` conserve le montage compatible pour les usages historiques ; le conteneur privé V11 utilise l'application V11 seule.
 
 Le téléphone réel n'a pas été testé sur réseau privé : seul le viewport mobile est vérifié localement. Pour un accès depuis téléphone, préparer un hébergement privé ou un tunnel privé authentifié ; ne pas exposer le port directement sur Internet. Le jeton doit être robuste et transporté via HTTPS dès qu'il sort du loopback.
 
 ## Hébergement préparé, non déployé
 
-`Dockerfile.v11` sépare le serveur web du bot historique et utilise un utilisateur non root. Persister `/app/variable` dans un volume sauvegardé ; enregistrer le jeton et les clés dans les secrets de l'hébergeur. Le PC personnel peut alors rester éteint, mais la validation de disponibilité nécessite encore un hébergeur choisi et un déploiement privé autorisé.
+`Dockerfile.v11` sépare le serveur web du bot historique et utilise un utilisateur non root. Son build, son démarrage, l'authentification, la persistance après redémarrage et la copie/restauration de ledger ont été validés en CI ; voir le bilan mission 2 pour le SHA exact. Persister `/app/variable` dans un volume sauvegardé ; enregistrer le jeton et les clés dans les secrets de l'hébergeur. Le PC personnel peut alors rester éteint, mais la validation de disponibilité nécessite encore un hébergeur choisi et un déploiement privé autorisé.
 
-Architecture proposée : un service web privé, une collecte ponctuelle CLI à quota borné, un volume SQLite et des sauvegardes chiffrées hors machine. Pas de planification ni compte d'hébergement créé. Aucune disponibilité 24/7, aucun tarif d'hébergement et aucun build Docker nouveau ne sont affirmés comme vérifiés.
+Architecture proposée : un service web privé, une collecte ponctuelle CLI à quota borné, un volume SQLite et des sauvegardes chiffrées hors machine. Pas de planification ni compte d'hébergement créé. La disponibilité 24/7 sur hébergeur et son tarif restent non vérifiés ; le build et les contrôles du conteneur sont désormais prouvés en CI.

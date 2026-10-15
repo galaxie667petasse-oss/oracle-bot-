@@ -1,5 +1,7 @@
 # ORACLE V11 — bilan vérifié du 15 octobre 2026
 
+**Archive de la mission 1, avant publication.** Pour l'état actuel, consulter [le bilan de mission 2](V11_MISSION2.md). Les SHA listés ci-dessous sont les SHA locaux originaux, conservés en sauvegarde ; la mission 2 documente leur correspondance avec les commits publics assainis.
+
 ## Verdict
 
 **Développement local fonctionnel en recherche, validation live incomplète.** Le parcours sources normalisées → historique disponible → modèles → cotes/EV → prédiction scellée → événement résultat → consultation et simulation est testé hors réseau. L'interface est vérifiée dans le navigateur, y compris en viewport téléphone. Ce résultat ne constitue ni une validation de stratégie ni un parcours live avec bookmakers.

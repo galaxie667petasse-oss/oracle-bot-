@@ -1,5 +1,7 @@
 # ORACLE : carte du projet vérifiée le 15 octobre 2026
 
+État actualisé par la mission 2 : [publication, CI réelle et limites](docs/V11_MISSION2.md).
+
 ## Identité et conservation
 
 - Dépôt distant : `galaxie667petasse-oss/oracle-bot-`.
@@ -35,7 +37,7 @@ Le nouveau ledger n'est pas un remplacement des tables V10 : il stocke les analy
 1. Collecte explicite, bornée à une requête par commande, ou import d'un `Snapshot` validé.
 2. Une photographie contient fixtures, cotes et historique de résultats avec dates de disponibilité explicites.
 3. Analyse de la date UTC : historique de la même compétition, disponible avant la décision ; frais et pré-match uniquement.
-4. Modèles V10, et penaltyblog sur demande CLI ; aucune combinaison promue automatiquement.
+4. Modèles V10 et penaltyblog via la CLI ou la case dédiée du web ; aucune combinaison promue automatiquement.
 5. Règlements/EV calculés depuis la grille ; pas d'intervalle de confiance individuel fabriqué.
 6. Scellement de la prédiction avec source, version, hash d'entraînement et snapshot d'origine.
 7. Ajout ultérieur d'événements résultats ; aucune modification de la prédiction.
@@ -51,6 +53,9 @@ Toutes les décisions restent `ABSTAIN`, `can_influence_picks=false`. Les valeur
 - Tests V10 : cinq `test_v10_*.py`, plus 122 scripts `test_*.py` historiques.
 - Contrôles : `scripts/secret_scan.py`, `project_audit.py`, `compileall`, `git diff --check`.
 - CI additive : job `v11` dans `.github/workflows/ci.yml`. Docker historique conservé ; `Dockerfile.v11` prépare un service web non root.
+- Mission 2 : `v11.api:app` sert uniquement V11 ; `v10.api:app` conserve les routes historiques. `compose.v11.yml` prépare un accès loopback, un volume nommé et un système de fichiers restreint. Les assets web externes permettent une CSP sans `unsafe-inline`.
+- `v11/results.py` applique les résultats FT via un mapping explicite fixture/équipes/kickoff, sans réécriture des prédictions. `evaluate --quotes-file` rend les comparaisons de marché accessibles par CLI.
+- Les dépendances exactes sont dans `requirements-v11-py312.lock.txt`, exécutées sous Linux en CI ; le lock Windows antérieur est conservé.
 - Preuves détaillées et limites : `docs/V11_VALIDATION.md`. Usage : `docs/V11_RUNBOOK.md`.
 
 ## Données et restauration
