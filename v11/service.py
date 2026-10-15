@@ -13,6 +13,7 @@ from v11 import VERSION
 from v11.contracts import Snapshot
 from v11.ledger import Ledger, digest
 from v11.markets import price
+from v11.sources import FR_BOOKMAKER_KEYS
 
 
 def historical_matches(snapshot: Snapshot, as_of: datetime, competition: str) -> list[HistoricalMatch]:
@@ -84,6 +85,10 @@ def analyze(ledger: Ledger, day: date, now: datetime, include_penaltyblog: bool 
                                     "uncertainty": None, "uncertainty_status": "not_estimated"})
         if not valid_quotes:
             reasons.append("no_fresh_odds")
+        present_books = {q.bookmaker for q in valid_quotes}
+        missing_books = [name for name, key in FR_BOOKMAKER_KEYS.items() if key not in present_books]
+        if model_errors:
+            reasons.append("model_errors")
         baselines = []
         books = sorted({(q.source, q.bookmaker) for q in valid_quotes})
         for source, book in books:
@@ -100,6 +105,7 @@ def analyze(ledger: Ledger, day: date, now: datetime, include_penaltyblog: bool 
                    "models": predictions, "model_errors": model_errors, "comparisons": comparisons,
                    "market_baselines": baselines, "quotes": [q.model_dump(mode="json") for q in fixture.quotes],
                    "rejected_quotes": rejected, "decision": "ABSTAIN", "reasons": reasons,
+                   "missing_bookmakers": missing_books,
                    "can_influence_picks": False}
         key = ledger.add_prediction(payload)
         results.append({"id": key, **payload})

@@ -40,12 +40,16 @@ def main(argv=None):
     result.add_argument("--away", type=int, required=True)
     result.add_argument("--source", required=True)
     result.add_argument("--status", choices=["FT", "CANC", "PST", "AET"], default="FT")
+    apply = sub.add_parser("apply-results")
+    apply.add_argument("--file", required=True, type=Path)
+    apply.add_argument("--mapping", required=True, type=Path)
     backup = sub.add_parser("backup")
     backup.add_argument("target", type=Path)
     evaluation = sub.add_parser("evaluate")
     evaluation.add_argument("file", type=Path)
     evaluation.add_argument("--competition", required=True)
     evaluation.add_argument("--penaltyblog", action="store_true")
+    evaluation.add_argument("--quotes-file", type=Path)
     collect = sub.add_parser("collect")
     collect.add_argument("--provider", choices=["api_football", "the_odds_api"], required=True)
     collect.add_argument("--day", type=date.fromisoformat)
@@ -70,8 +74,14 @@ def main(argv=None):
                       "history_count": len(snap.history), "provenance": snap.provenance}
         elif args.command == "evaluate":
             snap = Snapshot.model_validate_json(args.file.read_text(encoding="utf-8"))
+            archived = None
+            if args.quotes_file:
+                quotes = Snapshot.model_validate_json(args.quotes_file.read_text(encoding="utf-8"))
+                if quotes.provenance != snap.provenance:
+                    raise ValueError("archive provenance mismatch")
+                archived = {f.fixture_id: f.quotes for f in quotes.fixtures}
             report = chronological_evaluation([m for m in snap.history if m.competition == args.competition],
-                                              include_penaltyblog=args.penaltyblog)
+                                              include_penaltyblog=args.penaltyblog, archived_quotes=archived)
             report["provenance"] = snap.provenance
         elif args.command == "collect":
             from v10.config import V10Settings
@@ -137,6 +147,11 @@ def main(argv=None):
                 report["history_window_limit"] = 500
             elif args.command == "record-result":
                 report = {"outcome_id": ledger.add_outcome(args.prediction_id, args.home, args.away, utc_now(), args.source, args.status)}
+            elif args.command == "apply-results":
+                from v11.results import apply_results
+                mapping = json.loads(args.mapping.read_text(encoding="utf-8"))
+                report = apply_results(ledger, json.loads(args.file.read_text(encoding="utf-8")),
+                                       mapping["fixtures"], utc_now(), mapping.get("teams"))
             else:
                 report = ledger.backup(args.target)
         print(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False))

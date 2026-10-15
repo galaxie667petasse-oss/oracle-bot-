@@ -112,6 +112,11 @@ class Ledger:
             return [{"id": key, **json.loads(payload), "outcomes": [json.loads(r[0]) for r in db.execute(
                 "SELECT payload FROM outcomes WHERE prediction_id=? ORDER BY rowid", (key,))]} for key, payload in rows]
 
+    def predictions_for_fixture(self, fixture_id: str) -> list[dict]:
+        with self.connect() as db:
+            rows = db.execute("SELECT id,payload FROM predictions WHERE fixture_id=? ORDER BY rowid", (fixture_id,)).fetchall()
+        return [{"id": key, **json.loads(payload)} for key, payload in rows]
+
     def verify(self) -> dict:
         with self.connect() as db:
             integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
