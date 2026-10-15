@@ -25,6 +25,10 @@ from v10.db.session import create_engine_from_settings, create_session_factory, 
 
 app = FastAPI(title="Oracle Football Bot V10", version="10.5-shadow")
 
+# Additive V11 routes; legacy routes and authentication remain compatible.
+from v11.api import install as install_v11
+install_v11(app)
+
 
 def _settings():
     return load_settings()
