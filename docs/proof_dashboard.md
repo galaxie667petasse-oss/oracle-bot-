@@ -31,3 +31,34 @@ Le proof dashboard peut afficher les signaux V9.4 quand les rapports existent:
 - subscription/quota status.
 
 Ces sections ne changent pas la politique de promotion. Elles aident seulement a comprendre pourquoi la preuve reste insuffisante.
+
+## V9.8 Completed cycle
+
+Le proof dashboard affiche maintenant dans la section shadow:
+
+- `completed_cycles`;
+- `pending_closing`;
+- `pending_results`;
+- `profit_units_total`;
+- `result_coverage`;
+- `clv_coverage`;
+- `first_complete_cycle`.
+
+`first_complete_cycle=true` signifie qu'au moins une observation possede une closing/near-close et un resultat final. Ce signal est utile pour verifier le workflow, mais il ne valide pas le modele.
+
+Conclusion attendue avec un seul cycle Ghana - Panama: preuve insuffisante, aucune activation, aucune mise.
+
+## V10 proof fields
+
+Les futures integrations dashboard doivent afficher:
+
+- `data_quality_status`;
+- `candidate_count`;
+- `rejected_count`;
+- `llm_calls_used`;
+- `completed_cycles`;
+- `clv_odds_pct`;
+- `clv_probability_points`;
+- `paper_only=true`.
+
+Ces champs sont informatifs. Le dashboard ne doit pas transformer une demo ou un faible sample en validation.

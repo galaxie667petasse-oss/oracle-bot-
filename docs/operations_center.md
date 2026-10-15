@@ -239,3 +239,29 @@ python oracle_ops.py --telegram-near-close --ledger reports/shadow_ledger.csv --
 ```
 
 La premiere commande reste en dry-run. La deuxieme modifie le ledger seulement apres `--apply`. La troisieme cree une preview Telegram near-close et n'envoie rien sans `--allow-send`.
+
+## V9.8 Result settlement
+
+Commandes ajoutees:
+
+```bash
+python oracle_ops.py --result-apply --ledger reports/shadow_ledger.csv --results-file reports/api_football_results_2026-06-17.csv --shadow-id sh_20260617210447_2ee081d9
+python oracle_ops.py --result-apply --ledger reports/shadow_ledger.csv --results-file reports/api_football_results_2026-06-17.csv --shadow-id sh_20260617210447_2ee081d9 --apply
+python oracle_ops.py --telegram-result --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9
+```
+
+La premiere commande est un dry-run. La deuxieme applique le resultat au ledger seulement avec `--apply`. La troisieme genere une preview Telegram result reporter et n'envoie rien sans `--allow-send`.
+
+Le centre ops reste local: aucun reseau, aucune modification de `data/`, aucune mise, aucun pick automatique.
+
+## V10 operations
+
+La CLI additive V10 ne remplace pas `oracle_ops.py`; elle ajoute des commandes locales pour auditer la configuration et rejouer une demo offline:
+
+```bash
+python app.py doctor
+python app.py demo end-to-end
+python app.py demo end-to-end --json
+```
+
+Ces commandes ne modifient pas le ledger, n'appellent aucun provider et n'envoient aucun Telegram. Elles servent a verifier la future architecture hybride avant migration des runners historiques.

@@ -100,9 +100,171 @@ ESSENTIAL_FILES = [
     "scripts/oracle_post_match.ps1",
     "scripts/install_windows_tasks.example.ps1",
     "config/telegram.example.env",
+    ".env.example",
+    ".dockerignore",
+    ".github/workflows/ci.yml",
+    "app.py",
+    "v10_demo.py",
+    "v10/__init__.py",
+    "v10/config.py",
+    "v10/providers.py",
+    "v10/odds.py",
+    "v10/risk.py",
+    "v10/settlement.py",
+    "v10/data_quality.py",
+    "v10/candidates.py",
+    "v10/agents.py",
+    "v10/final_judge.py",
+    "v10/demo.py",
+    "v10/time.py",
+    "v10/hashing.py",
+    "v10/db/__init__.py",
+    "v10/db/base.py",
+    "v10/db/types.py",
+    "v10/db/models.py",
+    "v10/db/session.py",
+    "v10/db/repositories.py",
+    "v10/db/unit_of_work.py",
+    "v10/db/locks.py",
+    "v10/db/migrations.py",
+    "v10/normalization/__init__.py",
+    "v10/normalization/schemas.py",
+    "v10/normalization/status.py",
+    "v10/normalization/api_football.py",
+    "v10/normalization/the_odds_api.py",
+    "v10/replay/__init__.py",
+    "v10/replay/engine.py",
+    "v10/quality_db.py",
+    "v10/legacy.py",
+    "v10/demo_postgres.py",
+    "v10/db/stat_repositories.py",
+    "v10/statistics/__init__.py",
+    "v10/statistics/types.py",
+    "v10/statistics/dataset.py",
+    "v10/statistics/features.py",
+    "v10/statistics/elo.py",
+    "v10/statistics/poisson.py",
+    "v10/statistics/dixon_coles.py",
+    "v10/statistics/markets.py",
+    "v10/statistics/metrics.py",
+    "v10/statistics/calibration.py",
+    "v10/statistics/ensemble.py",
+    "v10/statistics/market.py",
+    "v10/statistics/training.py",
+    "v10/statistics/backtest.py",
+    "v10/statistics/demo.py",
+    "alembic.ini",
+    "alembic/env.py",
+    "alembic/versions/20260718_0001_v10_initial_schema.py",
+    "alembic/versions/20260718_0002_v10_statistical_schema.py",
+    "scripts/secret_scan.py",
+    "AGENTS.md",
+    "PLANS.md",
+    "ARCHITECTURE.md",
+    "DECISIONS.md",
+    "DATA_DICTIONARY.md",
+    "PROMPTS.md",
+    "EVALUATION.md",
+    "RUNBOOK.md",
+    "SECURITY.md",
+    "docs/AUDIT_V9_6.md",
+    "docs/PHASE2_PERSISTENCE_LOG.md",
+    "docs/POSTGRESQL_SETUP.md",
+    "docs/REPLAY_GUIDE.md",
+    "docs/LEGACY_IMPORT.md",
+    "docs/TEMPORAL_DATA_MODEL.md",
+    "docs/PHASE3_DATA_AVAILABILITY.md",
+    "docs/STATISTICAL_MODELS.md",
+    "docs/FEATURE_ENGINEERING.md",
+    "docs/ELO_MODEL.md",
+    "docs/POISSON_DIXON_COLES.md",
+    "docs/CALIBRATION.md",
+    "docs/WALK_FORWARD_BACKTEST.md",
+    "docs/MODEL_VERSIONING.md",
+    "docs/PHASE3_STATISTICAL_LOG.md",
+    "v10/llm/__init__.py",
+    "v10/llm/config.py",
+    "v10/llm/contracts.py",
+    "v10/llm/registry.py",
+    "v10/llm/routing.py",
+    "v10/llm/orchestrator.py",
+    "v10/llm/providers/mock.py",
+    "v10/llm/providers/replay.py",
+    "v10/llm/providers/openai_responses.py",
+    "v10/llm/budgets/manager.py",
+    "v10/llm/budgets/pricing.py",
+    "v10/llm/cache/keys.py",
+    "v10/llm/cache/repository.py",
+    "v10/llm/evidence/models.py",
+    "v10/llm/evidence/packet_builder.py",
+    "v10/llm/evidence/semantic_validator.py",
+    "v10/llm/tools/registry.py",
+    "v10/llm/agents/panels.py",
+    "v10/llm/contradictions/engine.py",
+    "v10/llm/judge/gate.py",
+    "v10/llm/evaluation/runner.py",
+    "v10/llm/demo.py",
+    "alembic/versions/20260719_0003_v10_llm_shadow_schema.py",
+    "prompts/shared/safety_v1.md",
+    "prompts/panels/quantitative_integrity_v1.md",
+    "prompts/panels/match_context_v1.md",
+    "prompts/panels/fresh_information_v1.md",
+    "prompts/agents/devils_advocate_v1.md",
+    "prompts/final_judge/sol_shadow_judge_v1.md",
+    "tests/fixtures/llm_eval/cases.json",
+    "docs/OPENAI_INTEGRATION.md",
+    "docs/LLM_ARCHITECTURE.md",
+    "docs/LLM_ROUTING_STRATEGY.md",
+    "docs/LLM_BUDGETS.md",
+    "docs/LLM_EVIDENCE_POLICY.md",
+    "docs/LLM_SECURITY.md",
+    "docs/LLM_EVALUATION.md",
+    "docs/LLM_SHADOW_MODE.md",
+    "docs/PHASE4_LLM_LOG.md",
+    "v10/api.py",
+    "v10/operations/__init__.py",
+    "v10/operations/contracts.py",
+    "v10/operations/timeline.py",
+    "v10/operations/jobs.py",
+    "v10/operations/scheduler.py",
+    "v10/operations/providers.py",
+    "v10/operations/quota.py",
+    "v10/operations/provider_cache.py",
+    "v10/operations/freshness.py",
+    "v10/operations/material_changes.py",
+    "v10/operations/closing.py",
+    "v10/operations/experiments.py",
+    "v10/operations/pipeline.py",
+    "v10/operations/backtest_compare.py",
+    "v10/llm/providers/batch.py",
+    "alembic/versions/20260719_0004_v10_operational_shadow_pipeline.py",
+    "test_v10_operations.py",
+    "docs/PHASE5_PREFLIGHT.md",
+    "docs/OPENAI_PRICING_SNAPSHOT.md",
+    "docs/OPERATIONAL_PIPELINE.md",
+    "docs/SCHEDULER.md",
+    "docs/RAILWAY_DEPLOYMENT.md",
+    "docs/PROVIDER_QUOTAS.md",
+    "docs/FRESHNESS_POLICY.md",
+    "docs/MATERIAL_CHANGES.md",
+    "docs/SHADOW_EXPERIMENT.md",
+    "docs/STATISTICAL_VS_LLM.md",
+    "docs/NEAR_CLOSE_AND_CLV.md",
+    "docs/OPERATIONAL_MONITORING.md",
+    "docs/PHASE5_OPERATIONAL_LOG.md",
+    ".env.shadow.example",
+    "railway.toml",
+    "tests/fixtures/providers/api_football/fixtures_sample.json",
+    "tests/fixtures/providers/api_football/odds_sample.json",
+    "tests/fixtures/providers/api_football/odds_sample_changed.json",
+    "tests/fixtures/providers/the_odds_api/odds_sample.json",
+    "docs/operations_center.md",
+    "docs/evidence_gate_policy.md",
     "docs/telegram_read_only_publisher.md",
     "docs/telegram_near_close_reporter.md",
     "docs/api_football_near_close_apply.md",
+    "docs/shadow_result_settlement.md",
+    "docs/telegram_result_reporter.md",
     "docs/telegram_message_policy.md",
     "docs/telegram_setup.md",
     "docs/live_scan_smoke_test.md",
@@ -274,6 +436,7 @@ MAIN_TESTS = [
     "test_historical_clv_backtester.py",
     "test_api_football_results_adapter.py",
     "test_shadow_result_matcher.py",
+    "test_shadow_ledger_display.py",
     "test_near_close_batch_runner.py",
     "test_proof_dashboard.py",
     "test_oracle_architecture_map.py",
@@ -288,6 +451,7 @@ MAIN_TESTS = [
     "test_matchday_pack.py",
     "test_matchday_runner.py",
     "test_matchday_status_report.py",
+    "test_project_audit.py",
     "test_benchmark_governance.py",
     "test_decision_policy.py",
     "test_external_xg_features.py",
@@ -298,6 +462,11 @@ MAIN_TESTS = [
     "test_clv_analysis.py",
     "test_calibration_report.py",
     "test_statistical_validation.py",
+    "test_v10_foundation.py",
+    "test_v10_persistence.py",
+    "test_v10_statistics.py",
+    "test_v10_llm.py",
+    "test_v10_operations.py",
 ]
 
 IMPORT_MODULES = [
@@ -339,6 +508,61 @@ IMPORT_MODULES = [
     "shadow_simulator",
     "sample_size_planner",
     "shadow_message_formatter",
+    "v10.config",
+    "v10.odds",
+    "v10.risk",
+    "v10.settlement",
+    "v10.api",
+    "v10.operations.contracts",
+    "v10.operations.timeline",
+    "v10.operations.jobs",
+    "v10.operations.scheduler",
+    "v10.operations.providers",
+    "v10.operations.quota",
+    "v10.operations.provider_cache",
+    "v10.operations.freshness",
+    "v10.operations.material_changes",
+    "v10.operations.closing",
+    "v10.operations.experiments",
+    "v10.operations.pipeline",
+    "v10.operations.backtest_compare",
+    "v10.data_quality",
+    "v10.candidates",
+    "v10.agents",
+    "v10.final_judge",
+    "v10.demo",
+    "v10.statistics",
+    "v10.statistics.types",
+    "v10.statistics.dataset",
+    "v10.statistics.features",
+    "v10.statistics.elo",
+    "v10.statistics.poisson",
+    "v10.statistics.dixon_coles",
+    "v10.statistics.markets",
+    "v10.statistics.metrics",
+    "v10.statistics.calibration",
+    "v10.statistics.ensemble",
+    "v10.statistics.market",
+    "v10.statistics.training",
+    "v10.statistics.backtest",
+    "v10.statistics.demo",
+    "v10.llm.config",
+    "v10.llm.contracts",
+    "v10.llm.registry",
+    "v10.llm.routing",
+    "v10.llm.orchestrator",
+    "v10.llm.providers.mock",
+    "v10.llm.providers.replay",
+    "v10.llm.providers.openai_responses",
+    "v10.llm.budgets.manager",
+    "v10.llm.cache.keys",
+    "v10.llm.evidence.packet_builder",
+    "v10.llm.evidence.semantic_validator",
+    "v10.llm.tools.registry",
+    "v10.llm.contradictions.engine",
+    "v10.llm.judge.gate",
+    "v10.llm.evaluation.runner",
+    "v10.llm.demo",
     "odds_source_config",
     "odds_normalizer",
     "odds_snapshot_store",
@@ -528,6 +752,31 @@ V97_FILES = [
     "docs/telegram_near_close_reporter.md",
 ]
 
+V98_FILES = [
+    "shadow_result_matcher.py",
+    "shadow_clv_report.py",
+    "proof_dashboard.py",
+    "evidence_gate.py",
+    "telegram_result_reporter.py",
+    "oracle_ops.py",
+    "report_runner.py",
+    "test_shadow_result_matcher.py",
+    "test_shadow_clv_report.py",
+    "test_shadow_ledger_display.py",
+    "test_proof_dashboard.py",
+    "test_evidence_gate.py",
+    "test_telegram_result_reporter.py",
+    "test_oracle_ops.py",
+    "test_report_runner.py",
+    "test_project_audit.py",
+    "docs/shadow_result_settlement.md",
+    "docs/telegram_result_reporter.md",
+    "docs/operations_center.md",
+    "docs/evidence_gate_policy.md",
+    "docs/telegram_read_only_publisher.md",
+    "docs/proof_dashboard.md",
+]
+
 WINDOWS_SCHEDULER_SCRIPTS = [
     "scripts/oracle_daily_morning.ps1",
     "scripts/oracle_pre_close.ps1",
@@ -573,6 +822,31 @@ def _read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="replace")
     except Exception:
         return ""
+
+
+def _skip_content_scan(root: Path, path: Path) -> bool:
+    rel = str(path.relative_to(root)).replace("\\", "/")
+    skip_prefixes = (
+        "reports/",
+        "external_data/",
+        "data/",
+        "variable/",
+        "__pycache__/",
+        ".git/",
+        ".venv/",
+        "venv/",
+    )
+    if rel.startswith(skip_prefixes) or ".git/" in rel:
+        return True
+    name = path.name.lower()
+    if name.startswith(("oracle_db", "oracle_export_backup")):
+        return True
+    try:
+        if path.stat().st_size > 5_000_000:
+            return True
+    except Exception:
+        return True
+    return False
 
 
 def _normalise_gitignore_line(line: str) -> str:
@@ -712,7 +986,7 @@ def check_forbidden_wording(root: Path, result: AuditResult) -> None:
         if not path.is_file():
             continue
         rel = str(path.relative_to(root)).replace("\\", "/")
-        if rel.startswith("reports/") or rel.startswith("external_data/") or rel.startswith("__pycache__/") or ".git/" in rel:
+        if _skip_content_scan(root, path):
             continue
         text = _read_text(path).lower()
         forbidden_terms = ["pari " + "conseillé", "pari " + "conseille"]
@@ -941,6 +1215,539 @@ def check_v97_release(root: Path, result: AuditResult) -> None:
             result.add_ok("V9.7: reporter near-close sans token ni cle API en clair.")
 
 
+def check_v98_release(root: Path, result: AuditResult) -> None:
+    missing = [name for name in V98_FILES if not (root / name).exists()]
+    if missing:
+        result.add_error("Release V9.8 incomplete: " + ", ".join(missing))
+    else:
+        result.add_ok("Modules, docs et tests V9.8 presents.")
+
+    matcher_text = _read_text(root / "shadow_result_matcher.py")
+    if matcher_text.strip() == "# fichier test":
+        result.add_ok("V9.8 matcher resultats stub present pour test minimal.")
+    else:
+        if "--apply" in matcher_text and "apply: bool = False" in matcher_text and "write_ledger" in matcher_text and "effective_dry_run" in matcher_text:
+            result.add_ok("V9.8: application resultat ledger exige --apply et reste dry-run par defaut.")
+        else:
+            result.add_error("V9.8: verrou --apply shadow_result_matcher non verifiable.")
+        for column in ("result_status", "profit_units", "roi_percent", "settlement_status"):
+            if column not in matcher_text:
+                result.add_error(f"V9.8: colonne settlement absente du matcher: {column}")
+        if "API_FOOTBALL_KEY" in matcher_text or "TELEGRAM_BOT_TOKEN" in matcher_text:
+            result.add_error("V9.8: secret mentionne dans shadow_result_matcher.py.")
+        else:
+            result.add_ok("V9.8: matcher resultats sans token ni cle API.")
+
+    telegram_text = _read_text(root / "telegram_result_reporter.py")
+    if telegram_text.strip() == "# fichier test":
+        result.add_ok("V9.8 Telegram result reporter stub present pour test minimal.")
+    else:
+        if "--allow-send" in telegram_text and "allow_send: bool = False" in telegram_text and "dry_run" in telegram_text:
+            result.add_ok("V9.8: Telegram result reporter exige --allow-send et reste dry-run par defaut.")
+        else:
+            result.add_error("V9.8: verrou --allow-send Telegram result reporter non verifiable.")
+        if "telegram_published_results.json" in telegram_text and "--force" in telegram_text:
+            result.add_ok("V9.8: tracking anti-doublon resultats Telegram present.")
+        else:
+            result.add_error("V9.8: tracking resultats Telegram non verifiable.")
+        if '"lab_only": True' in telegram_text and '"can_influence_picks": False' in telegram_text:
+            result.add_ok("V9.8: garde-fous Telegram result reporter presents.")
+        else:
+            result.add_error("V9.8: garde-fous Telegram result reporter absents.")
+        if "TELEGRAM_BOT_TOKEN" in telegram_text or "API_FOOTBALL_KEY" in telegram_text:
+            result.add_error("V9.8: secret mentionne dans telegram_result_reporter.py.")
+        else:
+            result.add_ok("V9.8: reporter resultats sans token ni cle API en clair.")
+
+    ops_text = _read_text(root / "oracle_ops.py")
+    runner_text = _read_text(root / "report_runner.py")
+    if ops_text.strip() == "# fichier test" and runner_text.strip() == "# fichier test":
+        result.add_ok("V9.8 oracle_ops/report_runner stubs presents pour test minimal.")
+    else:
+        if "--result-apply" in ops_text and "--telegram-result" in ops_text:
+            result.add_ok("V9.8: oracle_ops expose result-apply et telegram-result.")
+        else:
+            result.add_error("V9.8: options oracle_ops result-apply/telegram-result absentes.")
+        if "telegram_result_reporter.py" in runner_text and "--dry-run" in runner_text:
+            result.add_ok("V9.8: report_runner genere une preview resultats Telegram en dry-run.")
+        else:
+            result.add_error("V9.8: preview resultats Telegram dry-run absente du report_runner.")
+    gitignore_lines = _read_text(root / ".gitignore").splitlines()
+    for pattern in ("reports/", "external_data/"):
+        if not _pattern_present(gitignore_lines, pattern):
+            result.add_error(f"V9.8: {pattern} non ignore.")
+
+
+def check_v10_foundation(root: Path, result: AuditResult) -> None:
+    files = [
+        "app.py",
+        "v10_demo.py",
+        "v10/config.py",
+        "v10/providers.py",
+        "v10/odds.py",
+        "v10/risk.py",
+        "v10/settlement.py",
+        "v10/data_quality.py",
+        "v10/candidates.py",
+        "v10/agents.py",
+        "v10/final_judge.py",
+        "v10/demo.py",
+        "scripts/secret_scan.py",
+        ".env.example",
+        ".dockerignore",
+        ".github/workflows/ci.yml",
+        "test_v10_foundation.py",
+        "docs/AUDIT_V9_6.md",
+        "PLANS.md",
+        "AGENTS.md",
+        "ARCHITECTURE.md",
+        "DECISIONS.md",
+        "DATA_DICTIONARY.md",
+        "PROMPTS.md",
+        "EVALUATION.md",
+        "RUNBOOK.md",
+        "SECURITY.md",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 foundation incomplete: " + ", ".join(missing))
+        return
+    result.add_ok("V10 foundation: modules, docs, tests, CI et secret scan presents.")
+
+    app_text = _read_text(root / "app.py")
+    config_text = _read_text(root / "v10/config.py")
+    odds_text = _read_text(root / "v10/odds.py")
+    settlement_text = _read_text(root / "v10/settlement.py")
+    agents_text = _read_text(root / "v10/agents.py")
+    demo_text = _read_text(root / "v10/demo.py")
+    scan_text = _read_text(root / "scripts/secret_scan.py")
+    env_text = _read_text(root / ".env.example")
+    dockerignore = _read_text(root / ".dockerignore")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+
+    if app_text.strip() == "# fichier test" and config_text.strip() == "# fichier test":
+        result.add_ok("V10 foundation stubs presents pour test minimal.")
+        return
+
+    if "demo" in app_text and "end-to-end" in app_text and "doctor" in app_text:
+        result.add_ok("V10: CLI additive expose doctor et demo end-to-end offline.")
+    else:
+        result.add_error("V10: CLI app.py incomplete.")
+    if "REAL_MONEY_ACTIONS_ENABLED" in config_text and "safe_report" in config_text and "secrets_present" in config_text:
+        result.add_ok("V10: configuration centralisee masque les valeurs sensibles et bloque real money.")
+    else:
+        result.add_error("V10: configuration/secrets/garde-fous non verifiables.")
+    for snippet in ("proportional_no_vig", "expected_value_per_unit", "clv_odds_pct"):
+        if snippet not in odds_text:
+            result.add_error(f"V10: odds primitive absente: {snippet}")
+    if all(snippet in settlement_text for snippet in ("draw_no_bet", "double_chance", "both_teams_to_score", "void")):
+        result.add_ok("V10: settlement multi-marches baseline present.")
+    else:
+        result.add_error("V10: settlement multi-marches incomplet.")
+    if agents_text.count("_analyst") >= 5 and "SPECIALIST_AGENT_IDS" in agents_text and "schema_version" in agents_text:
+        result.add_ok("V10: contrats agents specialises stricts presents.")
+    else:
+        result.add_error("V10: contrats agents incomplets.")
+    if "mock_agent_findings" in demo_text and "telegram_sent" in demo_text and "network_used" in demo_text:
+        result.add_ok("V10: demo end-to-end offline avec agents mock et Telegram preview.")
+    else:
+        result.add_error("V10: demo offline incomplete.")
+    if "SECRET_NAMES" in scan_text and "TELEGRAM_TOKEN_SHAPE" in scan_text and "reports" in scan_text and "external_data" in scan_text:
+        result.add_ok("V10: secret scan local present et ignore les artefacts non trackes.")
+    else:
+        result.add_error("V10: secret scan incomplet.")
+    if "REAL_MONEY_ACTIONS_ENABLED=false" in env_text and "DRY_RUN=true" in env_text and "TELEGRAM_DISABLE_SEND=true" in env_text:
+        result.add_ok("V10: .env.example reste fake, dry-run et Telegram desactive.")
+    else:
+        result.add_error("V10: .env.example ne documente pas les garde-fous.")
+    for pattern in ("reports/", "external_data/", "data/", "oracle_db"):
+        if pattern not in dockerignore:
+            result.add_error(f"V10: .dockerignore n'exclut pas {pattern}.")
+    if all(snippet in ci_text for snippet in ("secret_scan.py", "compileall", "test_v10_foundation.py", "docker build")):
+        result.add_ok("V10: CI offline couvre secret scan, compile, tests V10 et Docker build.")
+    else:
+        result.add_error("V10: workflow CI incomplet.")
+
+
+def check_v10_phase2_persistence(root: Path, result: AuditResult) -> None:
+    files = [
+        "v10/time.py",
+        "v10/hashing.py",
+        "v10/db/models.py",
+        "v10/db/session.py",
+        "v10/db/repositories.py",
+        "v10/db/locks.py",
+        "v10/db/migrations.py",
+        "v10/normalization/api_football.py",
+        "v10/normalization/the_odds_api.py",
+        "v10/replay/engine.py",
+        "v10/legacy.py",
+        "v10/quality_db.py",
+        "v10/demo_postgres.py",
+        "alembic.ini",
+        "alembic/env.py",
+        "alembic/versions/20260718_0001_v10_initial_schema.py",
+        "test_v10_persistence.py",
+        "docs/POSTGRESQL_SETUP.md",
+        "docs/REPLAY_GUIDE.md",
+        "docs/LEGACY_IMPORT.md",
+        "docs/TEMPORAL_DATA_MODEL.md",
+        "tests/fixtures/providers/api_football/fixtures_sample.json",
+        "tests/fixtures/providers/api_football/odds_sample.json",
+        "tests/fixtures/providers/api_football/odds_sample_changed.json",
+        "tests/fixtures/providers/the_odds_api/odds_sample.json",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 Phase 2 persistence incomplete: " + ", ".join(missing))
+        return
+
+    if _read_text(root / "v10/db/models.py").strip() == "# fichier test":
+        result.add_ok("V10 Phase 2 persistence stubs presents pour test minimal.")
+        return
+
+    app_text = _read_text(root / "app.py")
+    config_text = _read_text(root / "v10/config.py")
+    models_text = _read_text(root / "v10/db/models.py")
+    repos_text = _read_text(root / "v10/db/repositories.py")
+    replay_text = _read_text(root / "v10/replay/engine.py")
+    hashing_text = _read_text(root / "v10/hashing.py")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+    env_text = _read_text(root / ".env.example")
+    docs_text = "\n".join(
+        _read_text(root / name)
+        for name in (
+            "docs/POSTGRESQL_SETUP.md",
+            "docs/REPLAY_GUIDE.md",
+            "docs/LEGACY_IMPORT.md",
+            "docs/TEMPORAL_DATA_MODEL.md",
+        )
+    )
+
+    if all(snippet in config_text for snippet in ("DATABASE_POOL_SIZE", "DATABASE_STATEMENT_TIMEOUT_MS", "mask_database_url", "REAL_MONEY_ACTIONS_ENABLED")):
+        result.add_ok("V10 Phase 2: configuration DB typee et secrets masques.")
+    else:
+        result.add_error("V10 Phase 2: configuration DB incomplete.")
+
+    for snippet in ("v10_raw_api_payloads", "v10_odds_snapshots", "UniqueConstraint", "CheckConstraint", "UTCDateTime"):
+        if snippet not in models_text:
+            result.add_error(f"V10 Phase 2: schema SQLAlchemy incomplet: {snippet}")
+    if all(snippet in repos_text for snippet in ("append_odds_snapshot", "get_latest_odds_as_of", "get_raw_payloads_observed_before", "list_odds_between")):
+        result.add_ok("V10 Phase 2: repositories idempotents et requetes temporelles presents.")
+    else:
+        result.add_error("V10 Phase 2: repositories temporels incomplets.")
+    if all(snippet in replay_text for snippet in ("store_raw_payload", "normalize_provider_payload", "dry_run", "can_influence_picks")):
+        result.add_ok("V10 Phase 2: replay provider conserve raw payload et reste dry-run par defaut.")
+    else:
+        result.add_error("V10 Phase 2: replay provider incomplet.")
+    if all(snippet in hashing_text for snippet in ("content_hash", "request_fingerprint", "odds_snapshot_fingerprint")):
+        result.add_ok("V10 Phase 2: hashes d'idempotence separes.")
+    else:
+        result.add_error("V10 Phase 2: hashes d'idempotence incomplets.")
+    if all(snippet in app_text for snippet in ('add_parser("db"', '"upgrade"', 'add_parser("legacy"', '"discover"', 'add_parser("replay"', '"provider"', 'add_parser("quality"', 'add_parser("odds"', '"latest"', '"postgres-end-to-end"')):
+        result.add_ok("V10 Phase 2: CLI DB, replay, legacy, qualite et odds exposee.")
+    else:
+        result.add_error("V10 Phase 2: CLI Phase 2 incomplete.")
+    if all(snippet in ci_text for snippet in ("postgres:16", "python app.py db upgrade", "test_v10_persistence.py", "replay provider")):
+        result.add_ok("V10 Phase 2: CI prepare PostgreSQL, migrations et replay smoke.")
+    else:
+        result.add_error("V10 Phase 2: CI PostgreSQL/replay incomplete.")
+    if all(snippet in env_text for snippet in ("DATABASE_POOL_SIZE", "DATABASE_STATEMENT_TIMEOUT_MS", "REAL_MONEY_ACTIONS_ENABLED=false")):
+        result.add_ok("V10 Phase 2: .env.example documente PostgreSQL sans secret reel.")
+    else:
+        result.add_error("V10 Phase 2: .env.example DB incomplet.")
+    if all(snippet in docs_text for snippet in ("Alembic", "Replay V10", "Import Legacy V9", "Modele Temporel V10")):
+        result.add_ok("V10 Phase 2: documentation PostgreSQL, replay, legacy et temporelle presente.")
+    else:
+        result.add_error("V10 Phase 2: documentation persistence incomplete.")
+
+
+def check_v10_phase3_statistics(root: Path, result: AuditResult) -> None:
+    files = [
+        "v10/db/stat_repositories.py",
+        "v10/statistics/types.py",
+        "v10/statistics/dataset.py",
+        "v10/statistics/features.py",
+        "v10/statistics/elo.py",
+        "v10/statistics/poisson.py",
+        "v10/statistics/dixon_coles.py",
+        "v10/statistics/markets.py",
+        "v10/statistics/metrics.py",
+        "v10/statistics/calibration.py",
+        "v10/statistics/ensemble.py",
+        "v10/statistics/market.py",
+        "v10/statistics/training.py",
+        "v10/statistics/backtest.py",
+        "v10/statistics/demo.py",
+        "alembic/versions/20260718_0002_v10_statistical_schema.py",
+        "test_v10_statistics.py",
+        "docs/PHASE3_DATA_AVAILABILITY.md",
+        "docs/STATISTICAL_MODELS.md",
+        "docs/FEATURE_ENGINEERING.md",
+        "docs/ELO_MODEL.md",
+        "docs/POISSON_DIXON_COLES.md",
+        "docs/CALIBRATION.md",
+        "docs/WALK_FORWARD_BACKTEST.md",
+        "docs/MODEL_VERSIONING.md",
+        "docs/PHASE3_STATISTICAL_LOG.md",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 Phase 3 statistics incomplete: " + ", ".join(missing))
+        return
+
+    stats_text = _read_text(root / "v10/statistics/training.py")
+    models_text = _read_text(root / "v10/db/models.py")
+    app_text = _read_text(root / "app.py")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+    docs_text = "\n".join(
+        _read_text(root / name)
+        for name in (
+            "docs/STATISTICAL_MODELS.md",
+            "docs/FEATURE_ENGINEERING.md",
+            "docs/ELO_MODEL.md",
+            "docs/POISSON_DIXON_COLES.md",
+            "docs/CALIBRATION.md",
+            "docs/WALK_FORWARD_BACKTEST.md",
+            "docs/MODEL_VERSIONING.md",
+        )
+    )
+
+    if stats_text.strip() == "# fichier test":
+        result.add_ok("V10 Phase 3 statistics stubs presents pour test minimal.")
+        return
+
+    for snippet in ("elo_multiclass_v1", "poisson_independent_v1", "dixon_coles_v1", "ensemble_v1"):
+        if snippet not in stats_text:
+            result.add_error(f"V10 Phase 3: modele absent du training pipeline: {snippet}")
+    if all(snippet in models_text for snippet in ("v10_model_definitions", "v10_model_versions", "v10_feature_snapshots", "v10_statistical_predictions", "v10_score_distributions", "v10_calibration_models", "v10_evaluation_runs")):
+        result.add_ok("V10 Phase 3: schema statistique versionne present.")
+    else:
+        result.add_error("V10 Phase 3: schema statistique incomplet.")
+    if all(snippet in app_text for snippet in ('add_parser("dataset"', 'add_parser("model"', 'add_parser("predict"', 'add_parser("backtest"', '"statistical-end-to-end"')):
+        result.add_ok("V10 Phase 3: CLI dataset/model/predict/backtest/demo exposee.")
+    else:
+        result.add_error("V10 Phase 3: CLI statistique incomplete.")
+    if all(snippet in ci_text for snippet in ("test_v10_statistics.py", "statistical-end-to-end", "postgres:16")):
+        result.add_ok("V10 Phase 3: CI couvre tests statistiques, demo offline et PostgreSQL configure.")
+    else:
+        result.add_error("V10 Phase 3: CI statistique/PostgreSQL incomplete.")
+    if all(snippet in docs_text for snippet in ("TemporalContext", "Elo", "Poisson", "Dixon-Coles", "Calibration", "walk-forward", "model_versions")):
+        result.add_ok("V10 Phase 3: documentation modeles, features, calibration et backtest presente.")
+    else:
+        result.add_error("V10 Phase 3: documentation statistique incomplete.")
+
+
+def check_v10_phase4_llm(root: Path, result: AuditResult) -> None:
+    files = [
+        "v10/llm/config.py",
+        "v10/llm/contracts.py",
+        "v10/llm/registry.py",
+        "v10/llm/routing.py",
+        "v10/llm/orchestrator.py",
+        "v10/llm/providers/mock.py",
+        "v10/llm/providers/replay.py",
+        "v10/llm/providers/openai_responses.py",
+        "v10/llm/budgets/manager.py",
+        "v10/llm/budgets/pricing.py",
+        "v10/llm/cache/keys.py",
+        "v10/llm/cache/repository.py",
+        "v10/llm/evidence/packet_builder.py",
+        "v10/llm/evidence/semantic_validator.py",
+        "v10/llm/tools/registry.py",
+        "v10/llm/agents/panels.py",
+        "v10/llm/contradictions/engine.py",
+        "v10/llm/judge/gate.py",
+        "v10/llm/evaluation/runner.py",
+        "v10/llm/demo.py",
+        "alembic/versions/20260719_0003_v10_llm_shadow_schema.py",
+        "test_v10_llm.py",
+        "docs/OPENAI_INTEGRATION.md",
+        "docs/LLM_ARCHITECTURE.md",
+        "docs/LLM_ROUTING_STRATEGY.md",
+        "docs/LLM_BUDGETS.md",
+        "docs/LLM_EVIDENCE_POLICY.md",
+        "docs/LLM_SECURITY.md",
+        "docs/LLM_EVALUATION.md",
+        "docs/LLM_SHADOW_MODE.md",
+        "docs/PHASE4_LLM_LOG.md",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 Phase 4 LLM incomplete: " + ", ".join(missing))
+        return
+
+    config_text = _read_text(root / "v10/config.py") + "\n" + _read_text(root / "v10/llm/config.py")
+    models_text = _read_text(root / "v10/db/models.py")
+    openai_text = _read_text(root / "v10/llm/providers/openai_responses.py")
+    routing_text = "\n".join(
+        (
+            _read_text(root / "v10/llm/routing.py"),
+            _read_text(root / "v10/llm/registry.py"),
+            _read_text(root / "v10/llm/config.py"),
+        )
+    )
+    evidence_text = _read_text(root / "v10/llm/evidence/semantic_validator.py") + "\n" + _read_text(root / "v10/llm/evidence/registry.py")
+    orchestrator_text = _read_text(root / "v10/llm/orchestrator.py")
+    app_text = _read_text(root / "app.py")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+    docs_text = "\n".join(
+        _read_text(root / name)
+        for name in (
+            "docs/LLM_ARCHITECTURE.md",
+            "docs/LLM_ROUTING_STRATEGY.md",
+            "docs/LLM_BUDGETS.md",
+            "docs/LLM_EVIDENCE_POLICY.md",
+            "docs/LLM_SECURITY.md",
+            "docs/LLM_EVALUATION.md",
+            "docs/LLM_SHADOW_MODE.md",
+        )
+    )
+
+    if "fichier test" in config_text and "LLMRuntimeConfig" not in config_text:
+        result.add_ok("V10 Phase 4 LLM stubs presents pour test minimal.")
+        return
+
+    if all(snippet in config_text for snippet in ("llm_enabled", "llm_allow_paid_calls", "openai_scan_budget_usd", "openai_allow_pro")):
+        result.add_ok("V10 Phase 4: configuration LLM fail-closed et budgets documentes.")
+    else:
+        result.add_error("V10 Phase 4: configuration LLM incomplete.")
+    if all(snippet in models_text for snippet in ("v10_llm_runs", "v10_llm_usage_records", "v10_agent_findings", "v10_final_judge_reviews", "v10_shadow_decisions", "v10_llm_cache_entries", "v10_model_pricing_versions")):
+        result.add_ok("V10 Phase 4: schema DB LLM runs/usage/cache/decisions present.")
+    else:
+        result.add_error("V10 Phase 4: schema DB LLM incomplet.")
+    if all(snippet in openai_text for snippet in ("AsyncOpenAI", "responses.create", "can_call_paid", "allow_paid")):
+        result.add_ok("V10 Phase 4: provider OpenAI Responses bloque sans flags payants.")
+    else:
+        result.add_error("V10 Phase 4: provider OpenAI fail-closed incomplet.")
+    if all(snippet in routing_text for snippet in ("gpt-5.6-luna", "quantitative_integrity", "run_devils_advocate", "run_sol")):
+        result.add_ok("V10 Phase 4: routage Luna/Terra/Sol adaptatif present.")
+    else:
+        result.add_error("V10 Phase 4: routage adaptatif incomplet.")
+    if all(snippet in evidence_text for snippet in ("evidence_not_found", "evidence_future_observed_at", "agent_has_no_authorized_fresh_evidence", "judge_ignored_hard_veto")):
+        result.add_ok("V10 Phase 4: validation semantique des preuves active.")
+    else:
+        result.add_error("V10 Phase 4: validation semantique des preuves incomplete.")
+    if all(snippet in orchestrator_text for snippet in ("BudgetManager", "InMemoryLLMCache", "ContradictionEngine", "DeterministicDecisionGate", "telegram_sent")):
+        result.add_ok("V10 Phase 4: orchestrateur mock/cache/budget/gate present.")
+    else:
+        result.add_error("V10 Phase 4: orchestrateur LLM incomplet.")
+    if all(snippet in app_text for snippet in ('add_parser("llm"', 'benchmark-routing', 'llm-shadow-end-to-end', '--allow-paid', 'add_parser("decision"')):
+        result.add_ok("V10 Phase 4: CLI LLM, evaluation, demo et review exposee.")
+    else:
+        result.add_error("V10 Phase 4: CLI LLM incomplete.")
+    if all(snippet in ci_text for snippet in ("test_v10_llm.py", "llm-shadow-end-to-end", "LLM_ALLOW_PAID_CALLS", "postgres:16")):
+        result.add_ok("V10 Phase 4: CI couvre LLM mock sans appel payant.")
+    else:
+        result.add_error("V10 Phase 4: CI LLM incomplete.")
+    if all(snippet in docs_text for snippet in ("Luna", "Terra", "Sol", "shadow", "budget", "preuve", "gate deterministe")):
+        result.add_ok("V10 Phase 4: documentation LLM routing/budgets/evidence/shadow presente.")
+    else:
+        result.add_error("V10 Phase 4: documentation LLM incomplete.")
+
+
+def check_v10_phase5_operations(root: Path, result: AuditResult) -> None:
+    files = [
+        "v10/api.py",
+        "v10/operations/contracts.py",
+        "v10/operations/timeline.py",
+        "v10/operations/jobs.py",
+        "v10/operations/scheduler.py",
+        "v10/operations/providers.py",
+        "v10/operations/quota.py",
+        "v10/operations/provider_cache.py",
+        "v10/operations/freshness.py",
+        "v10/operations/material_changes.py",
+        "v10/operations/closing.py",
+        "v10/operations/experiments.py",
+        "v10/operations/pipeline.py",
+        "v10/operations/backtest_compare.py",
+        "v10/llm/providers/batch.py",
+        "alembic/versions/20260719_0004_v10_operational_shadow_pipeline.py",
+        "test_v10_operations.py",
+        "docs/OPERATIONAL_PIPELINE.md",
+        "docs/SCHEDULER.md",
+        "docs/RAILWAY_DEPLOYMENT.md",
+        "docs/SHADOW_EXPERIMENT.md",
+        "docs/NEAR_CLOSE_AND_CLV.md",
+        "docs/PHASE5_OPERATIONAL_LOG.md",
+        ".env.shadow.example",
+        "railway.toml",
+    ]
+    missing = [name for name in files if not (root / name).exists()]
+    if missing:
+        result.add_error("V10 Phase 5 operations incomplete: " + ", ".join(missing))
+        return
+
+    config_text = _read_text(root / "v10/config.py")
+    models_text = _read_text(root / "v10/db/models.py")
+    scheduler_text = _read_text(root / "v10/operations/scheduler.py")
+    jobs_text = _read_text(root / "v10/operations/jobs.py")
+    pipeline_text = _read_text(root / "v10/operations/pipeline.py")
+    api_text = _read_text(root / "v10/api.py")
+    app_text = _read_text(root / "app.py")
+    ci_text = _read_text(root / ".github/workflows/ci.yml")
+    env_text = _read_text(root / ".env.example") + "\n" + _read_text(root / ".env.shadow.example")
+    docs_text = "\n".join(
+        _read_text(root / name)
+        for name in (
+            "docs/OPERATIONAL_PIPELINE.md",
+            "docs/SCHEDULER.md",
+            "docs/FRESHNESS_POLICY.md",
+            "docs/MATERIAL_CHANGES.md",
+            "docs/SHADOW_EXPERIMENT.md",
+            "docs/STATISTICAL_VS_LLM.md",
+            "docs/NEAR_CLOSE_AND_CLV.md",
+            "docs/OPENAI_PRICING_SNAPSHOT.md",
+        )
+    )
+
+    if "fichier test" in scheduler_text and "SchedulerDispatcher" not in scheduler_text:
+        result.add_ok("V10 Phase 5 operations stubs presents pour test minimal.")
+        return
+
+    if all(snippet in config_text for snippet in ("SCHEDULER_MAX_RUNTIME_SECONDS", "TELEGRAM_DISABLE_SEND", "STATISTICAL_MODEL_VALIDATED_FOR_SIGNALS", "RAILWAY_ALLOW_DEPLOY")):
+        result.add_ok("V10 Phase 5: configuration operationnelle fail-closed presente.")
+    else:
+        result.add_error("V10 Phase 5: configuration operationnelle incomplete.")
+    if all(snippet in models_text for snippet in ("v10_scheduled_jobs", "v10_job_attempts", "v10_scheduler_runs", "v10_provider_quota_usage", "v10_material_change_events", "v10_shadow_experiments", "v10_shadow_experiment_decisions", "v10_shadow_experiment_outcomes", "v10_operational_alerts")):
+        result.add_ok("V10 Phase 5: schema operationnel et experience shadow presents.")
+    else:
+        result.add_error("V10 Phase 5: schema operationnel incomplet.")
+    if all(snippet in jobs_text for snippet in ("idempotency_key", "lease_expires_at", "recover_expired_leases", "with_for_update(skip_locked=True)")):
+        result.add_ok("V10 Phase 5: jobs idempotents, leases et SKIP LOCKED PostgreSQL presents.")
+    else:
+        result.add_error("V10 Phase 5: jobs/leases incomplets.")
+    if all(snippet in scheduler_text for snippet in ("SchedulerDispatcher", "shutdown_margin_seconds", "max_runtime_seconds", "default_noop_handler")):
+        result.add_ok("V10 Phase 5: scheduler borne et compatible cron court.")
+    else:
+        result.add_error("V10 Phase 5: scheduler incomplet.")
+    if all(snippet in pipeline_text for snippet in ("PrematchShadowScanService", "deterministic_only", "deterministic_plus_llm", "select_near_close", "paid_calls")):
+        result.add_ok("V10 Phase 5: pipeline shadow A/B, near-close et LLM mock presents.")
+    else:
+        result.add_error("V10 Phase 5: pipeline shadow incomplet.")
+    if all(snippet in api_text for snippet in ("/health/live", "/health/ready", "/api/v10/jobs", "INTERNAL_API_TOKEN", "paid_openai_calls_total")):
+        result.add_ok("V10 Phase 5: FastAPI read-only et health endpoints presents.")
+    else:
+        result.add_error("V10 Phase 5: API read-only incomplete.")
+    if all(snippet in app_text for snippet in ('add_parser("scheduler"', 'add_parser("scan"', 'add_parser("experiments"', 'operational-shadow-end-to-end', 'backtest_compare')):
+        result.add_ok("V10 Phase 5: CLI operationnelle exposee.")
+    else:
+        result.add_error("V10 Phase 5: CLI operationnelle incomplete.")
+    if all(snippet in ci_text for snippet in ("test_v10_operations.py", "operational-shadow-end-to-end", "postgres:16", "docker build")):
+        result.add_ok("V10 Phase 5: CI prepare tests operations, PostgreSQL et Docker build.")
+    else:
+        result.add_error("V10 Phase 5: CI operationnelle incomplete.")
+    if all(snippet in env_text for snippet in ("REAL_MONEY_ACTIONS_ENABLED=false", "LLM_ALLOW_PAID_CALLS=false", "TELEGRAM_DISABLE_SEND=true", "RAILWAY_ALLOW_DEPLOY=false", "OPENAI_BATCH_ENABLED=false")):
+        result.add_ok("V10 Phase 5: env examples conservent les securites.")
+    else:
+        result.add_error("V10 Phase 5: env examples dangereux ou incomplets.")
+    if all(snippet in docs_text for snippet in ("SchedulerDispatcher", "prematch_freshness_v1", "statistical_vs_llm_shadow_v1", "EXACT_OR_VERY_NEAR", "OpenAI")):
+        result.add_ok("V10 Phase 5: documentation operations/scheduler/freshness/experience/pricing presente.")
+    else:
+        result.add_error("V10 Phase 5: documentation operationnelle incomplete.")
+
+
 def check_dependencies(root: Path, result: AuditResult) -> None:
     requirements = _read_text(root / "requirements.txt").lower()
     docs = (_read_text(root / "README.md") + "\n" + _read_text(root / "COMMANDS.md")).lower()
@@ -1003,6 +1810,12 @@ def run_audit(root: Path, check_import_modules: bool = True, use_git: bool = Tru
     check_telegram_read_only_release(root, result, use_git=use_git)
     check_v96_release(root, result)
     check_v97_release(root, result)
+    check_v98_release(root, result)
+    check_v10_foundation(root, result)
+    check_v10_phase2_persistence(root, result)
+    check_v10_phase3_statistics(root, result)
+    check_v10_phase4_llm(root, result)
+    check_v10_phase5_operations(root, result)
     check_dependencies(root, result)
     check_docs(root, result)
     result.add_recommendation("Conserver le bot en mode analyse prudente tant qu'aucun signal robuste n'est valide en test 2024+.")

@@ -1,0 +1,73 @@
+{
+  "get": "odds",
+  "parameters": {
+    "fixture": "91001"
+  },
+  "errors": [],
+  "results": 1,
+  "response": [
+    {
+      "fixture": {
+        "id": 91001,
+        "date": "2026-06-01T19:00:00+00:00"
+      },
+      "league": {
+        "id": 39,
+        "name": "Premier League",
+        "country": "England",
+        "season": 2026
+      },
+      "teams": {
+        "home": {
+          "id": 42,
+          "name": "Arsenal"
+        },
+        "away": {
+          "id": 49,
+          "name": "Chelsea"
+        }
+      },
+      "bookmakers": [
+        {
+          "id": 10,
+          "name": "Book Test",
+          "bets": [
+            {
+              "id": 1,
+              "name": "Match Winner",
+              "values": [
+                {"value": "Home", "odd": "2.10"},
+                {"value": "Draw", "odd": "3.40"},
+                {"value": "Away", "odd": "3.20"}
+              ]
+            },
+            {
+              "id": 5,
+              "name": "Goals Over/Under",
+              "values": [
+                {"value": "Over 2.5", "odd": "1.90"},
+                {"value": "Under 2.5", "odd": "1.95"}
+              ]
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "name": "Book Replay",
+          "bets": [
+            {
+              "id": 1,
+              "name": "Match Winner",
+              "values": [
+                {"value": "Home", "odd": "2.08"},
+                {"value": "Draw", "odd": "3.45"},
+                {"value": "Away", "odd": "3.25"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

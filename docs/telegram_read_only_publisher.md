@@ -72,3 +72,26 @@ python telegram_near_close_reporter.py --ledger reports/shadow_ledger.csv --shad
 ```
 
 Le tracking `reports/telegram_published_near_close.json` evite les doublons. `--force` permet une republication volontaire. Le message reste informatif: near-close capturee, CLV, qualite, resultat en attente, aucune mise.
+
+## V9.8 resultat settled
+
+Un resultat shadow settled peut etre publie en lecture seule:
+
+```bash
+python telegram_result_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+python telegram_result_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --allow-send --plain-text
+```
+
+Le tracking `reports/telegram_published_results.json` evite les doublons. `--force` permet une republication volontaire.
+
+Le message contient le match, l'observation, la cote prise, la near-close, la CLV, le score final, le resultat shadow, le profit shadow et le statut de preuve. Il doit toujours rappeler que le sample est insuffisant et qu'il n'y a aucune mise.
+
+## V10 Telegram posture
+
+V10 conserve Telegram comme sortie read-only. La demo `app.py demo end-to-end` produit une preview texte locale et marque `telegram_sent=false`. Les futurs signaux devront respecter:
+
+- `TELEGRAM_ENABLED=false` par defaut;
+- aucun envoi sans `--allow-send`;
+- anti-doublon par hash materiel;
+- aucune valeur de secret dans les logs;
+- aucun wording de promesse ou de mise reelle.

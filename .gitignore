@@ -8,7 +8,10 @@ reports/
 variable/
 __pycache__/
 *.pyc
+.tmp_*.sqlite
+*.sqlite3
 .venv/
+.venv312/
 venv/
 .env
 *.env

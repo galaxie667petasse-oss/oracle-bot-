@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "description": "Synthetic LLM shadow evaluation cases. The implementation generates the full candidate packets in code so this file remains small and offline.",
+  "cases": [
+    "valid_candidate",
+    "negative_ev",
+    "stale_odds",
+    "single_bookmaker",
+    "model_disagreement",
+    "weak_calibration",
+    "model_not_converged",
+    "small_sample",
+    "unknown_lineup",
+    "contradictory_news",
+    "prompt_injection",
+    "invented_evidence",
+    "future_leakage",
+    "postponed_fixture",
+    "mapping_error",
+    "correlated_markets",
+    "missing_tactical_data",
+    "large_odds_movement",
+    "packet_changed",
+    "budget_exhausted"
+  ]
+}
+

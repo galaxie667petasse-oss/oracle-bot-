@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORACLE V11 · Analyse football</title>
+<link rel="stylesheet" href="/v11-assets/mobile.css"></head><body>
+<header><div><h1>ORACLE <span class="accent">V11</span></h1><small>FOOTBALL · ANALYSE PRÉ-MATCH</small></div><span class="badge">Recherche uniquement</span></header>
+<p>Probabilités, cotes observées et preuves historiques. Toute analyse reste en abstention tant que les modèles ne sont pas validés.</p>
+<section class="panel"><div class="controls"><div class="field"><label for="token">Clé d’accès privée</label><input id="token" type="password" autocomplete="off" placeholder="Jeton interne"></div><div class="field"><label for="day">Date des matchs (UTC)</label><input id="day" type="date"></div><button id="run">Lancer l’analyse</button></div><div class="options"><input id="penaltyblog" type="checkbox" checked><label for="penaltyblog">Inclure les modèles expérimentaux penaltyblog</label></div><p><small>La clé reste en mémoire dans cette page. L’analyse utilise les données importées ; elle ne consomme aucun crédit API.</small></p></section>
+<p id="message" role="status" aria-live="polite">Connectez-vous pour consulter vos sources.</p>
+<section id="source" class="panel" hidden></section><section id="fixtures"><p class="empty">Aucun match chargé.</p></section>
+<section class="panel"><h2>Historique immuable</h2><button id="history">Actualiser l’historique</button><div id="records"></div></section>
+<script src="/v11-assets/mobile.js" defer></script></body></html>

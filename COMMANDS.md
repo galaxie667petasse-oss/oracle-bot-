@@ -1355,3 +1355,188 @@ python telegram_near_close_reporter.py --ledger reports/shadow_ledger.csv --shad
 ```
 
 Regles: dry-run par defaut, aucune mise, aucun pick automatique, aucun token commite, aucun envoi Telegram sans `--allow-send`.
+
+## V9.8 Shadow Result Apply, Completed Cycle & Telegram Result Report
+
+Dry-run settlement Ghana - Panama:
+
+```bash
+python shadow_result_matcher.py --ledger reports/shadow_ledger.csv --results reports/api_football_results_2026-06-17.csv --target-shadow-id sh_20260617210447_2ee081d9 --dry-run
+```
+
+Application ledger apres verification humaine:
+
+```bash
+python shadow_result_matcher.py --ledger reports/shadow_ledger.csv --results reports/api_football_results_2026-06-17.csv --target-shadow-id sh_20260617210447_2ee081d9 --apply
+```
+
+Regeneration rapport preuve:
+
+```bash
+python shadow_clv_report.py --ledger reports/shadow_ledger.csv --output reports/shadow_clv_report.json --html reports/shadow_clv_report.html
+python evidence_gate.py --clv-report reports/shadow_clv_report.json --quality-report reports/shadow_quality_audit.json
+python proof_dashboard.py --shadow reports/shadow_clv_report.json --evidence reports/evidence_gate.json --quality reports/shadow_quality_audit.json --output reports/proof_dashboard.json --html reports/proof_dashboard.html
+```
+
+Preview Telegram result reporter:
+
+```bash
+python telegram_result_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+```
+
+Operations center:
+
+```bash
+python oracle_ops.py --result-apply --ledger reports/shadow_ledger.csv --results-file reports/api_football_results_2026-06-17.csv --shadow-id sh_20260617210447_2ee081d9
+python oracle_ops.py --telegram-result --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9
+```
+
+Regles: `--apply` est obligatoire pour modifier le ledger. `--allow-send` est obligatoire pour tout Telegram reel. Le completed cycle reste une observation laboratoire: aucune mise, aucun pick automatique, aucun sample faible valide.
+
+## V10 Hybrid Foundation
+
+Diagnostic local sans secret:
+
+```bash
+python app.py doctor
+```
+
+Demo end-to-end offline:
+
+```bash
+python app.py demo end-to-end
+python app.py demo end-to-end --json
+python v10_demo.py --json
+```
+
+Tests et scans offline:
+
+```bash
+python -m compileall -q .
+python test_v10_foundation.py
+python scripts/secret_scan.py --root .
+python project_audit.py --no-imports --no-git
+```
+
+Regles V10: aucun reseau dans la demo, aucun Telegram reel, aucun token affiche, `REAL_MONEY_ACTIONS_ENABLED=false`, `DRY_RUN=true`, paper betting uniquement.
+
+## V10 Phase 2 Persistence et replay
+
+Configuration et base:
+
+```bash
+python app.py config validate
+python app.py db upgrade
+python app.py db status
+python app.py db doctor
+```
+
+Replay provider offline:
+
+```bash
+python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --dry-run
+python app.py replay provider --file tests/fixtures/providers/api_football/odds_sample.json --provider api_football --dry-run
+python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --apply
+python app.py replay provider --file tests/fixtures/providers/api_football/odds_sample.json --provider api_football --apply
+python app.py replay run --run-id <uuid>
+```
+
+Legacy et qualite:
+
+```bash
+python app.py legacy discover
+python app.py legacy import --source tests/fixtures/providers/api_football/odds_sample.json --dry-run
+python app.py quality fixture --fixture-id <uuid>
+python app.py odds latest --fixture-id <uuid>
+python app.py odds history --fixture-id <uuid>
+```
+
+Demo persistence offline:
+
+```bash
+python app.py demo postgres-end-to-end
+python app.py demo postgres-end-to-end --json
+```
+
+Regles Phase 2: `--apply` est obligatoire pour persister un replay/import; les snapshots de cotes ne sont pas ecrases; SQLite sert seulement au smoke test offline; PostgreSQL reste la cible Railway.
+
+## V10 Phase 3 Moteur statistique
+
+Dataset temporel:
+
+```bash
+python app.py dataset build --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py dataset build --from 2024-01-01 --to 2024-12-31 --apply
+```
+
+Entrainement versionne:
+
+```bash
+python app.py model train --model elo_multiclass_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model train --model poisson_independent_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model train --model dixon_coles_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model train --model ensemble_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model activate --model-version-id <uuid> --apply
+python app.py model reproduce --model-version-id <uuid>
+```
+
+Prediction, backtest et demo:
+
+```bash
+python app.py predict fixture --fixture-id <uuid> --as-of 2026-06-01T10:00:00+00:00 --dry-run
+python app.py backtest run --from 2024-01-01 --to 2024-12-31 --markets 1x2,ou25,btts --dry-run
+python app.py demo statistical-end-to-end --json
+python test_v10_statistics.py
+```
+
+Regles Phase 3: aucun LLM, aucun Telegram reel, aucun bookmaker, aucune mise. Les probabilites, EV, calibration et scores de marche viennent de Python et restent reproductibles avec les donnees observees avant `as_of`.
+
+## V10 Phase 4 LLM Shadow Orchestration
+
+Diagnostic et commandes offline:
+
+```bash
+python app.py llm doctor
+python app.py llm models
+python app.py llm budget status
+python app.py llm prompts validate
+python app.py llm cache status
+python app.py llm plan --candidate-id cand_shadow_accept
+python app.py llm analyze --candidate-id cand_shadow_accept --mock --shadow
+python app.py llm evaluate --dataset tests/fixtures/llm_eval --mock --ablation
+python app.py llm benchmark-routing --dataset tests/fixtures/llm_eval --mock
+python app.py decision review --candidate-id cand_shadow_accept
+python app.py demo llm-shadow-end-to-end --mock --json
+```
+
+Smoke reel FAST seulement, a ne lancer qu'apres autorisation explicite, flags LLM ouverts et budget positif:
+
+```bash
+python app.py llm smoke --tier fast --allow-paid --max-cost-usd 0.05
+```
+
+Regles Phase 4: aucun appel OpenAI reel par defaut, aucun Telegram reel, aucun bookmaker, aucune mise. Luna filtre le volume, Terra analyse quelques panels, Sol reste rare, et le gate deterministe reste souverain.
+## V10 Phase 5 - Operations shadow
+
+```powershell
+python app.py scheduler tick --dry-run
+python app.py scheduler tick --max-runtime-seconds 240 --max-jobs 50
+python app.py scheduler status
+python app.py scheduler due
+python app.py scheduler recover-leases --dry-run
+python app.py jobs list
+python app.py jobs inspect --job-id <uuid>
+python app.py jobs retry --job-id <uuid> --dry-run
+python app.py jobs cancel --job-id <uuid> --dry-run
+python app.py fixtures discover --days 3 --dry-run
+python app.py fixtures schedule --fixture-id <uuid> --dry-run
+python app.py scan prematch --fixture-id <uuid> --mock-llm --dry-run
+python app.py scan due --mock-llm --dry-run
+python app.py providers health
+python app.py providers quotas
+python app.py experiments create --key statistical_vs_llm_shadow_v1 --dry-run
+python app.py experiments status --key statistical_vs_llm_shadow_v1
+python app.py experiments report --key statistical_vs_llm_shadow_v1
+python app.py backtest compare --from 2021-01-01 --to 2025-06-01 --include-market-baseline --dry-run
+python app.py demo operational-shadow-end-to-end --mock --json
+```

@@ -59,6 +59,23 @@ Ce n'est pas un bot magique de pronostics. La posture actuelle est prudente : si
 - `project_audit.py` : audit release candidate local.
 - `model_registry.json` : metadonnees agregees des modeles/strategies evalues.
 
+## V10 Persistence et replay
+
+La fondation V10 est additive sous `v10/` et `app.py`. Elle ajoute une couche PostgreSQL/Alembic pour stocker les payloads bruts, normaliser competitions/equipes/fixtures/bookmakers/marches et conserver les cotes sous forme de snapshots temporels immuables.
+
+Commandes principales :
+
+```bash
+python app.py config validate
+python app.py db upgrade
+python app.py db status
+python app.py replay provider --file tests/fixtures/providers/api_football/fixtures_sample.json --provider api_football --dry-run
+python app.py replay provider --file tests/fixtures/providers/api_football/odds_sample.json --provider api_football --dry-run
+python app.py demo postgres-end-to-end
+```
+
+Sans `DATABASE_URL`, la demo utilise SQLite uniquement pour un smoke test offline. PostgreSQL reste la cible production et Railway. Les details sont dans `docs/POSTGRESQL_SETUP.md`, `docs/REPLAY_GUIDE.md`, `docs/LEGACY_IMPORT.md` et `docs/TEMPORAL_DATA_MODEL.md`.
+
 ## Pipeline local
 
 1. Verifier l'environnement et les fichiers sensibles.
@@ -1017,3 +1034,102 @@ python telegram_near_close_reporter.py --ledger reports/shadow_ledger.csv --shad
 ```
 
 Regles: aucun reseau dans les tests, aucun Telegram reel dans les tests, aucune cle loggee, `reports/` et `external_data/` non trackes, aucune mise, aucun pick automatique, `lab_only=true`, `can_influence_picks=false`.
+
+## V9.8 Shadow Result Settlement, Completed Cycle & Telegram Result Reporter
+
+V9.8 ajoute le shadow result settlement: `shadow_result_matcher.py` peut maintenant appliquer un resultat fini au ledger uniquement avec `--apply`. Par defaut, la commande reste en dry-run. Le matching utilise d'abord `fixture_id` / `source_event_id`, puis date + equipes normalisees + ligue, jamais un nom approximatif sans date.
+
+Un completed cycle signifie: observation shadow + near-close/closing odds + resultat final. `shadow_clv_report.py`, `proof_dashboard.py` et `evidence_gate.py` affichent maintenant `completed_cycles`, `result_coverage`, `pending_results`, `profit_units_total` et les compteurs win/loss/push. Un premier completed cycle ne valide rien: le sample reste insuffisant tant que les seuils de preuve ne sont pas atteints.
+
+Le telegram result reporter publie seulement une lecture read-only d'un resultat settled, avec tracking anti-doublon dans `reports/telegram_published_results.json`. Aucun envoi reel n'est possible sans `--allow-send`.
+
+Commandes principales:
+
+```bash
+python shadow_result_matcher.py --ledger reports/shadow_ledger.csv --results reports/api_football_results_2026-06-17.csv --target-shadow-id sh_20260617210447_2ee081d9 --dry-run
+python shadow_result_matcher.py --ledger reports/shadow_ledger.csv --results reports/api_football_results_2026-06-17.csv --target-shadow-id sh_20260617210447_2ee081d9 --apply
+python shadow_clv_report.py --ledger reports/shadow_ledger.csv --output reports/shadow_clv_report.json --html reports/shadow_clv_report.html
+python telegram_result_reporter.py --ledger reports/shadow_ledger.csv --shadow-id sh_20260617210447_2ee081d9 --dry-run
+```
+
+Garde-fous: aucun reseau dans les tests, aucune modification de `data/`, aucun `reports/` tracke, aucun pick automatique, aucune mise, aucun staking, aucun Kelly, aucune promesse de rentabilite.
+
+## V10 Hybrid Foundation
+
+V10 demarre comme une couche additive sous `v10/`, sans modifier `main.py`. Elle formalise les primitives deterministes qui doivent rester source de verite avant tout agent LLM: normalisation des cotes, no-vig proportionnel, EV, CLV, data quality, filtrage candidat, risk paper-only, settlement multi-marches, contrats agents et juge final deterministe de demo.
+
+La demo end-to-end est offline: fixture synthetique future, bookmakers synthetiques, probabilite modele fournie par Python, agents mock, decision `WATCH`, preview Telegram locale, resultat fictif, settlement, CLV. Aucun reseau et aucun Telegram reel.
+
+```bash
+python app.py doctor
+python app.py demo end-to-end
+python app.py demo end-to-end --json
+python v10_demo.py --json
+python scripts/secret_scan.py --root .
+python test_v10_foundation.py
+```
+
+Fichiers V10 principaux:
+
+- `v10/odds.py` : decimal odds, implied probability, no-vig, EV, CLV;
+- `v10/data_quality.py` : PASS, PASS_WITH_WARNINGS, FAIL, STALE, CONFLICTING;
+- `v10/candidates.py` : filtre deterministe avant agents;
+- `v10/risk.py` : paper betting only, aucune action bookmaker;
+- `v10/settlement.py` : settlement match winner, DNB, double chance, totals, BTTS;
+- `v10/agents.py` : contrats des 12 agents et mocks offline;
+- `v10/final_judge.py` : juge de demo qui peut refuser mais n'invente rien.
+
+La cible V10 complete reste progressive: PostgreSQL normalise, replay providers, modeles Elo/Poisson/Dixon-Coles/ML, calibration, agents LLM stricts, backtest walk-forward et deploiement Railway documente.
+
+## V10 Statistical Engine
+
+La Phase 3 ajoute un moteur statistique V10 entierement deterministic-only sous `v10/statistics/`. Il construit des datasets temporels depuis `data/MATCHES.csv`, genere des features `football_features_v1` avec contexte `TemporalContext`, entraine des baselines Elo, Poisson independant, Dixon-Coles experimental, calibration et ensemble, puis derive les marches 1X2, double chance, draw no bet, over/under et BTTS depuis une distribution de scores.
+
+Les nouvelles commandes restent dry-run par defaut et ne font aucun appel OpenAI, Telegram ou bookmaker:
+
+```bash
+python app.py dataset build --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py model train --model elo_multiclass_v1 --from 2024-01-01 --to 2024-12-31 --dry-run
+python app.py backtest run --from 2024-01-01 --to 2024-12-31 --markets 1x2,ou25,btts --dry-run
+python app.py demo statistical-end-to-end --json
+python test_v10_statistics.py
+```
+
+Les migrations Phase 3 ajoutent `model_definitions`, `model_versions`, `feature_snapshots`, `score_distributions`, `statistical_predictions`, `calibration_models` et `evaluation_runs`. Les predictions sont versionnees et rattachees a un `as_of`; aucune decision future ne doit lire une cote ou un resultat observe apres cette heure.
+
+## V10 LLM Shadow Orchestration
+
+La Phase 4 ajoute une orchestration LLM adaptive, optimisee cout et strictement shadow-only. Luna filtre le volume, Terra analyse quelques dossiers serieux en panels, Sol juge rarement les meilleurs finalistes, puis le gate deterministe garde le dernier mot.
+
+Par defaut : `LLM_ENABLED=false`, `LLM_SHADOW_ONLY=true`, `LLM_ALLOW_PAID_CALLS=false`, budgets OpenAI a zero, `TELEGRAM_ENABLED=false`, aucune mise, aucun bookmaker et aucun envoi reel.
+
+Les 12 roles logiques existent, mais ils sont regroupes en panels quand c'est moins couteux. Les LLM ne peuvent pas calculer une probabilite, une cote, une EV, une CLV, Kelly, ROI ou un stake. Ils examinent uniquement des preuves existantes.
+
+Commandes offline :
+
+```bash
+python app.py llm doctor
+python app.py llm prompts validate
+python app.py llm evaluate --dataset tests/fixtures/llm_eval --mock --ablation
+python app.py llm benchmark-routing --dataset tests/fixtures/llm_eval --mock
+python app.py demo llm-shadow-end-to-end --mock --json
+```
+
+Details : `docs/LLM_ARCHITECTURE.md`, `docs/LLM_ROUTING_STRATEGY.md`, `docs/LLM_BUDGETS.md`, `docs/LLM_EVIDENCE_POLICY.md`, `docs/LLM_SECURITY.md`, `docs/LLM_EVALUATION.md` et `docs/LLM_SHADOW_MODE.md`.
+## V10 Phase 5 - Pipeline prematch shadow
+
+La couche operationnelle V10 ajoute un scheduler court compatible Railway, une file `v10_scheduled_jobs`, des snapshots prematch, une experience `statistical_vs_llm_shadow_v1`, une API FastAPI read-only et une demonstration offline complete.
+
+Commandes principales:
+
+```powershell
+python app.py scheduler tick --dry-run
+python app.py fixtures discover --days 3 --dry-run
+python app.py scan prematch --fixture-id <uuid> --mock-llm --dry-run
+python app.py backtest compare --from 2021-01-01 --to 2025-06-01 --include-market-baseline --dry-run
+python app.py demo operational-shadow-end-to-end --mock --json
+```
+
+Securites conservees: `DRY_RUN=true`, `PAPER_BETTING_ENABLED=true`, `REAL_MONEY_ACTIONS_ENABLED=false`, `LLM_ENABLED=false`, `LLM_ALLOW_PAID_CALLS=false`, `TELEGRAM_ENABLED=false`, `TELEGRAM_DISABLE_SEND=true`, `STATISTICAL_MODEL_VALIDATED_FOR_SIGNALS=false`.
+
+Voir `docs/OPERATIONAL_PIPELINE.md`, `docs/SCHEDULER.md`, `docs/RAILWAY_DEPLOYMENT.md`, `docs/SHADOW_EXPERIMENT.md` et `docs/NEAR_CLOSE_AND_CLV.md`.

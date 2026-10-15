@@ -1,0 +1,76 @@
+# Evaluation V10
+
+## Metriques obligatoires
+
+- Brier score.
+- Log loss.
+- Expected Calibration Error.
+- Calibration par bins.
+- ROI et yield shadow.
+- Profit units.
+- CLV odds pct.
+- CLV probability points.
+- Drawdown maximum.
+- Resultats par marche, ligue, tranche de cote et niveau de confiance.
+
+## Regles methodologiques
+
+- Split chronologique uniquement.
+- Pas de shuffle temporel.
+- Pas de feature observee apres la decision.
+- Pas de cote de cloture en entree pre-match.
+- Pas de promotion avec sample faible.
+- Zero signal est un resultat valide.
+
+## Etat actuel
+
+V9.x contient deja calibration, statistical validation et CLV. V10 foundation ajoute les primitives deterministes a tester avant le backtest walk-forward complet.
+
+## Phase 3
+
+La premiere evaluation V10 statistique compare des probabilites, pas des slogans de performance. Les fonctions `v10.statistics.metrics` couvrent log loss multiclass, Brier multiclass, Brier/log loss binaires et ECE/MCE par bins.
+
+## Evaluation LLM Phase 4
+
+L'evaluation LLM mesure la conformite et le cout, pas un ROI.
+
+Configurations : A aucun LLM, B Luna uniquement, C Terra panels, D cascade complete, E agents separes comme benchmark couteux uniquement.
+
+```bash
+python app.py llm evaluate --dataset tests/fixtures/llm_eval --mock --ablation
+python app.py llm benchmark-routing --dataset tests/fixtures/llm_eval --mock
+```
+
+Metriques : schema valide, preuves valides, hallucinations, hard veto respecte, appels, cout estime, latence, decisions monotones. Aucun appel OpenAI reel n'est necessaire.
+
+Splits supportes :
+
+- holdout chronologique simple dans `train_model`;
+- walk-forward minimal dans `walk_forward_backtest`;
+- validation separee pour calibration et ensemble.
+
+Modeles compares :
+
+- Elo multiclass;
+- Poisson independant;
+- Dixon-Coles experimental;
+- ensemble sans prior marche;
+- baseline marche via no-vig quand les cotes `as_of` sont disponibles.
+
+Une amelioration observee sur sample faible reste un diagnostic. Elle ne valide aucun signal, aucun ROI et aucune publication.
+## Phase 5 - Evaluation operationnelle
+
+La commande `python app.py backtest compare --include-market-baseline --dry-run` compare sur une cohorte partagee:
+
+- uniforme 1X2;
+- frequence historique;
+- marche no-vig lorsque les cotes 1X2 existent;
+- Elo;
+- Poisson;
+- Dixon-Coles;
+- ensemble;
+- ensemble avec prior marche.
+
+Les resultats restent insuffisants pour activer des signaux: `STATISTICAL_MODEL_VALIDATED_FOR_SIGNALS=false`.
+
+L'experience `statistical_vs_llm_shadow_v1` mesure la difference entre decisions statistiques seules et statistiques + LLM sur la meme cohorte, en paper-only.

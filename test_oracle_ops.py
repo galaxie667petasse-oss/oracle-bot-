@@ -5,6 +5,7 @@ from pathlib import Path
 import oracle_ops
 import odds_snapshot_store
 import shadow_ledger
+from api_football_results_adapter import RESULT_COLUMNS
 
 
 def main():
@@ -211,11 +212,41 @@ def main():
         assert near_apply_dry["dry_run"] is True
         near_apply_real = oracle_ops.near_close_apply_ops_report(str(root / "reports"), str(ledger), str(near_file), shadow_id=near_entry["shadow_id"], apply=True)
         assert near_apply_real["updated"] == 1
+        results_file = root / "reports" / "api_football_results_2026-06-17.csv"
+        with results_file.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=RESULT_COLUMNS)
+            writer.writeheader()
+            writer.writerow({
+                "fixture_id": "1489385",
+                "date": "2026-06-17",
+                "league": "World Cup",
+                "home_team": "Ghana",
+                "away_team": "Panama",
+                "home_goals": "1",
+                "away_goals": "0",
+                "status": "FT",
+                "is_finished": "True",
+            })
+        result_dry = oracle_ops.result_apply_ops_report(str(root / "reports"), str(ledger), str(results_file), shadow_id=near_entry["shadow_id"], apply=False)
+        assert result_dry["matches_found"] == 1
+        assert result_dry["updated"] == 0
+        assert result_dry["applied"] is False
+        result_real = oracle_ops.result_apply_ops_report(str(root / "reports"), str(ledger), str(results_file), shadow_id=near_entry["shadow_id"], apply=True)
+        assert result_real["updated"] == 1
+        settled_near_entry = [row for row in shadow_ledger.read_ledger(str(ledger)) if row["shadow_id"] == near_entry["shadow_id"]][0]
+        assert settled_near_entry["result_status"] == "win"
+        assert settled_near_entry["profit_units"] == "1.26"
         telegram_near = oracle_ops.telegram_near_close_report(str(root / "reports"), str(ledger), shadow_id=near_entry["shadow_id"], allow_send=False)
         assert telegram_near["dry_run"] is True
         assert Path(telegram_near["preview"]).exists()
+        telegram_result = oracle_ops.telegram_results_report(str(root / "reports"), str(ledger), shadow_id=near_entry["shadow_id"], allow_send=False)
+        assert telegram_result["dry_run"] is True
+        assert telegram_result["selected"] == 1
+        assert Path(telegram_result["preview"]).exists()
         assert oracle_ops.main(["--near-close-apply", "--ledger", str(ledger), "--near-close-file", str(near_file), "--shadow-id", near_entry["shadow_id"], "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--result-apply", "--ledger", str(ledger), "--results-file", str(results_file), "--shadow-id", near_entry["shadow_id"], "--reports-dir", str(root / "reports")]) == 0
         assert oracle_ops.main(["--telegram-near-close", "--ledger", str(ledger), "--shadow-id", near_entry["shadow_id"], "--reports-dir", str(root / "reports")]) == 0
+        assert oracle_ops.main(["--telegram-result", "--ledger", str(ledger), "--shadow-id", near_entry["shadow_id"], "--reports-dir", str(root / "reports")]) == 0
 
         absent = oracle_ops.build_health(root / "absent", str(ledger))
         assert absent["status"] == "bloquant"

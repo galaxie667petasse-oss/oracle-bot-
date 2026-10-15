@@ -1106,12 +1106,45 @@ def _first_captured_near_close_shadow_id(ledger: str) -> str:
     return ""
 
 
+def _first_settled_result_shadow_id(ledger: str) -> str:
+    path = Path(ledger)
+    if not path.exists():
+        return ""
+    try:
+        with path.open(newline="", encoding="utf-8-sig") as fh:
+            for row in csv.DictReader(fh):
+                shadow_id = str(row.get("shadow_id") or "").strip()
+                result = str(row.get("result_status") or row.get("result") or "").strip().lower()
+                settlement = str(row.get("settlement_status") or row.get("status") or "").strip().lower()
+                final = str(row.get("is_result_final") or "").strip().lower()
+                if shadow_id and result in {"win", "loss", "push", "void"} and (
+                    settlement in {"settled", "overwritten"} or final == "true"
+                ):
+                    return shadow_id
+    except Exception:
+        return ""
+    return ""
+
+
 def telegram_commands(
     ledger: str = "reports/shadow_ledger.csv",
     date: str = "",
     skip_dashboard: bool = False,
 ) -> List[ReportCommand]:
     active_date = date or datetime.now().strftime("%Y-%m-%d")
+    settled_shadow_id = _first_settled_result_shadow_id(ledger)
+    result_args = [
+        "telegram_result_reporter.py",
+        "--ledger",
+        ledger,
+        "--evidence",
+        "{report_dir}/evidence_gate.json",
+        "--output",
+        "{report_dir}/telegram_results_preview.md",
+        "--dry-run",
+    ]
+    if settled_shadow_id:
+        result_args.extend(["--shadow-id", settled_shadow_id])
     commands = [
         ReportCommand("Telegram config check", "telegram_config.txt", ["telegram_config.py", "--check"], timeout=120),
         ReportCommand(
@@ -1140,16 +1173,7 @@ def telegram_commands(
         ReportCommand(
             "Telegram result reporter dry-run",
             "telegram_result_reporter.txt",
-            [
-                "telegram_result_reporter.py",
-                "--ledger",
-                ledger,
-                "--evidence",
-                "{report_dir}/evidence_gate.json",
-                "--output",
-                "{report_dir}/telegram_results_preview.md",
-                "--dry-run",
-            ],
+            result_args,
             timeout=300,
         ),
     ]
