@@ -110,7 +110,24 @@ class Collector:
 
 def odds_snapshot(payload: list, observed_at: datetime, provenance: str = "real_provider") -> Snapshot:
     """Reuse V10 canonical normalization, preserving source IDs and bookmaker clocks."""
-    report = normalize_odds_payload(payload, observed_at)
+    from copy import deepcopy
+    from v10.time import parse_utc
+    normalized_input = deepcopy(payload)
+    if not isinstance(normalized_input, list):
+        raise ValueError("event list required")
+    for event in normalized_input:
+        if not isinstance(event, dict):
+            raise ValueError("event object required")
+        for bookmaker in event.get("bookmakers") or []:
+            if not isinstance(bookmaker, dict):
+                raise ValueError("bookmaker object required")
+            book_time = bookmaker.pop("last_update", None)
+            for market in bookmaker.get("markets") or []:
+                if not isinstance(market, dict):
+                    raise ValueError("market object required")
+                clocks = [parse_utc(t) for t in (book_time, market.get("last_update")) if t]
+                market["last_update"] = min(clocks).isoformat() if clocks else None
+    report = normalize_odds_payload(normalized_input, observed_at)
     if report.errors:
         raise ValueError("odds normalization rejected payload: " + "; ".join(report.errors[:3]))
     fixtures = []

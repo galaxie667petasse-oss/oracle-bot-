@@ -70,6 +70,9 @@ class Fixture(StrictRecord):
     def teams(self):
         if not self.home or not self.away or self.home == self.away:
             raise ValueError("distinct named teams required")
+        keys = [(q.source, q.bookmaker, q.market, q.selection, q.line) for q in self.quotes]
+        if len(keys) != len(set(keys)):
+            raise ValueError("ambiguous duplicate quote in snapshot")
         return self
 
 
