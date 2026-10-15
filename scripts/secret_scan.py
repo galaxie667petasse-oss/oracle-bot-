@@ -4,6 +4,8 @@ from pathlib import Path
 
 
 SECRET_NAMES = {
+    "INTERNAL_API_TOKEN",
+    "GH_TOKEN",
     "API_FOOTBALL_KEY",
     "OPENAI_API_KEY",
     "TELEGRAM_BOT_TOKEN",

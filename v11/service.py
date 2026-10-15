@@ -83,6 +83,19 @@ def analyze(ledger: Ledger, day: date, now: datetime, include_penaltyblog: bool 
                 comparisons.append({**q.model_dump(mode="json"), "model": distribution.model_key,
                                     **price(distribution, q.market, q.selection, q.odds, q.line),
                                     "uncertainty": None, "uncertainty_status": "not_estimated"})
+            # Elo has 1N2 probabilities but no score grid. Price only that market;
+            # do not invent a score distribution for handicap or goals markets.
+            if q.market == "match_winner":
+                for prediction in predictions:
+                    if prediction["score_distribution"] is not None:
+                        continue
+                    probability = prediction["probabilities_1x2"][q.selection]
+                    comparisons.append({**q.model_dump(mode="json"), "model": prediction["model_key"],
+                                        "expected_value": probability*q.odds-1,
+                                        "settlement_probabilities": {"win": probability, "loss": 1-probability,
+                                                                     "push": 0, "half_win": 0, "half_loss": 0},
+                                        "tail_mass": None, "rule_version": "v11-regulation-90m-1",
+                                        "uncertainty": None, "uncertainty_status": "not_estimated"})
         if not valid_quotes:
             reasons.append("no_fresh_odds")
         present_books = {q.bookmaker for q in valid_quotes}

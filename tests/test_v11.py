@@ -325,7 +325,7 @@ def test_consolidated_provider_payloads_to_models_without_backdated_results(tmp_
     assert combined.source_references["competition_map_sha256"]
     ledger=Ledger(tmp_path/"combined.sqlite3");ledger.add_snapshot(combined.model_dump(mode="json"))
     pred=analyze(ledger,NOW.date(),NOW)["fixtures"][0]
-    assert len(pred["models"])==3 and len(pred["comparisons"])==6 and pred["decision"]=="ABSTAIN"
+    assert len(pred["models"])==3 and len(pred["comparisons"])==9 and pred["decision"]=="ABSTAIN"
     with pytest.raises(ValueError,match="mapping"):
         build_snapshot(odds,[results],{"api_football:61":"unobserved_competition"},provenance="synthetic")
     results["payload"]["response"][0]["fixture"]["status"]["short"]="AET"

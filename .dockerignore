@@ -12,6 +12,14 @@ data/
 external_data/
 reports/
 variable/
+.pytest_cache/
+*.sqlite
+*.sqlite3
+*.db
+*.bundle
+*.zip
+*.log
+config/odds_sources.json
 oracle_db.json
 oracle_db_backup_*.json
 oracle_db_archive_*.json

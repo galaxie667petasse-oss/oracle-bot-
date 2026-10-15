@@ -7,7 +7,7 @@ services:
       - "127.0.0.1:8000:8000"
     environment:
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Set a private token in the process environment}
-      ORACLE_V11_LEDGER: /app/variable/oracle-v11.sqlite3
+      ORACLE_V11_LEDGER: ${ORACLE_V11_LEDGER:-/app/variable/oracle-v11.sqlite3}
     volumes:
       - oracle-v11-data:/app/variable
     read_only: true

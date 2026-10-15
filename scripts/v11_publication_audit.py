@@ -23,7 +23,7 @@ def findings_for(path, data):
             or name.name == ".env"):
         findings.append({"kind": "private_local_file", "file": path})
     if b"\x00" in data:
-        if not (path.startswith("docs/assets/") and path.endswith("-synthetic.png")):
+        if not (path.startswith("docs/assets/") and path.endswith(("-synthetic.png", "-synthetic.jpg"))):
             findings.append({"kind": "unreviewed_binary", "file": path})
         return findings
     for line, text in enumerate(data.decode("utf-8", "replace").splitlines(), 1):

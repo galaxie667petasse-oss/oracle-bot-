@@ -36,6 +36,11 @@ def test_private_app_security_and_web_models(tmp_path, monkeypatch):
         assert len([m for m in attempted if not m.startswith("penaltyblog")]) == 3
         assert len(fixture["missing_bookmakers"]) == 5
         assert fixture["decision"] == "ABSTAIN"
+        elo = next(m for m in fixture["models"] if m["model_key"] == "elo_multiclass_v1")
+        elo_quote = next(q for q in fixture["comparisons"] if q["model"] == "elo_multiclass_v1")
+        assert elo_quote["expected_value"] == pytest.approx(elo["probabilities_1x2"][elo_quote["selection"]]*elo_quote["odds"]-1)
+        performance = client.get("/api/v11/performance", params={"model": "poisson_independent_v1"}, headers=auth)
+        assert performance.status_code == 200 and performance.json()["roi_simulated"] is None
         baseline = client.post("/api/v11/analyze", params={"day": str(NOW.date()), "include_penaltyblog": False}, headers=auth).json()
         assert len(baseline["fixtures"][0]["models"]) == 3
         monkeypatch.delenv("INTERNAL_API_TOKEN")
@@ -51,7 +56,7 @@ def test_publication_guard_catches_prior_blob_privacy_without_echoing_values():
     assert not findings_for("v11/example.py", b"print('safe')")
 
 
-def test_apply_provider_results_explicit_identity_and_idempotence(tmp_path):
+def test_apply_provider_results_explicit_identity_and_idempotence(tmp_path, monkeypatch):
     from v11.results import apply_results
     from v11.service import analyze
     ledger = Ledger(tmp_path / "results.sqlite3")
@@ -74,3 +79,14 @@ def test_apply_provider_results_explicit_identity_and_idempotence(tmp_path):
     assert len(ledger.history()[0]["outcomes"]) == 1
     envelope["payload"]["response"][0]["fixture"]["status"]["short"] = "AET"
     assert apply_results(ledger, envelope, mapping, observed)["status"] == "PARTIAL"
+    envelope["payload"]["response"][0]["fixture"]["status"]["short"] = "FT"
+    envelope["payload"]["response"][0]["teams"]["home"]["name"] = "A"
+    import json
+    from v11.__main__ import main
+    monkeypatch.setattr("v11.__main__.utc_now", lambda: observed)
+    raw = tmp_path / "result.json"
+    config = tmp_path / "mapping.json"
+    raw.write_text(json.dumps(envelope), encoding="utf-8")
+    config.write_text(json.dumps({"fixtures": mapping}), encoding="utf-8")
+    assert main(["--ledger", str(ledger.path), "apply-results", "--file", str(raw), "--mapping", str(config)]) == 0
+    assert len(ledger.history()[0]["outcomes"]) == 1
