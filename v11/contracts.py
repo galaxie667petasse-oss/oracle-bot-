@@ -79,6 +79,7 @@ class Fixture(StrictRecord):
 class Snapshot(StrictRecord):
     captured_at: datetime
     provenance: Literal["real_provider", "manual", "synthetic"]
+    source_references: dict[str, str] = Field(default_factory=dict)
     fixtures: list[Fixture] = Field(default_factory=list, max_length=500)
     history: list[HistoryMatch] = Field(default_factory=list, max_length=50000)
 

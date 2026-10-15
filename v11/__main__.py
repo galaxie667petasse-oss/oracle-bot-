@@ -20,6 +20,12 @@ def main(argv=None):
     sub.add_parser("status")
     imp = sub.add_parser("import-snapshot")
     imp.add_argument("file", type=Path)
+    build = sub.add_parser("build-snapshot")
+    build.add_argument("--odds-file", type=Path, required=True)
+    build.add_argument("--results-file", type=Path, action="append", required=True)
+    build.add_argument("--mapping", type=Path, required=True)
+    build.add_argument("--output", type=Path, required=True)
+    build.add_argument("--provenance", choices=["real_provider", "manual", "synthetic"], required=True)
     analysis = sub.add_parser("analyze")
     analysis.add_argument("--day", type=date.fromisoformat, required=True)
     analysis.add_argument("--penaltyblog", action="store_true")
@@ -49,7 +55,20 @@ def main(argv=None):
     collect.add_argument("--cache-db", default="variable/v11-provider-cache.sqlite3", type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.command == "evaluate":
+        if args.command == "build-snapshot":
+            from v11.sources import build_snapshot
+            mapping = json.loads(args.mapping.read_text(encoding="utf-8"))
+            snap = build_snapshot(json.loads(args.odds_file.read_text(encoding="utf-8")),
+                                  [json.loads(p.read_text(encoding="utf-8")) for p in args.results_file],
+                                  mapping["competitions"], mapping.get("teams"), args.provenance)
+            if snap.captured_at > utc_now():
+                raise ValueError("future source observation")
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            with args.output.open("x", encoding="utf-8") as handle:
+                handle.write(snap.model_dump_json(indent=2))
+            report = {"snapshot_id": Ledger(args.ledger).add_snapshot(snap.model_dump(mode="json")),
+                      "history_count": len(snap.history), "provenance": snap.provenance}
+        elif args.command == "evaluate":
             snap = Snapshot.model_validate_json(args.file.read_text(encoding="utf-8"))
             report = chronological_evaluation([m for m in snap.history if m.competition == args.competition],
                                               include_penaltyblog=args.penaltyblog)
@@ -122,7 +141,7 @@ def main(argv=None):
                 report = ledger.backup(args.target)
         print(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
-    except (ValueError, RuntimeError, OSError) as exc:
+    except (ValueError, RuntimeError, OSError, KeyError, TypeError) as exc:
         from v11.sources import SourceError
         # Do not print request URLs, headers, credentials or arbitrary provider bodies.
         print(json.dumps({"status": "blocked", "error_type": type(exc).__name__,

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 import sqlite3
+import json
 
 import httpx
 import numpy as np
@@ -304,3 +305,36 @@ def test_duplicate_quote_and_malformed_provider_refused():
     with pytest.raises(ValueError,match="duplicate quote"): Snapshot.model_validate(raw)
     for payload in ({},["bad"],[{"bookmakers":["bad"]}]):
         with pytest.raises(ValueError): odds_snapshot(payload,NOW,"synthetic")
+
+
+def test_consolidated_provider_payloads_to_models_without_backdated_results(tmp_path,monkeypatch):
+    from v11.sources import build_snapshot
+    sample=snapshot()
+    odds={"provider":"the_odds_api","fetched_at":NOW.isoformat(),"payload":[{
+        "id":"e1","sport_key":"soccer_test","commence_time":sample.fixtures[0].kickoff.isoformat(),
+        "home_team":"A","away_team":"B","bookmakers":[{"key":"betclic_fr","last_update":NOW.isoformat(),
+           "markets":[{"key":"h2h","outcomes":[{"name":"A","price":2.2},{"name":"Draw","price":3.4},{"name":"B","price":3.5}]}]}]}]}
+    results={"provider":"api_football","fetched_at":NOW.isoformat(),"payload":{"errors":[],"response":[{
+        "fixture":{"id":m.match_id,"date":m.kickoff.isoformat(),"status":{"short":"FT"}},
+        "league":{"id":61,"name":"Test League"},"teams":{"home":{"name":m.home},"away":{"name":m.away}},
+        "goals":{"home":m.home_goals,"away":m.away_goals}} for m in sample.history]}}
+    mapping={"api_football:61":"soccer_test"}
+    combined=build_snapshot(odds,[results],mapping,provenance="synthetic")
+    assert len(combined.history)==80
+    assert all(m.result_observed_at==NOW for m in combined.history)
+    assert combined.source_references["competition_map_sha256"]
+    ledger=Ledger(tmp_path/"combined.sqlite3");ledger.add_snapshot(combined.model_dump(mode="json"))
+    pred=analyze(ledger,NOW.date(),NOW)["fixtures"][0]
+    assert len(pred["models"])==3 and len(pred["comparisons"])==6 and pred["decision"]=="ABSTAIN"
+    with pytest.raises(ValueError,match="mapping"):
+        build_snapshot(odds,[results],{"api_football:61":"unobserved_competition"},provenance="synthetic")
+    results["payload"]["response"][0]["fixture"]["status"]["short"]="AET"
+    assert len(build_snapshot(odds,[results],mapping,provenance="synthetic").history)==79
+    from v11.__main__ import main
+    monkeypatch.setattr("v11.__main__.utc_now",lambda:NOW)
+    for name,payload in (("odds",odds),("results",results),("mapping",{"competitions":mapping})):
+        (tmp_path/(name+".json")).write_text(json.dumps(payload),encoding="utf-8")
+    assert main(["--ledger",str(tmp_path/"cli.sqlite3"),"build-snapshot","--odds-file",str(tmp_path/"odds.json"),
+                 "--results-file",str(tmp_path/"results.json"),"--mapping",str(tmp_path/"mapping.json"),
+                 "--output",str(tmp_path/"consolidated.json"),"--provenance","synthetic"])==0
+    assert len(Snapshot.model_validate_json((tmp_path/"consolidated.json").read_text()).history)==79

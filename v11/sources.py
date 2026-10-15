@@ -163,3 +163,54 @@ def coverage(snapshot: Snapshot) -> dict:
                                                 for name, key in FR_BOOKMAKER_KEYS.items()},
             "france_account_coverage": "unverified",
             "note": "An EU key or display name does not prove a French bookmaker account or all its markets."}
+
+
+def build_snapshot(odds_response: dict, result_responses: list[dict], competition_map: dict[str, str],
+                   team_map: dict[str, str] | None = None, provenance: str = "real_provider") -> Snapshot:
+    """Consolidate real observations using explicit competition/name mappings.
+
+    Historical results are available at their actual collection clock, never
+    backdated to kickoff. This enables future forecasts, not hindsight backtests.
+    """
+    from api_football_results_adapter import normalize_results_payload
+    from v10.time import parse_utc
+    from v11.contracts import HistoryMatch
+    from v11.ledger import digest
+    if not isinstance(odds_response, dict) or odds_response.get("provider") != "the_odds_api":
+        raise ValueError("The Odds API envelope required")
+    odds_time = parse_utc(odds_response["fetched_at"])
+    odds = odds_snapshot(odds_response["payload"], odds_time, provenance)
+    competitions = {f.competition for f in odds.fixtures}
+    if not competition_map or not set(competition_map.values()) <= competitions:
+        raise ValueError("explicit API-Football to observed odds competition mapping required")
+    team_map = team_map or {}
+    history = {}
+    clocks = [odds_time]
+    refs = {"odds_payload_sha256": digest({"payload": odds_response["payload"]}),
+            "competition_map_sha256": digest(competition_map), "team_map_sha256": digest(team_map)}
+    for index, response in enumerate(result_responses):
+        if not isinstance(response, dict) or response.get("provider") != "api_football" or not isinstance(response.get("payload"), dict) or response["payload"].get("errors"):
+            raise ValueError("valid API-Football envelope required")
+        observed = parse_utc(response["fetched_at"])
+        clocks.append(observed)
+        refs[f"results_{index}_payload_sha256"] = digest(response["payload"])
+        for row in normalize_results_payload(response["payload"]):
+            competition = competition_map.get("api_football:"+row["league_id"])
+            if competition is None or row["status"] != "FT":
+                continue
+            if row["validation_status"] != "valid" or not row["fixture_id"]:
+                raise ValueError("invalid selected result")
+            match = HistoryMatch(match_id="api_football:"+row["fixture_id"], competition=competition,
+                                 home=team_map.get(row["home_team"], row["home_team"]),
+                                 away=team_map.get(row["away_team"], row["away_team"]),
+                                 kickoff=parse_utc(row["kickoff_time"]), result_observed_at=observed,
+                                 home_goals=int(row["home_goals"]), away_goals=int(row["away_goals"]))
+            previous = history.get(match.match_id)
+            if previous and previous.result_observed_at == observed and previous != match:
+                raise ValueError("conflicting simultaneous result observations")
+            if previous is None or previous.result_observed_at < observed:
+                history[match.match_id] = match
+    if not history:
+        raise ValueError("no mapped regulation-time finished results")
+    return Snapshot(captured_at=max(clocks), provenance=provenance, source_references=refs,
+                    fixtures=odds.fixtures, history=list(history.values()))
